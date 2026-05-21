@@ -1,0 +1,28 @@
+---
+layout: layouts/base.njk
+---
+{% set crumbs = page.url | breadcrumbs %}
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      {% for crumb in crumbs %}
+        {% if loop.last %}
+          <span class="breadcrumb-current">{{ crumb.label }}</span>
+        {% else %}
+          <a href="{{ crumb.url }}">{{ crumb.label }}</a>
+          <span class="breadcrumb-sep" aria-hidden="true">›</span>
+        {% endif %}
+      {% endfor %}
+    </nav>
+    <h1>{{ title }}</h1>
+    {% if description %}<p class="page-desc">{{ description }}</p>{% endif %}
+  </div>
+</div>
+
+<div class="content-layout">
+  <article class="content-body">
+    {{ content | safe }}
+  </article>
+</div>
+

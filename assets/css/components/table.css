@@ -1,0 +1,38 @@
+/* ── Component: Tables ─────────────────────────────────────────────────── */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: var(--space-lg) 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.table-scroll table,
+.content-body table {
+  width: 100%;
+  min-width: 500px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.content-body table th,
+.content-body table td {
+  padding: 0.75rem var(--space-lg);
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.content-body table th {
+  background: var(--bg-accent);
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-indigo);
+  white-space: nowrap;
+}
+
+.content-body table tr:last-child td { border-bottom: none; }
+.content-body table tr:nth-child(even) td { background: #faf8ff; }
+.content-body table tr:hover td { background: var(--color-lavender-lt); }
+

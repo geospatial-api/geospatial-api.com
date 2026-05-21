@@ -1,0 +1,140 @@
+---
+layout: layouts/home.njk
+title: "Geospatial API Development with FastAPI & PostGIS"
+description: "Design and build production-ready spatial REST/GraphQL APIs. Optimise PostGIS queries, caching layers, and data serialisation."
+eleventyExcludeFromCollections: false
+permalink: /
+---
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      FastAPI · PostGIS · Redis · Celery
+    </div>
+    <h1>Build <span class="accent">Production-Grade</span> Geospatial APIs</h1>
+    <p class="hero-desc">
+      Design scalable spatial REST APIs, optimise PostGIS queries, implement intelligent caching layers, and deploy geospatial services that handle millions of concurrent requests with sub-50 ms response times.
+    </p>
+    <p class="hero-desc" style="margin-top:0">
+      Practical guides covering the complete stack from coordinate validation and bounding-box indexing through to vector tile generation and CDN distribution — written for backend engineers, GIS platform architects, and SaaS founders.
+    </p>
+    <div class="hero-actions">
+      <a href="/core-geospatial-api-architecture-with-fastapi-postgis/" class="btn btn-purple">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+        Core Architecture
+      </a>
+      <a href="/advanced-spatial-endpoint-implementation-data-contracts/" class="btn btn-blue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+        Advanced Endpoints
+      </a>
+      <a href="/high-performance-caching-query-optimization/" class="btn btn-teal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Caching &amp; Optimization
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Section cards -->
+<section aria-labelledby="sections-heading">
+  <h2 id="sections-heading" style="text-align:center;font-size:clamp(1.4rem,3vw,2rem);color:var(--color-indigo);padding:var(--space-2xl) var(--space-md) 0;margin:0">
+    Everything you need to launch a spatial API
+  </h2>
+  <div class="section-cards">
+
+    <a href="/core-geospatial-api-architecture-with-fastapi-postgis/" class="section-card">
+      <div class="section-card-icon icon-purple">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#4b3a7c" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+      </div>
+      <h2>Core Geospatial API Architecture</h2>
+      <p>Layered spatial design, PostGIS as a computational engine, async FastAPI patterns, OGC-compliant serialisation, cursor-based pagination, and API versioning for GIS endpoints.</p>
+      <span class="card-cta">Explore architecture →</span>
+    </a>
+
+    <a href="/advanced-spatial-endpoint-implementation-data-contracts/" class="section-card">
+      <div class="section-card-icon icon-blue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1565c0" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+      </div>
+      <h2>Advanced Spatial Endpoints &amp; Data Contracts</h2>
+      <p>Strict Pydantic v2 geometry validation, GiST index-aware query patterns, KNN routing, async bulk ingestion with Celery, and idempotent spatial writes at scale.</p>
+      <span class="card-cta">Explore endpoints →</span>
+    </a>
+
+    <a href="/high-performance-caching-query-optimization/" class="section-card">
+      <div class="section-card-icon icon-teal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0e7c72" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      </div>
+      <h2>High-Performance Caching &amp; Query Optimization</h2>
+      <p>Redis spatial cache key normalisation, EXPLAIN ANALYZE for PostGIS, PgBouncer transaction pooling, vector tile generation with ST_AsMVT, and CDN edge distribution strategies.</p>
+      <span class="card-cta">Explore caching →</span>
+    </a>
+
+  </div>
+</section>
+
+<!-- Featured links -->
+<section class="featured-links" aria-labelledby="featured-heading">
+  <div class="featured-links-inner">
+    <h2 id="featured-heading">Popular guides</h2>
+    <div class="links-grid">
+
+      <a href="/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/" class="link-card">
+        <span class="link-card-label">Core Architecture</span>
+        <h3>Spatial Resource Modeling Patterns</h3>
+        <p>SQLAlchemy models, GIS router isolation, async connection pooling, and cursor pagination.</p>
+      </a>
+
+      <a href="/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/how-to-structure-fastapi-routers-for-postgis-tables/" class="link-card">
+        <span class="link-card-label">Core Architecture</span>
+        <h3>FastAPI Routers for PostGIS Tables</h3>
+        <p>Directory conventions, dependency injection, and modular spatial API design.</p>
+      </a>
+
+      <a href="/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/" class="link-card">
+        <span class="link-card-label">Advanced Endpoints</span>
+        <h3>Bounding Box &amp; Spatial Index Queries</h3>
+        <p>Two-step <code>&amp;&amp;</code> + <code>ST_Intersects</code> pattern for maximum GiST utilisation.</p>
+      </a>
+
+      <a href="/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/" class="link-card">
+        <span class="link-card-label">Advanced Endpoints</span>
+        <h3>Strict Pydantic Validation for Geometry</h3>
+        <p>WKT/WKB validation, ring orientation, topology checks before any DB round-trip.</p>
+      </a>
+
+      <a href="/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/" class="link-card">
+        <span class="link-card-label">Advanced Endpoints</span>
+        <h3>Async Bulk Uploads with Celery</h3>
+        <p>202 Accepted pattern, Celery task queues, and <code>ON CONFLICT DO UPDATE</code> idempotency.</p>
+      </a>
+
+      <a href="/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/" class="link-card">
+        <span class="link-card-label">Caching &amp; Optimization</span>
+        <h3>Redis Caching for Spatial Queries</h3>
+        <p>Cache key normalisation to grid/H3/S2 resolution and TTL strategies.</p>
+      </a>
+
+      <a href="/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/" class="link-card">
+        <span class="link-card-label">Caching &amp; Optimization</span>
+        <h3>Connection Pooling &amp; PgBouncer Setup</h3>
+        <p>Transaction pooling mode, pool sizing, and asyncpg compatibility.</p>
+      </a>
+
+      <a href="/high-performance-caching-query-optimization/tile-generation-cdn-distribution/" class="link-card">
+        <span class="link-card-label">Caching &amp; Optimization</span>
+        <h3>Tile Generation &amp; CDN Distribution</h3>
+        <p>ST_AsMVT pipeline, Cache-Control headers, and edge delivery for vector tiles.</p>
+      </a>
+
+      <a href="/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/" class="link-card">
+        <span class="link-card-label">Caching &amp; Optimization</span>
+        <h3>Query Plan Analysis &amp; Index Tuning</h3>
+        <p>EXPLAIN ANALYZE for spatial queries, GiST health, and planner misestimation fixes.</p>
+      </a>
+
+    </div>
+  </div>
+</section>
+

@@ -1,0 +1,100 @@
+/* ── Component: Code Blocks ────────────────────────────────────────────── */
+
+/* Override Prism theme to match lavender palette */
+:not(pre) > code[class*="language-"],
+pre[class*="language-"] {
+  background: #f3f0fa !important;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.code-block-wrapper {
+  position: relative;
+  margin: var(--space-lg) 0;
+}
+
+pre[class*="language-"] {
+  margin: 0 !important;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  padding: var(--space-lg) !important;
+  font-family: var(--font-mono);
+}
+
+/* Syntax token overrides for lavender theme */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata          { color: #8878a0; font-style: italic; }
+.token.punctuation    { color: #6b4e71; }
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol         { color: #a0522d; }
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin        { color: #2e7d32; }
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.token.variable       { color: #4b3a7c; }
+.token.keyword        { color: var(--color-indigo); font-weight: 600; }
+.token.function       { color: #1565c0; }
+.token.regex,
+.token.important      { color: var(--color-plum); }
+.token.important,
+.token.bold           { font-weight: bold; }
+.token.italic         { font-style: italic; }
+
+/* Copy button */
+.copy-btn {
+  position: absolute;
+  top: 0.625rem;
+  right: 0.625rem;
+  background: var(--color-white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  z-index: 5;
+}
+.copy-btn:hover {
+  background: var(--color-lavender-lt);
+  border-color: var(--color-lavender-md);
+  color: var(--color-indigo);
+}
+.copy-btn.copied {
+  background: #e8f5e9;
+  border-color: #66bb6a;
+  color: #2e7d32;
+}
+.copy-btn svg { width: 13px; height: 13px; }
+
+/* Language badge */
+.code-lang-badge {
+  position: absolute;
+  top: 0.625rem;
+  left: 0.875rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Globe outline -->
+  <circle cx="32" cy="32" r="26" stroke="#4b3a7c" stroke-width="2.5" fill="#ede8f8"/>
+  <!-- Latitude lines -->
+  <ellipse cx="32" cy="32" rx="26" ry="11" stroke="#b39ddc" stroke-width="1.5" fill="none"/>
+  <!-- Vertical meridian -->
+  <ellipse cx="32" cy="32" rx="11" ry="26" stroke="#b39ddc" stroke-width="1.5" fill="none"/>
+  <!-- Center vertical line -->
+  <line x1="32" y1="6" x2="32" y2="58" stroke="#b39ddc" stroke-width="1.5"/>
+  <!-- Center horizontal line -->
+  <line x1="6" y1="32" x2="58" y2="32" stroke="#b39ddc" stroke-width="1.5"/>
+  <!-- API lightning bolt overlay -->
+  <path d="M36 14 L26 34 H33 L28 50 L42 28 H35 Z" fill="#4b3a7c" opacity="0.9"/>
+  <path d="M36 14 L26 34 H33 L28 50 L42 28 H35 Z" fill="url(#bolt-grad)" opacity="0.85"/>
+  <defs>
+    <linearGradient id="bolt-grad" x1="26" y1="14" x2="42" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#9e7bb5"/>
+      <stop offset="100%" stop-color="#4b3a7c"/>
+    </linearGradient>
+  </defs>
+</svg>
+

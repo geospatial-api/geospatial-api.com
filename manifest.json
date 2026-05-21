@@ -1,0 +1,18 @@
+{
+  "name": "Geospatial API Development with FastAPI & PostGIS",
+  "short_name": "Geospatial API",
+  "description": "Design and build production-ready spatial REST/GraphQL APIs with FastAPI and PostGIS.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#faf8f5",
+  "theme_color": "#4b3a7c",
+  "lang": "en",
+  "categories": ["education", "developer tools"],
+  "icons": [
+    { "src": "/assets/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/assets/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": []
+}
+

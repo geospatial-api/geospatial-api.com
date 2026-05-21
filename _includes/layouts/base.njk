@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if title %}{{ title }} | {% endif %}Geospatial API Development with FastAPI &amp; PostGIS</title>
+  <meta name="description" content="{{ description or 'Design and build production-ready spatial REST/GraphQL APIs with FastAPI and PostGIS.' }}">
+  {% if page.url %}<link rel="canonical" href="https://www.geospatial-api.com{{ page.url }}">{% endif %}
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#4b3a7c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Geospatial API">
+  <link rel="apple-touch-icon" href="/assets/img/icon-180.png">
+
+  <!-- Icons -->
+  <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/img/icon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/assets/img/icon-192.png">
+
+  <!-- Open Graph -->
+  <meta property="og:site_name" content="Geospatial API Development with FastAPI &amp; PostGIS">
+  <meta property="og:type" content="{% if page.url == '/' %}website{% else %}article{% endif %}">
+  <meta property="og:title" content="{% if title %}{{ title }} | {% endif %}Geospatial API">
+  <meta property="og:description" content="{{ description or 'Design and build production-ready spatial REST APIs with FastAPI and PostGIS.' }}">
+  <meta property="og:url" content="https://www.geospatial-api.com{{ page.url }}">
+  <meta property="og:image" content="https://www.geospatial-api.com/assets/img/icon-512.png">
+  <meta property="og:image:alt" content="Geospatial API — FastAPI &amp; PostGIS development guides">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{% if title %}{{ title }} | {% endif %}Geospatial API">
+  <meta name="twitter:description" content="{{ description or 'Design and build production-ready spatial REST APIs with FastAPI and PostGIS.' }}">
+  <meta name="twitter:image" content="https://www.geospatial-api.com/assets/img/icon-512.png">
+  <meta name="twitter:image:alt" content="Geospatial API — FastAPI &amp; PostGIS development guides">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/assets/css/global.css">
+
+  <!-- Mermaid (deferred) -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" defer></script>
+
+  <!-- JSON-LD Structured Data -->
+  {% if page.url == "/" %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Geospatial API Development with FastAPI & PostGIS",
+    "url": "https://www.geospatial-api.com",
+    "description": "{{ description | default('Design and build production-ready spatial REST/GraphQL APIs with FastAPI and PostGIS.') }}",
+    "publisher": {
+      "@type": "Organization",
+      "name": "Geospatial API",
+      "url": "https://www.geospatial-api.com",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.geospatial-api.com/assets/img/icon-192.png",
+        "width": 192,
+        "height": 192
+      }
+    }
+  }
+  </script>
+  {% else %}
+  {% set crumbs = page.url | breadcrumbs %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "TechArticle",
+        "@id": "https://www.geospatial-api.com{{ page.url }}#article",
+        "headline": "{{ title }}",
+        "description": "{{ description }}",
+        "url": "https://www.geospatial-api.com{{ page.url }}",
+        "image": {
+          "@type": "ImageObject",
+          "url": "https://www.geospatial-api.com/assets/img/icon-512.png",
+          "width": 512,
+          "height": 512
+        },
+        "author": {
+          "@type": "Organization",
+          "name": "Geospatial API",
+          "url": "https://www.geospatial-api.com"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Geospatial API",
+          "url": "https://www.geospatial-api.com",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://www.geospatial-api.com/assets/img/icon-192.png",
+            "width": 192,
+            "height": 192
+          }
+        },
+        "mainEntityOfPage": {
+          "@type": "WebPage",
+          "@id": "https://www.geospatial-api.com{{ page.url }}"
+        },
+        "inLanguage": "en-US",
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "Geospatial API Development with FastAPI & PostGIS",
+          "url": "https://www.geospatial-api.com"
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {% for crumb in crumbs %}
+          {
+            "@type": "ListItem",
+            "position": {{ loop.index }},
+            "name": "{{ crumb.label }}",
+            "item": "https://www.geospatial-api.com{{ crumb.url }}"
+          }{% if not loop.last %},{% endif %}
+          {% endfor %}
+        ]
+      }
+    ]
+  }
+  </script>
+  {% endif %}
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  {% include "partials/header.njk" %}
+
+  <main id="main-content">
+    {{ content | safe }}
+  </main>
+
+  {% include "partials/footer.njk" %}
+
+  <!-- Scripts -->
+  <script src="/assets/js/mermaid-init.js" defer></script>
+  <script src="/assets/js/copy-code.js" defer></script>
+  <script src="/assets/js/checkbox.js" defer></script>
+  <script src="/assets/js/accordion.js" defer></script>
+
+  <!-- Service Worker registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
+

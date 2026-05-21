@@ -1,0 +1,67 @@
+/* ── Component: Interactive Checkboxes ─────────────────────────────────── */
+/* markdown-it-task-lists renders:
+   <li class="task-list-item"><label><input type="checkbox"> Text</label></li> */
+
+/* Restore disc bullets on non-task list items */
+.content-body ul li:not(.task-list-item) {
+  list-style: disc;
+  margin-left: 1.5rem;
+}
+
+.content-body .task-list-item {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 0.5rem;
+}
+
+.content-body .task-list-item label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  cursor: pointer;
+  line-height: 1.6;
+}
+
+.content-body .task-list-item input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  margin-top: 0.2rem;
+  border: 2px solid var(--color-lavender-md);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.content-body .task-list-item input[type="checkbox"]:checked {
+  background: var(--color-indigo);
+  border-color: var(--color-indigo);
+}
+
+.content-body .task-list-item input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 5px;
+  height: 9px;
+  border: 2px solid white;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+/* Strikethrough entire label when checked */
+.content-body .task-list-item label:has(input[type="checkbox"]:checked) {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+/* But don't strikethrough the checkbox box itself */
+.content-body .task-list-item label:has(input[type="checkbox"]:checked) input[type="checkbox"] {
+  text-decoration: none;
+}
