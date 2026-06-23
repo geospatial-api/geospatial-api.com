@@ -1,160 +1,365 @@
 ---
 layout: layouts/page.njk
-title: "Async Bulk Uploads with Celery for Geospatial APIs"
-description: "Build async bulk geospatial ingest with Celery and FastAPI. Queue shapefile and GeoJSON uploads, parse with GDAL workers, and write to PostGIS with ON CONFLICT idempotency."
+title: "Async Bulk Geospatial Uploads with Celery"
+description: "Queue shapefile and GeoJSON bulk uploads with Celery and FastAPI. Parse with GDAL workers, validate geometries, and write to PostGIS with ON CONFLICT idempotency. Production patterns with error handling, retries, and monitoring."
+slug: async-bulk-uploads-with-celery
+type: cluster
+breadcrumb: "Advanced Spatial Endpoints & Data Contracts > Async Bulk Uploads with Celery"
+datePublished: "2024-10-01"
+dateModified: "2026-06-23"
 ---
 
-# Async Bulk Uploads with Celery for Geospatial APIs
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "headline": "Async Bulk Geospatial Uploads with Celery",
+      "description": "Queue shapefile and GeoJSON bulk uploads with Celery and FastAPI. Parse with GDAL workers, validate geometries, and write to PostGIS with ON CONFLICT idempotency.",
+      "datePublished": "2024-10-01",
+      "dateModified": "2026-06-23",
+      "author": { "@type": "Organization", "name": "Geospatial API" },
+      "publisher": { "@type": "Organization", "name": "Geospatial API" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Advanced Spatial Endpoints & Data Contracts",
+          "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Async Bulk Uploads with Celery",
+          "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/"
+        }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Implement async bulk geospatial uploads with Celery and FastAPI",
+      "step": [
+        { "@type": "HowToStep", "name": "Configure FastAPI ingestion endpoint returning 202" },
+        { "@type": "HowToStep", "name": "Dispatch upload task to Celery broker" },
+        { "@type": "HowToStep", "name": "Extract and validate geometries in worker" },
+        { "@type": "HowToStep", "name": "Transform CRS and repair invalid geometries" },
+        { "@type": "HowToStep", "name": "Batch-insert into PostGIS with idempotent upsert" },
+        { "@type": "HowToStep", "name": "Expose job-status polling endpoint" }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why return 202 instead of 200 from a geospatial upload endpoint?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "202 Accepted signals to clients that the request was valid and accepted but processing has not yet completed. It prevents clients from assuming the data is immediately queryable and sets correct expectations for polling the job-status endpoint."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I prevent duplicate records when a Celery task retries after a partial insert?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use ON CONFLICT DO NOTHING or ON CONFLICT (source_id) DO UPDATE with a stable idempotency key derived from the upload job_id and row index. This ensures retried tasks produce the same database state as a first-time run."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is task_acks_late and why does it matter for shapefile processing?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "task_acks_late=True tells Celery not to acknowledge a task until after the worker function returns successfully. If a worker crashes mid-processing, the broker re-queues the task for another worker instead of losing it silently."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "headline": "Async Bulk Geospatial Uploads with Celery",
+      "datePublished": "2024-10-01",
+      "dateModified": "2026-06-23"
+    }
+  ]
+}
+</script>
 
-Processing large geospatial datasets synchronously is a guaranteed path to request timeouts, memory exhaustion, and degraded API performance. When building spatial platforms that ingest shapefiles, GeoJSON, or CSV coordinate dumps, you need a robust queueing architecture. **Async bulk uploads with Celery** provide exactly that: a decoupled, scalable pipeline that offloads heavy I/O and CPU-bound geometry transformations away from your FastAPI request lifecycle. This guide walks through production-ready patterns for queuing, parsing, validating, and committing spatial records into PostGIS without blocking your main application threads.
+← Back to [Advanced Spatial Endpoints & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/)
 
-## Prerequisites & Stack Configuration
+# Async Bulk Geospatial Uploads with Celery
 
-Before implementing this ingestion pipeline, ensure your stack meets these baseline requirements:
-- FastAPI 0.100+ with Pydantic v2 for strict geometry validation and request modeling
-- PostGIS 3.3+ with GiST spatial indexing and `ST_MakeValid` support
-- Celery 5.3+ paired with Redis or RabbitMQ as the message broker and result backend
-- `python-multipart` for form parsing, `geopandas` or `pyogrio` for vector I/O
-- Connection pooling configured via `asyncpg` (FastAPI) and `psycopg2`/`SQLAlchemy 2.0` (Celery)
-- Familiarity with [Advanced Spatial Endpoint Implementation & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/) principles for structuring your ingestion payloads
+Processing large spatial datasets synchronously blocks your request lifecycle and guarantees timeouts above a few hundred features. When your API needs to ingest shapefiles, GeoJSON archives, or CSV coordinate dumps at scale, you need a queued pipeline that decouples file acceptance from geometry parsing, CRS transformation, and PostGIS writes. This page walks through production-ready patterns for building that pipeline with Celery and FastAPI — covering broker configuration, idempotent batch insertion, worker reliability settings, and client-facing job tracking.
 
-Aligning your infrastructure around these components ensures predictable memory footprints and deterministic task execution. For message brokers, Redis offers lower latency for simple task routing, while RabbitMQ provides stronger delivery guarantees and dead-letter queue support—critical when processing multi-gigabyte spatial archives. Always configure your Celery result backend with a reasonable expiration policy (`result_expires=86400`) to prevent Redis memory bloat from stale job metadata.
+---
 
-## Architecture & Workflow Design
+## Prerequisites & Environment
 
-The ingestion pipeline follows a strict state machine to guarantee data integrity, traceability, and predictable resource consumption:
+| Dependency | Minimum version | Why it matters |
+|---|---|---|
+| FastAPI | 0.100 | `UploadFile` streaming, async lifespan |
+| Pydantic | v2 | Geometry validators (see [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/)) |
+| Celery | 5.3 | `task_acks_late`, chord/group primitives |
+| Redis or RabbitMQ | Redis 7 / RMQ 3.11 | Message broker and result backend |
+| PostGIS | 3.3 | `ST_MakeValid`, `ST_GeomFromText`, GiST indexes |
+| pyogrio | 0.7 | High-performance GDAL-backed vector I/O |
+| shapely | 2.0 | `make_valid`, `shapely.transform` |
+| pyproj | 3.6 | CRS-aware coordinate transformation |
+| psycopg2-binary | 2.9 | `execute_values` bulk insert |
+| python-multipart | 0.0.9 | Multipart form parsing in FastAPI |
 
-1. **Client Upload:** The frontend streams a compressed archive or multipart form to a dedicated `/v1/uploads/geospatial` endpoint.
-2. **Payload Validation & Staging:** FastAPI validates file type and size, writes the payload to a temporary directory or object storage, and immediately returns a `job_id`.
-3. **Task Dispatch:** The endpoint pushes a Celery task containing the `job_id` and file path to the broker queue.
-4. **Worker Processing:** Celery workers pull the job, extract geometries, run topological validation, transform coordinate reference systems (CRS), and batch-insert into PostGIS.
-5. **Indexing & Finalization:** Once committed, workers trigger spatial index updates, log metrics, and mark the job as `completed` or `failed`.
-6. **Status Polling:** Clients query `/jobs/{job_id}` to track progress, leveraging HTTP polling or WebSockets.
+**Broker choice:** Redis is simpler to operate and sufficient for most spatial ingestion workloads. RabbitMQ is preferable when you need strong per-message durability guarantees, complex routing topologies, or reliable dead-letter queues for failed shapefile jobs. For `result_expires`, set `86400` (24 hours) on both backends to prevent job-metadata bloat.
 
-This architecture naturally complements downstream spatial operations like [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) and [K-Nearest Neighbor Routing Algorithms](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/), which depend on clean, indexed geometry tables. By isolating ingestion from query execution, you prevent write-heavy operations from starving read-heavy analytical workloads.
+---
 
-## FastAPI Ingestion Endpoint
+## Pipeline Architecture
 
-The entry point must remain lightweight. It accepts the file, generates a UUID, and delegates to Celery without performing any heavy computation. Synchronous endpoints should never parse geometry or open database connections during the upload phase.
+The diagram below shows how a raw client upload flows through FastAPI into Celery workers and finally into PostGIS.
+
+<svg viewBox="0 0 780 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Async geospatial upload pipeline: client uploads to FastAPI, which stages the file and dispatches a Celery task, which the worker processes and writes to PostGIS, while the client polls for status." style="width:100%;max-width:780px;font-family:inherit;">
+  <title>Async Geospatial Upload Pipeline</title>
+  <desc>Architecture diagram showing a client uploading a file to a FastAPI endpoint, which stages the file, returns a job_id, and enqueues a Celery task. The Celery worker extracts geometries, validates and transforms CRS, then batch-inserts into PostGIS. A separate status-polling path lets the client query job progress.</desc>
+  <!-- Background -->
+  <rect width="780" height="340" rx="10" ry="10" fill="none" stroke="currentColor" stroke-opacity="0.08" stroke-width="1"/>
+  <!-- Client -->
+  <rect x="20" y="130" width="110" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5"/>
+  <text x="75" y="165" text-anchor="middle" font-size="12" fill="currentColor" font-weight="600">Client</text>
+  <text x="75" y="183" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">POST /uploads</text>
+  <text x="75" y="198" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">GET /jobs/{id}</text>
+  <!-- Arrow client → FastAPI -->
+  <line x1="130" y1="170" x2="195" y2="170" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- FastAPI box -->
+  <rect x="197" y="110" width="140" height="120" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5"/>
+  <text x="267" y="135" text-anchor="middle" font-size="12" fill="currentColor" font-weight="600">FastAPI</text>
+  <text x="267" y="153" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">validate + stage file</text>
+  <text x="267" y="169" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">generate job_id</text>
+  <text x="267" y="185" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">return 202 + job_id</text>
+  <text x="267" y="201" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">dispatch Celery task</text>
+  <text x="267" y="217" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">poll job status</text>
+  <!-- Arrow FastAPI → Broker -->
+  <line x1="337" y1="155" x2="400" y2="155" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Broker box -->
+  <rect x="402" y="120" width="110" height="70" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5"/>
+  <text x="457" y="148" text-anchor="middle" font-size="12" fill="currentColor" font-weight="600">Broker</text>
+  <text x="457" y="166" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">Redis / RabbitMQ</text>
+  <text x="457" y="181" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">task queue</text>
+  <!-- Arrow Broker → Worker -->
+  <line x1="512" y1="155" x2="575" y2="155" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- Worker box -->
+  <rect x="577" y="90" width="170" height="170" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5"/>
+  <text x="662" y="115" text-anchor="middle" font-size="12" fill="currentColor" font-weight="600">Celery Worker</text>
+  <text x="662" y="135" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">1. read staged file</text>
+  <text x="662" y="153" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">2. extract geometries</text>
+  <text x="662" y="171" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">3. validate + make_valid</text>
+  <text x="662" y="189" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">4. reproject → EPSG:4326</text>
+  <text x="662" y="207" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">5. batch upsert PostGIS</text>
+  <text x="662" y="225" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">6. write job status</text>
+  <text x="662" y="243" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7">7. trigger VACUUM</text>
+  <!-- Arrow Worker → PostGIS (down) -->
+  <line x1="662" y1="260" x2="662" y2="308" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- PostGIS box -->
+  <rect x="577" y="310" width="170" height="24" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5"/>
+  <text x="662" y="326" text-anchor="middle" font-size="11" fill="currentColor" font-weight="600">PostGIS (geometry table)</text>
+  <!-- Status arrow back (client polls FastAPI) -->
+  <path d="M75 210 Q75 290 200 290 Q310 290 310 245" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arr)" opacity="0.55"/>
+  <text x="185" y="305" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.55">poll /jobs/{job_id}</text>
+  <!-- Arrowhead marker -->
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.7"/>
+    </marker>
+  </defs>
+</svg>
+
+Each stage is intentionally isolated: the FastAPI endpoint never opens a database connection during upload, and Celery workers use a separate synchronous connection pool (psycopg2) independent of the async pool (asyncpg) that serves read queries.
+
+---
+
+## Decision Matrix: Broker & Storage Trade-offs
+
+| Dimension | Redis | RabbitMQ |
+|---|---|---|
+| Setup complexity | Low (single process) | Medium (nodes + vhosts) |
+| Task persistence | AOF/RDB (configurable) | Durable queues by default |
+| Dead-letter support | Manual (custom queue) | Native `x-dead-letter-exchange` |
+| Result backend | Yes (key-value TTL) | No (use Redis separately) |
+| Throughput (tasks/s) | Very high | High |
+| Best for | Simple spatial ingest pipelines | Multi-tenant, critical delivery guarantees |
+
+| Staging storage | Trade-off |
+|---|---|
+| Local `/tmp` NVMe | Fastest; lost on worker restart; not shared across nodes |
+| Shared NFS/EFS | Accessible from any worker; latency overhead for large archives |
+| Object storage (S3/R2) | Scalable; requires presigned URL or SDK in worker; adds ~200 ms cold fetch |
+
+For multi-node worker pools, object storage staging is the correct default. Workers download the file at the start of the task and delete it on completion.
+
+---
+
+## Step-by-Step Implementation
+
+### Step 1 — FastAPI ingestion endpoint
+
+The endpoint's only job is to accept the file, write it to staging, and enqueue a task. It must return before any geometry parsing occurs. The [handling async file uploads for shapefile processing](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/) page covers companion-file validation (`.prj`, `.dbf`, `.cpg`) and multipart ZIP extraction in detail.
 
 ```python
 from fastapi import APIRouter, UploadFile, HTTPException
 from uuid import uuid4
 import os
-from celery_app import process_geospatial_upload
 
 router = APIRouter()
-UPLOAD_DIR = "/tmp/geospatial_staging"
+UPLOAD_DIR = "/var/geospatial/staging"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+ALLOWED_EXTENSIONS = (".zip", ".geojson", ".gpkg", ".csv")
 
 @router.post("/v1/uploads/geospatial", status_code=202)
 async def upload_geospatial(file: UploadFile):
-    if not file.filename.endswith((".zip", ".geojson", ".shp", ".csv")):
-        raise HTTPException(400, "Unsupported file format")
+    if not file.filename:
+        raise HTTPException(400, "No filename provided")
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(400, f"Unsupported format: {ext!r}. Expected one of {ALLOWED_EXTENSIONS}")
 
     job_id = str(uuid4())
-    staging_path = os.path.join(UPLOAD_DIR, f"{job_id}_{file.filename}")
+    staging_path = os.path.join(UPLOAD_DIR, f"{job_id}{ext}")
 
-    # Stream to disk to avoid memory spikes
+    # Stream in 1 MB chunks — never load the full payload into RAM
     with open(staging_path, "wb") as f:
-        while chunk := await file.read(1024 * 1024):
+        while chunk := await file.read(1_048_576):
             f.write(chunk)
 
-    # Dispatch to Celery immediately
+    # Dispatch immediately; do not await the result
+    from celery_app import process_geospatial_upload
     process_geospatial_upload.delay(job_id=job_id, file_path=staging_path)
 
-    return {"job_id": job_id, "status": "queued", "message": "Upload accepted. Processing initiated."}
+    return {
+        "job_id": job_id,
+        "status": "queued",
+        "poll_url": f"/v1/jobs/{job_id}",
+    }
 ```
 
-Note that streaming the file in 1MB chunks prevents the entire payload from loading into RAM. For production deployments handling shapefile archives, consider reviewing [Handling async file uploads for shapefile processing](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/) to implement chunked multipart parsing and automatic `.cpg`/`.prj` companion file validation. Always return a `202 Accepted` status code to explicitly signal asynchronous processing.
+Returning `202 Accepted` — not `200 OK` — is the correct HTTP semantic for queued work. Clients must not assume the features are immediately queryable after receiving this response.
 
-## Celery Task Orchestration & Worker Logic
+### Step 2 — Celery application configuration
 
-Celery workers operate in isolated processes. This isolation is crucial for geospatial workloads because libraries like `geopandas` and `shapely` rely heavily on C-extensions that can cause memory fragmentation if reused across threads. Configure your Celery app with `worker_prefetch_multiplier=1` and `task_acks_late=True` to ensure fair task distribution and prevent lost jobs during worker restarts.
+Worker reliability for geospatial workloads depends on three settings: `task_acks_late`, `worker_prefetch_multiplier`, and `worker_max_tasks_per_child`. Missing any one of them causes silent job loss or memory exhaustion over time.
 
 ```python
 from celery import Celery
-import logging
 
-app = Celery("geospatial_worker", broker="redis://localhost:6379/0", backend="redis://localhost:6379/1")
+app = Celery(
+    "geospatial_worker",
+    broker="redis://localhost:6379/0",
+    backend="redis://localhost:6379/1",
+)
+
 app.conf.update(
-    worker_prefetch_multiplier=1,
+    # Acknowledge only after the task function returns — crash-safe
     task_acks_late=True,
+    # Process one task at a time; prevents memory spikes from concurrent GDAL ops
+    worker_prefetch_multiplier=1,
+    # Recycle the worker process every 50 tasks — counters GDAL/shapely memory fragmentation
+    worker_max_tasks_per_child=50,
+    # Keep serialization deterministic for spatial payloads
     task_serializer="json",
     result_serializer="json",
     accept_content=["json"],
-    worker_max_tasks_per_child=50  # Prevents long-running memory leaks
+    # Expire result metadata after 24 hours to prevent Redis bloat
+    result_expires=86_400,
 )
-
-@app.task(bind=True, max_retries=3, default_retry_delay=60)
-def process_geospatial_upload(self, job_id: str, file_path: str):
-    logger = logging.getLogger(__name__)
-    try:
-        logger.info(f"Processing job {job_id} from {file_path}")
-        # 1. Extract & Parse
-        # 2. Validate & Transform CRS
-        # 3. Batch Insert
-        # 4. Update Job Status
-        pass
-    except Exception as exc:
-        logger.error(f"Job {job_id} failed: {exc}")
-        self.retry(exc=exc)
 ```
 
-The `max_retries` and `task_acks_late` configuration ensures that transient failures (e.g., temporary database connection drops or network timeouts during object storage fetches) are handled gracefully without data loss. The `worker_max_tasks_per_child` directive forces worker process recycling, which is essential when running native GIS libraries that do not fully release allocated memory back to the OS.
+`task_acks_late=True` is the most critical setting for ingestion pipelines: without it, the broker marks a task as acknowledged the moment a worker picks it up. If the worker process is killed mid-parse, the geometry records are silently lost with no retry.
 
-## Geospatial Validation & CRS Transformation
+### Step 3 — Worker task: extract, validate, and transform
 
-Raw spatial data is notoriously inconsistent. Before insertion, every geometry must pass topological validation and be normalized to a target projection (typically `EPSG:4326` for web mapping or `EPSG:3857` for tiled rendering). Use `pyogrio` for high-performance vector I/O, and leverage `shapely.validation.make_valid` to repair self-intersecting polygons.
+Geometry extraction, validation, and CRS transformation are CPU-bound and may allocate several hundred MB of C-level memory for large shapefiles. Isolating this inside a Celery task prevents the FastAPI event loop from blocking and allows the OS to reclaim memory when the worker process recycles.
 
 ```python
+import logging
 import pyogrio
 import shapely
 from shapely.validation import make_valid
 from pyproj import Transformer
 
-def normalize_geometries(file_path: str, target_crs: int = 4326):
-    meta = pyogrio.read_info(file_path)
-    src_crs = meta.get("crs_wkt") or meta.get("crs")
+logger = logging.getLogger(__name__)
 
-    transformer = Transformer.from_crs(src_crs, f"EPSG:{target_crs}", always_xy=True)
+@app.task(bind=True, max_retries=3, default_retry_delay=60)
+def process_geospatial_upload(self, job_id: str, file_path: str):
+    try:
+        _update_job_status(job_id, "processing", progress=0)
 
-    geometries = []
-    # read_dataframe returns a GeoDataFrame; iterate geometry column for Shapely objects
-    gdf = pyogrio.read_dataframe(file_path)
-    for geom in gdf.geometry:
-        if geom is None:
-            continue
-        new_geom = shapely.transform(geom, transformer.transform)
-        if not new_geom.is_valid:
-            new_geom = make_valid(new_geom)
-        geometries.append(new_geom)
+        # --- 1. Read metadata without loading all features ---
+        meta = pyogrio.read_info(file_path)
+        src_crs = meta.get("crs")
+        if src_crs is None:
+            raise ValueError("Source file has no CRS; cannot transform to EPSG:4326")
 
-    return geometries
+        # --- 2. Stream features and transform coordinates ---
+        transformer = Transformer.from_crs(src_crs, "EPSG:4326", always_xy=True)
+        gdf = pyogrio.read_dataframe(file_path)
+
+        geometries = []
+        for i, geom in enumerate(gdf.geometry):
+            if geom is None:
+                continue
+            reprojected = shapely.transform(geom, transformer.transform)
+            if not reprojected.is_valid:
+                reprojected = make_valid(reprojected)
+            geometries.append((job_id, i, reprojected))
+
+        _update_job_status(job_id, "processing", progress=60)
+
+        # --- 3. Batch insert ---
+        batch_insert_geometries(geometries, table_name="spatial_features", db_url=DB_URL)
+
+        _update_job_status(job_id, "completed", progress=100, record_count=len(geometries))
+        logger.info("Job %s completed: %d features inserted", job_id, len(geometries))
+
+    except Exception as exc:
+        logger.exception("Job %s failed on attempt %d", job_id, self.request.retries + 1)
+        _update_job_status(job_id, "failed", error=str(exc))
+        raise self.retry(exc=exc)
 ```
 
-Coordinate transformation should always use `always_xy=True` to prevent latitude/longitude swapping, a common pitfall when migrating from legacy GIS software. For deeper insights into projection handling, spatial reference systems, and OGC compliance, consult the official [PostGIS documentation](https://postgis.net/documentation/).
+`always_xy=True` on the `Transformer` is not optional — omitting it causes latitude and longitude to swap for any CRS that uses the geographic (lat/lon) axis order, silently producing mirror-image geometries.
 
-## Batch Insertion & Transaction Management
+### Step 4 — Idempotent batch insertion with `ON CONFLICT`
 
-Inserting thousands of geometries row-by-row will bottleneck your database. Instead, use `psycopg2.extras.execute_values` or SQLAlchemy 2.0's bulk insert capabilities. Wrap the operation in a transaction to guarantee atomicity: either all records commit, or the entire batch rolls back.
+Using `psycopg2.extras.execute_values` with `page_size=1000` and an `ON CONFLICT DO NOTHING` clause makes each task retry safe. If the worker crashes after 700 rows and retries from the top, the 700 already-committed rows are skipped rather than duplicated. This is the core of the [strict data contract](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) that governs how you enforce idempotency at the database layer.
 
 ```python
 import psycopg2
 from psycopg2.extras import execute_values
 
-def batch_insert_geometries(geometries: list, table_name: str, db_url: str):
+def batch_insert_geometries(geometries: list[tuple], table_name: str, db_url: str):
+    """
+    geometries: list of (job_id, row_index, shapely_geom) tuples
+    Uses (job_id, row_index) as a composite idempotency key.
+    """
     conn = psycopg2.connect(db_url)
     try:
         with conn.cursor() as cur:
-            wkt_data = [geom.wkt for geom in geometries]
-            # execute_values replaces the single %s in VALUES with per-row templates
-            query = f"INSERT INTO {table_name} (geometry, created_at) VALUES %s"
             execute_values(
                 cur,
-                query,
-                [(wkt,) for wkt in wkt_data],
-                template="(ST_GeomFromText(%s, 4326), NOW())",
-                page_size=1000
+                f"""
+                INSERT INTO {table_name} (job_id, row_index, geometry, created_at)
+                VALUES %s
+                ON CONFLICT (job_id, row_index) DO NOTHING
+                """,
+                [
+                    (job_id, row_idx, geom.wkt)
+                    for job_id, row_idx, geom in geometries
+                ],
+                template="(%s, %s, ST_GeomFromText(%s, 4326), NOW())",
+                page_size=1000,
             )
         conn.commit()
     except Exception:
@@ -164,34 +369,189 @@ def batch_insert_geometries(geometries: list, table_name: str, db_url: str):
         conn.close()
 ```
 
-Transaction boundaries must align with your business logic. If you're performing multi-step updates—such as calculating derived attributes, updating materialized views, or triggering webhook notifications—review Managing database transactions for multi-step geospatial updates to implement savepoints and compensating actions. Using `page_size=1000` strikes a balance between network round-trips and memory overhead during bulk inserts.
+The `page_size=1000` parameter controls how many rows are bundled into a single `VALUES` clause. Values above ~2000 rows per batch begin to stress the PostgreSQL query planner without meaningful throughput gains.
 
-## Monitoring, Error Handling & Client Polling
+---
 
-A robust async pipeline requires visibility. Store task progress in Redis or a dedicated `job_status` table. FastAPI can expose a lightweight polling endpoint that queries this state without touching the primary database.
+## Production Code Example
+
+The following is a complete, copy-runnable integration showing the FastAPI status endpoint, the Celery task wired to the batch insert, and the helper that persists job state to Redis. Drop these three modules into your project alongside the snippets above.
 
 ```python
-@router.get("/jobs/{job_id}")
-async def get_job_status(job_id: str):
-    # Query Redis or DB for job state
-    # Return: {"job_id": job_id, "status": "processing", "progress": 65, "records_processed": 1240}
-    pass
+# status_store.py  — Redis-backed job state
+import json
+import redis
+
+r = redis.Redis(host="localhost", port=6379, db=2, decode_responses=True)
+
+def _update_job_status(
+    job_id: str,
+    status: str,
+    progress: int = 0,
+    record_count: int | None = None,
+    error: str | None = None,
+):
+    payload = {"job_id": job_id, "status": status, "progress": progress}
+    if record_count is not None:
+        payload["record_count"] = record_count
+    if error is not None:
+        payload["error"] = error
+    r.setex(f"job:{job_id}", 86_400, json.dumps(payload))
+
+def get_job_status(job_id: str) -> dict | None:
+    raw = r.get(f"job:{job_id}")
+    return json.loads(raw) if raw else None
 ```
 
-For lighter workloads where full Celery orchestration introduces unnecessary complexity, consider Using FastAPI background tasks for async geocoding as an alternative. However, for true bulk ingestion with retry logic, distributed worker scaling, and persistent result storage, Celery remains the industry standard.
+```python
+# routes/jobs.py  — polling endpoint
+from fastapi import APIRouter, HTTPException
+from status_store import get_job_status
 
-Implement structured logging to capture task duration, memory usage, and failure reasons. Integrate Prometheus metrics to track queue depth, worker utilization, and insertion throughput. When queue depth exceeds a threshold, auto-scale Celery workers using Kubernetes HPA or AWS ECS scaling policies. Always expose a `/health` endpoint that checks broker connectivity and worker liveness before routing traffic.
+router = APIRouter()
 
-## Scaling Considerations & Production Hardening
+@router.get("/v1/jobs/{job_id}")
+async def job_status(job_id: str):
+    state = get_job_status(job_id)
+    if state is None:
+        raise HTTPException(404, f"Job {job_id!r} not found or expired")
+    return state
+```
 
-As your platform grows, several bottlenecks typically emerge:
-- **Memory Leaks:** Geospatial libraries allocate native memory. Restart workers periodically or use `worker_max_tasks_per_child` to schedule graceful process recycling.
-- **Disk I/O Contention:** Staging large `.zip` archives on the same volume as your database WAL files will degrade performance. Use ephemeral NVMe storage or mount object storage via `s3fs`/`goofys`.
-- **CRS Mismatch Hell:** Always enforce a strict data contract. Reject uploads that lack projection metadata or contain mixed-coordinate geometries.
-- **Index Bloat:** PostGIS GiST indexes fragment during heavy bulk inserts. Schedule `VACUUM ANALYZE` and `REINDEX` during maintenance windows to reclaim space and maintain query performance.
+A client polling every 2 seconds with exponential backoff can track progress without long-polling infrastructure. When `status == "completed"`, it can immediately run [bounding-box spatial index queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) against the newly ingested features, or issue [K-nearest-neighbor routing queries](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) against the populated geometry table.
 
-Refer to the official [Celery documentation](https://docs.celeryq.dev/en/stable/) for advanced configuration patterns like task rate limiting, chord dependencies, and result expiration policies. Implement idempotency keys in your upload requests to prevent duplicate processing when clients retry failed network calls.
+---
 
-## Conclusion
+## Verification & Testing
 
-Implementing async bulk uploads with Celery transforms geospatial data ingestion from a fragile, blocking operation into a resilient, horizontally scalable workflow. By decoupling upload acceptance from geometry parsing, enforcing strict validation boundaries, and leveraging batched PostGIS transactions, you ensure your API remains responsive under heavy load. As your spatial datasets grow, this architecture provides the foundation for advanced analytics, real-time routing, and high-throughput mapping services.
+**1. Smoke test with curl:**
+
+```bash
+# Upload a sample GeoJSON
+curl -X POST http://localhost:8000/v1/uploads/geospatial \
+  -F "file=@sample_features.geojson" \
+  -H "Accept: application/json"
+# → {"job_id":"a1b2c3...","status":"queued","poll_url":"/v1/jobs/a1b2c3..."}
+
+# Poll until completed
+curl http://localhost:8000/v1/jobs/a1b2c3...
+# → {"job_id":"a1b2c3...","status":"completed","progress":100,"record_count":1458}
+```
+
+**2. Verify geometry quality in PostGIS:**
+
+```sql
+-- Confirm all inserted geometries are valid and in EPSG:4326
+SELECT
+    COUNT(*) AS total,
+    COUNT(*) FILTER (WHERE ST_IsValid(geometry)) AS valid_count,
+    COUNT(*) FILTER (WHERE ST_SRID(geometry) = 4326) AS correct_srid,
+    MIN(ST_NPoints(geometry)) AS min_vertices,
+    MAX(ST_NPoints(geometry)) AS max_vertices
+FROM spatial_features
+WHERE job_id = 'a1b2c3...';
+```
+
+Expected output: `total == valid_count == correct_srid`.
+
+**3. Confirm idempotency (re-run same task, expect same count):**
+
+```python
+# tests/test_idempotency.py
+import pytest
+from celery_app import process_geospatial_upload
+
+def test_duplicate_task_is_idempotent(db_conn, sample_shapefile):
+    job_id = "test-idem-001"
+    process_geospatial_upload(job_id=job_id, file_path=sample_shapefile)
+    count_after_first = db_conn.execute(
+        "SELECT COUNT(*) FROM spatial_features WHERE job_id = %s", (job_id,)
+    ).fetchone()[0]
+
+    # Run again — must not double-insert
+    process_geospatial_upload(job_id=job_id, file_path=sample_shapefile)
+    count_after_second = db_conn.execute(
+        "SELECT COUNT(*) FROM spatial_features WHERE job_id = %s", (job_id,)
+    ).fetchone()[0]
+
+    assert count_after_first == count_after_second
+```
+
+---
+
+## Failure Modes & Edge Cases
+
+1. **Missing CRS in shapefile** — `pyogrio.read_info()` returns `crs: None` when a `.prj` companion file is absent. The task raises `ValueError` and retries. After `max_retries`, the job is marked `failed`. Fix: reject uploads lacking `.prj` at the FastAPI layer before staging; see [handling async file uploads for shapefile processing](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/).
+
+2. **Lat/lon axis swap producing ocean-based geometries** — Omitting `always_xy=True` from `Transformer.from_crs()` swaps axes for CRS definitions that declare (latitude, longitude) order (e.g. EPSG:4269, EPSG:4326 in strict mode). Symptoms: all geometries land in the ocean or Antarctica. Always pass `always_xy=True`.
+
+3. **Worker OOM kill during large archive processing** — A 500 MB shapefile with complex polygons can exhaust 4 GB of worker RAM when loaded fully into a GeoDataFrame. Mitigate with `pyogrio.read_dataframe()` chunked reads (use the `skip_features`/`max_features` parameters in a loop) or stream via Fiona's iterative layer reading.
+
+4. **Transaction rollback leaving partial job state** — If the database transaction rolls back after 3,000 of 10,000 rows, the job status in Redis may already read `processing`. On retry, the `ON CONFLICT DO NOTHING` clause skips the 3,000 already-committed rows (if you committed partials). Use a single transaction per batch, not per page: commit only after all `execute_values` pages succeed.
+
+5. **Redis TTL expiry before client polls** — `result_expires=86_400` means job metadata disappears after 24 hours. If a client polls after that window, it receives a 404. Persist completed job summaries to a `job_log` Postgres table before they expire in Redis if you need longer audit trails.
+
+6. **GiST index bloat after bulk insert** — Inserting millions of geometries in rapid succession fragments the GiST index. Query plans for [bounding-box queries using `ST_Within` and `ST_Intersects`](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/) may degrade significantly. Schedule `VACUUM ANALYZE spatial_features` and `REINDEX INDEX spatial_features_geometry_idx` in a maintenance window after each large bulk load.
+
+7. **Celery task swallowing exceptions silently** — If `self.retry(exc=exc)` is called inside a bare `except Exception` block without re-raising, Celery may mark the task `SUCCESS` after the retry limit is reached. Always use `raise self.retry(exc=exc)` to propagate correctly.
+
+---
+
+## Performance Notes
+
+| Scenario | Observed throughput | Notes |
+|---|---|---|
+| 10,000 simple points (GeoJSON) | ~8,000 features/s insert | No CRS transform; single worker |
+| 10,000 polygons with CRS transform | ~1,200 features/s | `Transformer` overhead dominates |
+| 100,000 polygons, `page_size=1000` | ~900 features/s | GiST index write cost increases with table size |
+| 100,000 polygons, index deferred | ~3,500 features/s | Drop index, bulk insert, recreate index |
+
+For very large loads (>500,000 features), consider dropping and recreating the GiST index around the bulk operation rather than inserting into a live index:
+
+```sql
+-- Before bulk load
+DROP INDEX IF EXISTS spatial_features_geometry_idx;
+
+-- ... run Celery tasks ...
+
+-- After all tasks complete
+CREATE INDEX CONCURRENTLY spatial_features_geometry_idx
+    ON spatial_features USING GIST (geometry);
+VACUUM ANALYZE spatial_features;
+```
+
+`CREATE INDEX CONCURRENTLY` avoids a full table lock but takes longer. Use it in production where you cannot afford downtime on spatial queries. This intersects with the connection pool tuning discussed in [Connection Pooling & pgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — ensure your pgBouncer pool size accommodates the CONCURRENTLY build's additional session.
+
+---
+
+<details>
+<summary><strong>FAQ: Celery + Geospatial Ingest</strong></summary>
+
+**Why return 202 instead of 200 from a geospatial upload endpoint?**
+202 Accepted signals to clients that the request was valid and accepted but processing has not yet completed. It prevents clients from assuming the data is immediately queryable and sets correct expectations for polling the job-status endpoint.
+
+**How do I prevent duplicate records when a Celery task retries after a partial insert?**
+Use `ON CONFLICT DO NOTHING` or `ON CONFLICT (source_id) DO UPDATE` with a stable idempotency key derived from the upload `job_id` and row index. This ensures retried tasks produce the same database state as a first-time run.
+
+**What is `task_acks_late` and why does it matter for shapefile processing?**
+`task_acks_late=True` tells Celery not to acknowledge a task until after the worker function returns successfully. If a worker crashes mid-processing, the broker re-queues the task for another worker instead of losing it silently.
+
+**Should I use asyncpg or psycopg2 in Celery workers?**
+Use `psycopg2` (synchronous) in Celery workers. Celery tasks run in synchronous worker processes and do not have an event loop. Using `asyncpg` would require running `asyncio.run()` per task, which adds overhead and complexity. Reserve `asyncpg` for the FastAPI application layer.
+
+**How do I scale workers horizontally for large ingest jobs?**
+Celery workers are stateless — spawn additional worker processes or pods pointed at the same broker and they automatically pick up tasks. For Kubernetes, configure an HPA that scales on the Redis queue length metric (exposed via `celery inspect active_queues` or the Flower metrics exporter).
+
+</details>
+
+---
+
+## Related
+
+- [Handling Async File Uploads for Shapefile Processing](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/) — companion-file validation, ZIP extraction, and chunked multipart parsing
+- [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — enforce geometry types and CRS contracts at the request boundary before queueing
+- [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — query the PostGIS tables populated by this pipeline
+- [K-Nearest Neighbor Routing Algorithms](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) — KNN queries over bulk-inserted geometry datasets
+- [Connection Pooling & pgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — tune database connection pools for high-concurrency bulk ingest
+
+← Back to [Advanced Spatial Endpoints & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/)

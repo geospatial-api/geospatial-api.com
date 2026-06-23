@@ -1,7 +1,7 @@
 ---
 layout: layouts/home.njk
-title: "Geospatial API Development with FastAPI & PostGIS"
-description: "Design and build production-ready spatial REST/GraphQL APIs. Optimise PostGIS queries, caching layers, and data serialisation."
+title: ""
+description: "Design and build production-ready spatial REST APIs with FastAPI and PostGIS. Optimise queries, caching layers, and geospatial data serialisation."
 eleventyExcludeFromCollections: false
 permalink: /
 ---
@@ -18,7 +18,7 @@ permalink: /
       Design scalable spatial REST APIs, optimise PostGIS queries, implement intelligent caching layers, and deploy geospatial services that handle millions of concurrent requests with sub-50 ms response times.
     </p>
     <p class="hero-desc" style="margin-top:0">
-      Practical guides covering the complete stack from coordinate validation and bounding-box indexing through to vector tile generation and CDN distribution — written for backend engineers, GIS platform architects, and SaaS founders.
+      Practical guides covering the complete stack — from coordinate validation and bounding-box indexing through to vector tile generation and CDN distribution — written for backend engineers, GIS platform architects, and SaaS founders.
     </p>
     <div class="hero-actions">
       <a href="/core-geospatial-api-architecture-with-fastapi-postgis/" class="btn btn-purple">
@@ -71,6 +71,136 @@ permalink: /
       <span class="card-cta">Explore caching →</span>
     </a>
 
+  </div>
+</section>
+
+<!-- Start Here — deep-link into every subsection -->
+<section class="start-here" aria-labelledby="start-heading">
+  <div class="start-here-inner">
+    <h2 id="start-heading">All topics at a glance</h2>
+    <p class="start-here-intro">Jump directly to any subsection — each one is a self-contained engineering guide.</p>
+
+    <div class="start-here-columns">
+
+      <!-- Column 1: Core Architecture -->
+      <div class="start-col">
+        <h3 class="start-col-heading">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+          Core Architecture
+        </h3>
+        <ul class="start-col-list">
+          <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/">Spatial Resource Modeling Patterns</a>
+            <span>SQLAlchemy + GeoAlchemy2 schema design, CRS normalisation, N+1 prevention</span>
+          </li>
+          <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/how-to-structure-fastapi-routers-for-postgis-tables/">FastAPI Routers for PostGIS Tables</a>
+            <span>Domain-scoped files, dependency injection, async sessions</span>
+          </li>
+          <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/">GeoJSON vs GeoParquet Serialization</a>
+            <span>Decision matrix, streaming pipelines, content negotiation</span>
+          </li>
+          <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/best-practices-for-serializing-large-geojson-responses/">Serializing Large GeoJSON Responses</a>
+            <span>StreamingResponse + ST_AsGeoJSON + gzip; 90% RAM reduction</span>
+          </li>
+          <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/">Spatial Pagination &amp; Cursor Strategies</a>
+            <span>Keyset traversal tokens for constant-time page fetches</span>
+          </li>
+          <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/">Implementing Cursor-Based Pagination</a>
+            <span>GiST index alignment, Base64 encoding, stable ORDER BY</span>
+          </li>
+          <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/">API Versioning for GIS Endpoints</a>
+            <span>URL path vs header vs query-param strategies</span>
+          </li>
+          <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/versioning-geospatial-apis-without-breaking-clients/">Versioning APIs Without Breaking Clients</a>
+            <span>Pydantic v2 adapters, CRS URN changes, axis-order shifts</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Column 2: Advanced Endpoints -->
+      <div class="start-col">
+        <h3 class="start-col-heading">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+          Advanced Endpoints
+        </h3>
+        <ul class="start-col-list">
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/">Strict Pydantic Validation for Geometry</a>
+            <span>Ring orientation, topology checks, CRS alignment before any DB round-trip</span>
+          </li>
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/">Validating WKT and GeoJSON with Pydantic v2</a>
+            <span>BeforeValidator + Shapely; enforce coordinate bounds pre-write</span>
+          </li>
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/">Bounding Box &amp; Spatial Index Queries</a>
+            <span>Two-step operator pattern for maximum GiST utilisation</span>
+          </li>
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/">ST_Within and ST_Intersects in FastAPI</a>
+            <span>Pydantic validation, GeoAlchemy2 mapping, GiST index usage</span>
+          </li>
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/">K-Nearest Neighbor Routing Algorithms</a>
+            <span>Sub-50ms nearest-neighbor responses at scale with GiST indexes</span>
+          </li>
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/optimizing-knn-queries-with-postgis-operator/">Optimizing KNN with the PostGIS &lt;-&gt; Operator</a>
+            <span>ORDER BY + LIMIT pattern; O(log N + K) scan complexity</span>
+          </li>
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/">Async Bulk Uploads with Celery</a>
+            <span>202 Accepted, GDAL workers, ON CONFLICT idempotency</span>
+          </li>
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/">Async Shapefile Upload Processing</a>
+            <span>Stream .zip archives to disk; delegate GDAL parsing to workers</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Column 3: Caching & Optimization -->
+      <div class="start-col">
+        <h3 class="start-col-heading">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          Caching &amp; Optimization
+        </h3>
+        <ul class="start-col-list">
+          <li>
+            <a href="/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/">Redis Caching for Spatial Queries</a>
+            <span>Grid/H3/S2 cache key normalisation, orjson serialisation, async middleware</span>
+          </li>
+          <li>
+            <a href="/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/configuring-redis-cache-tags-for-bounding-box-queries/">Redis Cache Tags for Bounding Box Queries</a>
+            <span>Atomic grid-cell invalidation with Redis Sets</span>
+          </li>
+          <li>
+            <a href="/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/">Query Plan Analysis &amp; Index Tuning</a>
+            <span>EXPLAIN ANALYZE, GiST health, planner misestimation fixes</span>
+          </li>
+          <li>
+            <a href="/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/">Reading EXPLAIN ANALYZE for Spatial Queries</a>
+            <span>Verify GiST hits, diagnose Seq Scans, fix SRID mismatches</span>
+          </li>
+          <li>
+            <a href="/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/">Connection Pooling &amp; PgBouncer Setup</a>
+            <span>Transaction pooling mode, pool sizing, asyncpg compatibility</span>
+          </li>
+          <li>
+            <a href="/high-performance-caching-query-optimization/tile-generation-cdn-distribution/">Tile Generation &amp; CDN Distribution</a>
+            <span>ST_AsMVT pipeline, Cache-Control headers, edge delivery</span>
+          </li>
+        </ul>
+      </div>
+
+    </div>
   </div>
 </section>
 
@@ -137,4 +267,3 @@ permalink: /
     </div>
   </div>
 </section>
-

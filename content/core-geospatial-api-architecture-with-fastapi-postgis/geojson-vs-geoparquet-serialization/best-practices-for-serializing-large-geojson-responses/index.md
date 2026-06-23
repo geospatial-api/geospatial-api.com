@@ -1,104 +1,306 @@
 ---
 layout: layouts/page.njk
-title: "Best practices for serializing large GeoJSON responses"
-description: "Serialize large GeoJSON responses from PostGIS using ST_AsGeoJSON, FastAPI StreamingResponse, and gzip compression to reduce peak RAM usage by up to 90%."
+title: "Best Practices for Serializing Large GeoJSON Responses in FastAPI"
+description: "Stream large GeoJSON responses from PostGIS using ST_AsGeoJSON, FastAPI StreamingResponse, and gzip compression. Reduce peak RAM by up to 90% and cut TTFB from seconds to milliseconds."
+slug: best-practices-for-serializing-large-geojson-responses
+type: long_tail
+breadcrumb:
+  - label: "Core Geospatial API Architecture"
+    url: "/core-geospatial-api-architecture-with-fastapi-postgis/"
+  - label: "GeoJSON vs GeoParquet Serialization"
+    url: "/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/"
+  - label: "Best Practices for Serializing Large GeoJSON Responses"
+    url: "/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/best-practices-for-serializing-large-geojson-responses/"
+datePublished: "2025-01-15"
+dateModified: "2026-06-23"
 ---
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "headline": "Best Practices for Serializing Large GeoJSON Responses in FastAPI",
+      "description": "Stream large GeoJSON responses from PostGIS using ST_AsGeoJSON, FastAPI StreamingResponse, and gzip compression to reduce peak RAM by up to 90%.",
+      "datePublished": "2025-01-15",
+      "dateModified": "2026-06-23",
+      "author": { "@type": "Organization", "name": "geospatial-api.com" },
+      "url": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/best-practices-for-serializing-large-geojson-responses/"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Core Geospatial API Architecture", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/" },
+        { "@type": "ListItem", "position": 2, "name": "GeoJSON vs GeoParquet Serialization", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/" },
+        { "@type": "ListItem", "position": 3, "name": "Best Practices for Serializing Large GeoJSON Responses", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/best-practices-for-serializing-large-geojson-responses/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "Stream Large GeoJSON Responses from PostGIS",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Offload serialization to PostGIS with ST_AsGeoJSON" },
+        { "@type": "HowToStep", "position": 2, "name": "Apply geometry simplification and spatial filters before streaming" },
+        { "@type": "HowToStep", "position": 3, "name": "Build an async generator with FastAPI StreamingResponse" },
+        { "@type": "HowToStep", "position": 4, "name": "Enable GZipMiddleware for on-the-fly compression" },
+        { "@type": "HowToStep", "position": 5, "name": "Verify with curl and EXPLAIN ANALYZE" }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why does buffering a large GeoJSON FeatureCollection crash my FastAPI server?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Python materializes the entire result set as a list of dicts before json.dumps() serializes it. For 100k+ features this can consume several gigabytes of heap, triggering OOM kills. Streaming with an async generator keeps heap usage flat regardless of result-set size."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "When should I switch from GeoJSON streaming to GeoParquet for large datasets?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Switch when payloads consistently exceed 100 MB, when clients perform columnar analytics (aggregations, joins, arrow-native reads), or when you need efficient partial column reads. GeoJSON remains the right choice for interactive web maps and feature-level API responses below that threshold."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does FastAPI StreamingResponse work with HTTP/2 multiplexing?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. FastAPI's StreamingResponse uses chunked transfer encoding on HTTP/1.1 and DATA frames on HTTP/2. Both transports support incremental delivery. Ensure your reverse proxy (Nginx, Caddy) does not buffer the entire response before forwarding — set proxy_buffering off in Nginx."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+
+← Back to [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/)
 
 # Best practices for serializing large GeoJSON responses
 
-The most reliable approach for handling large spatial payloads combines **database-native formatting**, **HTTP streaming**, and **payload compression**. Instead of materializing full `FeatureCollection` objects in Python memory, offload JSON generation to PostGIS using `ST_AsGeoJSON`, stream rows via FastAPI’s `StreamingResponse` with an async generator, and enforce `gzip` at the middleware layer. This pattern reduces peak RAM by 70–90%, prevents OOM crashes on datasets exceeding 100k features, and drops Time-To-First-Byte (TTFB) from seconds to milliseconds.
+**Problem:** returning a 100k-feature PostGIS result set as a buffered `FeatureCollection` consumes gigabytes of heap, blocks the event loop, and delays the first byte until the entire payload is ready.
 
-## 1. Offload Serialization to PostGIS
+## Context & when to use this approach
 
-GeoJSON serialization should occur at the database boundary, not in application code. Python’s `dict` construction and standard `json` serialization introduce significant CPU and memory overhead when handling millions of coordinate tuples. PostGIS provides [`ST_AsGeoJSON(geom)`](https://postgis.net/docs/ST_AsGeoJSON.html), which outputs RFC-compliant JSON directly from the query planner, bypassing Python entirely.
+This pattern applies whenever a single FastAPI endpoint must deliver more features than fit comfortably in memory — typically above 10,000 rows — while keeping responses RFC 7946-compliant and consumable by standard web-mapping clients (Leaflet, MapLibre, OpenLayers).
 
-Pair this function with geometry reduction operators to shrink payloads before transmission:
-- `ST_SimplifyPreserveTopology(geom, tolerance)` removes redundant vertices while maintaining valid topology.
-- `ST_SnapToGrid(geom, grid_size)` reduces coordinate precision to match expected client zoom levels.
-- Always apply spatial filters (`ST_Intersects`, `ST_DWithin`, or bounding box checks) before serialization. Transmitting out-of-bounds geometries wastes bandwidth and defeats client-side clipping optimizations.
+The approach works well when:
 
-When designing your [Core Geospatial API Architecture with FastAPI & PostGIS](/core-geospatial-api-architecture-with-fastapi-postgis/), enforce keyset pagination at the query level. Traditional `OFFSET/LIMIT` degrades linearly as the database scans deeper into the table. Keyset pagination (`WHERE id > last_seen_id ORDER BY id LIMIT 10000`) maintains constant query performance regardless of dataset depth and integrates cleanly with streaming generators.
+- Clients consume the response incrementally (progressive rendering, fetch-and-parse pipelines, or stream-aware loaders like `oboe.js`).
+- The dataset is spatially filtered per request — a bounding box, radius, or polygon intersection narrows rows before any bytes leave the database.
+- Response time matters more than columnar analytics. When clients need aggregations, joins, or arrow-native reads on datasets consistently larger than 100 MB, the [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix explains when to pivot to a binary columnar format instead.
 
-## 2. Stream Features, Never Buffer
+Two preconditions must be in place before implementing the streaming pattern. First, PostGIS must be installed and the target table must have a geometry column indexed with `GIST`. Second, the FastAPI application must use an async database driver (`asyncpg` or `psycopg3`) — synchronous drivers block the event loop and negate the benefits of streaming.
 
-FastAPI’s [`StreamingResponse`](https://fastapi.tiangolo.com/advanced/custom-response/#streamingresponse) accepts an async generator that yields byte strings. To produce valid GeoJSON without buffering, you must manually manage the JSON array structure: yield the opening object, stream each feature followed by a comma, and close the array once iteration completes.
+<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Data flow from PostGIS through FastAPI async generator to HTTP client with gzip compression" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Large GeoJSON streaming pipeline</title>
+  <desc>Diagram showing how a spatial SQL query flows from PostGIS through an asyncpg cursor into a FastAPI async generator, is compressed by GZipMiddleware, and delivered as chunked HTTP to the client.</desc>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
+    </marker>
+  </defs>
+  <!-- Boxes -->
+  <rect x="10" y="70" width="140" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+  <text x="80" y="96" text-anchor="middle" font-size="13" fill="currentColor" font-family="monospace">PostGIS</text>
+  <text x="80" y="114" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">ST_AsGeoJSON()</text>
+  <rect x="200" y="55" width="160" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+  <text x="280" y="82" text-anchor="middle" font-size="13" fill="currentColor" font-family="monospace">asyncpg cursor</text>
+  <text x="280" y="100" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">row-by-row fetch</text>
+  <text x="280" y="118" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">async generator</text>
+  <text x="280" y="136" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">orjson.dumps()</text>
+  <rect x="410" y="70" width="140" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+  <text x="480" y="96" text-anchor="middle" font-size="13" fill="currentColor" font-family="monospace">GZipMiddleware</text>
+  <text x="480" y="114" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">on-the-fly compress</text>
+  <rect x="600" y="70" width="110" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+  <text x="655" y="96" text-anchor="middle" font-size="13" fill="currentColor">HTTP client</text>
+  <text x="655" y="114" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.75">chunked transfer</text>
+  <!-- Arrows -->
+  <line x1="150" y1="100" x2="198" y2="100" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)" opacity="0.6"/>
+  <line x1="360" y1="100" x2="408" y2="100" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)" opacity="0.6"/>
+  <line x1="550" y1="100" x2="598" y2="100" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)" opacity="0.6"/>
+  <!-- Labels above arrows -->
+  <text x="174" y="92" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">rows</text>
+  <text x="384" y="92" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">bytes</text>
+  <text x="574" y="92" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.6">gzip</text>
+  <!-- Memory label -->
+  <text x="360" y="185" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.55">heap stays flat — no full FeatureCollection materialized in Python</text>
+</svg>
 
-Avoid the standard `json` module for Python-side serialization. `orjson` is 3–5x faster, natively handles `bytes` and `datetime` objects, and produces UTF-8 `bytes` directly—eliminating the `.encode()` step required by the standard library. When combined with an async database cursor, this architecture ensures memory usage remains flat regardless of result set size.
+## Runnable implementation
 
-## 3. Production-Ready Streaming Implementation
+The example below wires all three layers together: PostGIS-native geometry formatting, an `asyncpg` server-side cursor for constant-memory row delivery, and FastAPI's `StreamingResponse` to push chunks to the client as they arrive. Install dependencies first:
 
-The following example demonstrates a memory-efficient GeoJSON stream using `asyncpg`, `orjson`, and FastAPI. It safely handles trailing commas, applies spatial filtering, and returns a valid `FeatureCollection`.
+```
+pip install fastapi uvicorn asyncpg orjson
+```
 
 ```python
 import orjson
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.gzip import GZipMiddleware
 import asyncpg
 
 DATABASE_URL = "postgresql://user:pass@localhost:5432/geodb"
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.pool = await asyncpg.create_pool(dsn=DATABASE_URL, min_size=2, max_size=10)
+    # Connection pool: keep min_size low to avoid idle connections on startup
+    app.state.pool = await asyncpg.create_pool(
+        dsn=DATABASE_URL, min_size=2, max_size=10
+    )
     yield
     await app.state.pool.close()
 
+
 app = FastAPI(lifespan=lifespan)
-# Compress responses >1KB automatically
+
+# Compress responses larger than 1 KB automatically.
+# For datasets >500 MB consider brotli via a reverse proxy instead.
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-async def geojson_stream(bbox: str, pool: asyncpg.Pool):
-    # Parse bounding box safely in production
-    minx, miny, maxx, maxy = map(float, bbox.split(","))
-    
+
+async def geojson_stream(minx: float, miny: float, maxx: float, maxy: float, pool: asyncpg.Pool):
+    """
+    Async generator that yields valid GeoJSON FeatureCollection bytes
+    without ever holding the full result set in Python memory.
+    """
+    # ST_SimplifyPreserveTopology removes vertices while keeping valid topology.
+    # Tolerance 0.0001 degrees ≈ 10 m at mid-latitudes — adjust for your zoom level.
+    # ST_MakeEnvelope constructs the bounding box in SRID 4326 for the spatial filter.
     query = """
-        SELECT ST_AsGeoJSON(
-            ST_Transform(
-                ST_SimplifyPreserveTopology(geom, 0.0001), 
-                4326
-            )
-        ) AS feature
+        SELECT
+            id,
+            name,
+            ST_AsGeoJSON(
+                ST_SimplifyPreserveTopology(geom, 0.0001)
+            ) AS geom_json
         FROM spatial_table
         WHERE ST_Intersects(
-            geom, 
+            geom,
             ST_MakeEnvelope($1, $2, $3, $4, 4326)
         )
-        ORDER BY id
+        ORDER BY id   -- stable order enables keyset pagination on next page
     """
-    
+
     yield b'{"type":"FeatureCollection","features":['
     first = True
-    
+
     async with pool.acquire() as conn:
+        # cursor() fetches rows in server-side batches (default 50).
+        # Python heap stays near zero regardless of total result-set size.
         async for row in conn.cursor(query, minx, miny, maxx, maxy):
             if not first:
-                yield b','
-            # ST_AsGeoJSON returns text; encode to bytes for StreamingResponse
-            yield row["feature"].encode("utf-8")
+                yield b","
+            feature = {
+                "type": "Feature",
+                "id": row["id"],
+                "geometry": orjson.loads(row["geom_json"]),
+                "properties": {"name": row["name"]},
+            }
+            # orjson produces UTF-8 bytes directly — no .encode() needed.
+            yield orjson.dumps(feature)
             first = False
-            
-    yield b']}'
+
+    yield b"]}"
+
 
 @app.get("/api/features")
-async def get_features(bbox: str = Query(..., description="minx,miny,maxx,maxy")):
+async def get_features(
+    bbox: str = Query(
+        ...,
+        description="Bounding box as minx,miny,maxx,maxy in EPSG:4326",
+        example="-0.5,51.3,0.3,51.6",
+    )
+):
+    parts = bbox.split(",")
+    if len(parts) != 4:
+        raise HTTPException(status_code=400, detail="bbox must be minx,miny,maxx,maxy")
+    try:
+        minx, miny, maxx, maxy = map(float, parts)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="bbox values must be numeric")
+
     return StreamingResponse(
-        geojson_stream(bbox, app.state.pool),
-        media_type="application/geo+json"
+        geojson_stream(minx, miny, maxx, maxy, app.state.pool),
+        media_type="application/geo+json",  # RFC 7946 MIME type
     )
 ```
 
-**Key implementation notes:**
-- The `first` flag prevents a trailing comma, which would invalidate the JSON.
-- `ST_Transform(..., 4326)` guarantees WGS84 coordinates, matching client expectations.
-- `asyncpg.cursor()` fetches rows in batches, keeping Python heap usage near zero.
-- `media_type="application/geo+json"` signals proper MIME handling to proxies and browsers.
+For large result sets that need page-by-page traversal without `OFFSET` degradation, pair this endpoint with the [cursor-based pagination for spatial queries](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/) pattern — replace `ORDER BY id` with a keyset predicate (`WHERE id > $5`) and return the last seen ID in a `Link: <next>` header.
 
-## 4. Compression, Validation & Format Boundaries
+For validating that incoming bounding-box or geometry parameters are well-formed before the query runs, the [strict Pydantic validation for geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) cluster covers model-level coercion of WKT, WKB, and GeoJSON geometry inputs.
 
-Enable `GZipMiddleware` to compress the stream on-the-fly. Modern HTTP clients automatically negotiate `Content-Encoding: gzip`, typically reducing a 50MB GeoJSON payload to ~8MB without application changes. For larger datasets, consider `brotli` or `zstd` via reverse proxies (Nginx/Caddy), which offer better compression ratios for repetitive coordinate strings.
+## Key parameters and options
 
-Always validate output against [RFC 7946](https://www.rfc-editor.org/rfc/rfc7946) to ensure coordinate order (longitude, latitude), CRS handling, and feature structure match client expectations. GeoJSON does not support topology, raster data, or complex attribute types; forcing these into the format creates fragile APIs.
+| Parameter / setting | Default | Notes |
+|---|---|---|
+| `GZipMiddleware minimum_size` | 1000 bytes | Set lower if most responses are small; higher compresses only truly large payloads |
+| `ST_SimplifyPreserveTopology` tolerance | project-specific | 0.0001° ≈ 10 m; scale up for lower zoom, down for detail views |
+| `asyncpg.create_pool min_size / max_size` | 2 / 10 | Tune to your concurrency target; each connection holds a server-side cursor slot |
+| `conn.cursor()` prefetch | 50 (asyncpg default) | Increase to 500–1000 for very large rows to reduce round trips |
+| `media_type` | `application/geo+json` | Required for proxies and browsers to handle the MIME type correctly |
+| `orjson.dumps` option | none needed | Handles `bytes`, `datetime`, and `UUID` natively; pass `orjson.OPT_NON_STR_KEYS` for integer-keyed dicts |
 
-When payloads consistently exceed 100MB or require analytical operations (aggregations, joins, tiling), evaluate whether GeoJSON remains the right transport format. The [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) comparison outlines when to pivot to columnar formats for batch processing, while reserving GeoJSON strictly for interactive web mapping and lightweight feature delivery.
+## Gotchas and failure modes
+
+- **Trailing comma breaks JSON validity.** The `first` flag guards the comma separator between features. If you skip it and concatenate commas naively, parsers reject the response with `Unexpected token }`. Test every edge case including the zero-feature case — the generator must yield `[]` not `[,]`.
+
+- **`ST_AsGeoJSON` returns a geometry object, not a Feature.** The function output is `{"type":"Point","coordinates":[...]}` — you must wrap it in `{"type":"Feature","geometry":...,"properties":{...}}` yourself. Forgetting the wrapper produces invalid GeoJSON that MapLibre silently drops.
+
+- **Reverse proxy buffering swallows the stream.** Nginx's default `proxy_buffering on` waits for the full response before forwarding. Add `proxy_buffering off;` to your location block, or the client sees no TTFB improvement despite the async generator.
+
+- **OOM during `ST_Simplify` on complex polygons.** `ST_Simplify` (without `PreserveTopology`) can produce self-intersecting rings that PostGIS then tries to repair in memory, spiking RAM. Always use `ST_SimplifyPreserveTopology` for polygon layers.
+
+- **Missing GIST index causes sequential scan.** `ST_Intersects` falls back to a sequential scan without a `GIST` index on the geometry column, turning a millisecond query into a minutes-long one. Verify with `EXPLAIN ANALYZE` before deploying.
+
+- **`asyncpg.cursor()` requires an explicit transaction.** In asyncpg, server-side cursors must live inside a transaction. The `conn.cursor()` convenience method opens one implicitly, but if you manage transactions manually with `conn.transaction()`, ensure the cursor is created inside the `async with` block.
+
+## Verification
+
+Confirm streaming and compression work correctly before deploying:
+
+```bash
+# 1. Check that chunked transfer encoding is active and MIME type is correct
+curl -v -H "Accept-Encoding: gzip" \
+  "http://localhost:8000/api/features?bbox=-0.5,51.3,0.3,51.6" \
+  --output /dev/null 2>&1 | grep -E "Transfer-Encoding|Content-Encoding|Content-Type"
+# Expected:
+#   Content-Encoding: gzip
+#   Transfer-Encoding: chunked
+#   Content-Type: application/geo+json
+
+# 2. Decompress and count features to verify zero trailing-comma errors
+curl -s -H "Accept-Encoding: gzip" \
+  "http://localhost:8000/api/features?bbox=-0.5,51.3,0.3,51.6" | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d['features']), 'features')"
+
+# 3. Confirm the query uses a GIST index (look for "Index Scan using" in output)
+psql $DATABASE_URL -c "
+  EXPLAIN ANALYZE
+  SELECT id FROM spatial_table
+  WHERE ST_Intersects(geom, ST_MakeEnvelope(-0.5,51.3,0.3,51.6,4326));"
+```
+
+For a deeper look at reading `EXPLAIN ANALYZE` output for spatial queries — including how to spot sequential scans replaced by bitmap index scans — see [reading EXPLAIN ANALYZE for spatial query optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
+
+---
+
+**Related**
+
+- [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — decision matrix for choosing between text and binary columnar formats
+- [Cursor-based pagination for spatial queries](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/) — keyset pagination that pairs with streaming for paginated GeoJSON endpoints
+- [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — the full cursor strategy reference including PostGIS-specific ordering considerations
+- [Strict Pydantic validation for geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — validate bbox and geometry inputs before they reach the streaming query
+- [Reading EXPLAIN ANALYZE for spatial query optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/) — verify that ST_Intersects uses your GIST index
+
+← Back to [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/)

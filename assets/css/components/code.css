@@ -1,11 +1,23 @@
 /* ── Component: Code Blocks ────────────────────────────────────────────── */
 
-/* Override Prism theme to match lavender palette */
-:not(pre) > code[class*="language-"],
+/* Override Prism theme to match lavender palette — only block code */
 pre[class*="language-"] {
   background: #f3f0fa !important;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
+}
+
+/* Plain pre blocks (no language specifier) get the same scroll + visual treatment */
+.content-body pre:not([class*="language-"]) {
+  background: #f3f0fa;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  padding: var(--space-lg);
+  font-family: var(--font-mono);
+  margin: var(--space-lg) 0;
 }
 
 .code-block-wrapper {
@@ -26,7 +38,7 @@ pre[class*="language-"] {
 .token.comment,
 .token.prolog,
 .token.doctype,
-.token.cdata          { color: #8878a0; font-style: italic; }
+.token.cdata          { color: #5c4d72; font-style: italic; }
 .token.punctuation    { color: #6b4e71; }
 .token.property,
 .token.tag,
@@ -94,7 +106,7 @@ pre[class*="language-"] {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-muted);
+  color: #5c4d72;
   font-family: var(--font-mono);
 }
 

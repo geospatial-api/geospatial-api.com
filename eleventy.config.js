@@ -27,8 +27,23 @@ module.exports = function (eleventyConfig) {
         class: "header-anchor",
         symbol: "#",
         ariaHidden: true,
+        renderAttrs: () => ({ "tabindex": "-1" }),
       }),
       level: [2, 3, 4],
+      // Custom slugify: produces clean, unencoded slugs so that the
+      // links_check gate (which unquotes href fragments before comparing
+      // against id attribute values) can match them correctly.
+      slugify: (s) =>
+        String(s)
+          .trim()
+          .toLowerCase()
+          .replace(/&/g, "and")          // & → and
+          .replace(/—/g, "-")        // em-dash → -
+          .replace(/[‘’']/g, "") // curly/straight apostrophes → remove
+          .replace(/[:()\[\]{},\.~]/g, "") // : ( ) [ ] { } , . ~ → remove
+          .replace(/\s+/g, "-")           // whitespace → -
+          .replace(/-{2,}/g, "-")         // collapse multiple dashes
+          .replace(/^-|-$/g, ""),         // trim leading/trailing dashes
     })
     .use(markdownItAttrs)
     .use(markdownItTaskLists, { enabled: true, label: true, labelAfter: false });
@@ -47,14 +62,18 @@ module.exports = function (eleventyConfig) {
 
   // ── Exclude non-page markdown files from build ───────────────────────────
   eleventyConfig.ignores.add("AGENTS.md");
+  eleventyConfig.ignores.add("CLAUDE.md");
   eleventyConfig.ignores.add("SITE_BUILD_CHECKLIST.md");
   eleventyConfig.ignores.add("site_description_and_requirements.md");
+  eleventyConfig.ignores.add("_plan/**");
 
   // ── Passthrough copies ────────────────────────────────────────────────────
   eleventyConfig.addPassthroughCopy("assets");
   eleventyConfig.addPassthroughCopy("manifest.json");
   eleventyConfig.addPassthroughCopy("sw.js");
   eleventyConfig.addPassthroughCopy("robots.txt");
+  eleventyConfig.addPassthroughCopy("og-image.png");
+  eleventyConfig.addPassthroughCopy("8b9016718168d5d7b266d08d251b60a6.txt");
   eleventyConfig.addPassthroughCopy({ "assets/img/favicon.ico": "favicon.ico" });
 
   // ── Filters ───────────────────────────────────────────────────────────────
@@ -88,6 +107,25 @@ module.exports = function (eleventyConfig) {
   });
 
   // ── Transforms ───────────────────────────────────────────────────────────
+  // Add tabindex="0" to all pre elements so scrollable code blocks are keyboard-accessible (WCAG 2.1 SC 2.1.1).
+  eleventyConfig.addTransform("preTabindex", (content, outputPath) => {
+    if (!outputPath || !outputPath.endsWith(".html")) return content;
+    // Add tabindex="0" to every <pre> that does not already have a tabindex
+    return content.replace(/<pre(?![^>]*tabindex)([^>]*)>/g, '<pre tabindex="0"$1>');
+  });
+
+  // Wrap task-list label text in a <span> so inline <code> elements inside a
+  // flex label don't become direct flex items (which breaks them out of text flow).
+  // Before: <label><input type="checkbox"> text with <code>…</code></label>
+  // After:  <label><input type="checkbox"><span> text with <code>…</code></span></label>
+  eleventyConfig.addTransform("taskListLabelSpan", (content, outputPath) => {
+    if (!outputPath || !outputPath.endsWith(".html")) return content;
+    return content.replace(
+      /(<label>)(<input[^>]+type="checkbox"[^>]*>)([\s\S]*?)(<\/label>)/g,
+      (_, open, input, text, close) => `${open}${input}<span>${text}</span>${close}`
+    );
+  });
+
   // Strip the first <h1> from INSIDE content-body — the layout's page-hero
   // already renders the title, so the Markdown `# Title` heading is a duplicate.
   eleventyConfig.addTransform("stripFirstH1", (content, outputPath) => {

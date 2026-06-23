@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if title %}{{ title }} | {% endif %}Geospatial API Development with FastAPI &amp; PostGIS</title>
+  <title>{% if title %}{{ title }} | geospatial-api.com{% else %}Geospatial API — FastAPI &amp; PostGIS Guides{% endif %}</title>
   <meta name="description" content="{{ description or 'Design and build production-ready spatial REST/GraphQL APIs with FastAPI and PostGIS.' }}">
   {% if page.url %}<link rel="canonical" href="https://www.geospatial-api.com{{ page.url }}">{% endif %}
 
@@ -17,6 +17,7 @@
   <link rel="apple-touch-icon" href="/assets/img/icon-180.png">
 
   <!-- Icons -->
+  <link rel="icon" href="/assets/img/logo.svg" type="image/svg+xml">
   <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/img/icon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/assets/img/icon-192.png">
@@ -24,25 +25,24 @@
   <!-- Open Graph -->
   <meta property="og:site_name" content="Geospatial API Development with FastAPI &amp; PostGIS">
   <meta property="og:type" content="{% if page.url == '/' %}website{% else %}article{% endif %}">
-  <meta property="og:title" content="{% if title %}{{ title }} | {% endif %}Geospatial API">
+  <meta property="og:title" content="{% if title %}{{ title }} | geospatial-api.com{% else %}Geospatial API — FastAPI &amp; PostGIS Guides{% endif %}">
   <meta property="og:description" content="{{ description or 'Design and build production-ready spatial REST APIs with FastAPI and PostGIS.' }}">
   <meta property="og:url" content="https://www.geospatial-api.com{{ page.url }}">
-  <meta property="og:image" content="https://www.geospatial-api.com/assets/img/icon-512.png">
-  <meta property="og:image:alt" content="Geospatial API — FastAPI &amp; PostGIS development guides">
+  <meta property="og:image" content="https://www.geospatial-api.com/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Geospatial API — FastAPI &amp; PostGIS spatial REST API guides">
   <meta property="og:locale" content="en_US">
 
   <!-- Twitter / X Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="{% if title %}{{ title }} | {% endif %}Geospatial API">
+  <meta name="twitter:title" content="{% if title %}{{ title }} | geospatial-api.com{% else %}Geospatial API — FastAPI &amp; PostGIS Guides{% endif %}">
   <meta name="twitter:description" content="{{ description or 'Design and build production-ready spatial REST APIs with FastAPI and PostGIS.' }}">
-  <meta name="twitter:image" content="https://www.geospatial-api.com/assets/img/icon-512.png">
-  <meta name="twitter:image:alt" content="Geospatial API — FastAPI &amp; PostGIS development guides">
+  <meta name="twitter:image" content="https://www.geospatial-api.com/og-image.png">
+  <meta name="twitter:image:alt" content="Geospatial API — FastAPI &amp; PostGIS spatial REST API guides">
 
   <!-- Styles -->
   <link rel="stylesheet" href="/assets/css/global.css">
-
-  <!-- Mermaid (deferred) -->
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" defer></script>
 
   <!-- JSON-LD Structured Data -->
   {% if page.url == "/" %}
@@ -80,9 +80,9 @@
         "url": "https://www.geospatial-api.com{{ page.url }}",
         "image": {
           "@type": "ImageObject",
-          "url": "https://www.geospatial-api.com/assets/img/icon-512.png",
-          "width": 512,
-          "height": 512
+          "url": "https://www.geospatial-api.com/og-image.png",
+          "width": 1200,
+          "height": 630
         },
         "author": {
           "@type": "Organization",
@@ -141,7 +141,6 @@
   {% include "partials/footer.njk" %}
 
   <!-- Scripts -->
-  <script src="/assets/js/mermaid-init.js" defer></script>
   <script src="/assets/js/copy-code.js" defer></script>
   <script src="/assets/js/checkbox.js" defer></script>
   <script src="/assets/js/accordion.js" defer></script>

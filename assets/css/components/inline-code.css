@@ -1,9 +1,10 @@
 /* ── Component: Inline Code ────────────────────────────────────────────── */
+/* Blends with prose: no background box, no border, body-text colour */
 .content-body :not(pre) > code {
-  background: #ede8f7;
-  color: var(--color-plum);
-  padding: 0.15em 0.4em;
-  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-primary);
+  padding: 0;
+  border-radius: 0;
   font-family: var(--font-mono);
   font-size: 0.875em;
   border: none;
