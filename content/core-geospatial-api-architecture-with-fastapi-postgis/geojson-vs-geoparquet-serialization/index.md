@@ -177,7 +177,7 @@ When modelling spatial resources as detailed in [Spatial Resource Modeling Patte
   <text x="680" y="96" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.7">ST_AsBinary → WKB bytes</text>
   <!-- Connecting line from PostGIS to both outputs -->
   <line x1="590" y1="76" x2="402" y2="30" stroke="currentColor" stroke-width="1" stroke-dasharray="4,3" opacity="0.3" marker-end="url(#arrow)"/>
-  <line x1="590" y1="96" x2="402" y2="264" stroke="currentColor" stroke-width="1" stroke-dasharray="4,3" opacity="0.3" marker-end="url(#arrow)"/>
+  <polyline points="590,96 590,264 402,264" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4,3" opacity="0.3" marker-end="url(#arrow)"/>
 </svg>
 
 ---
