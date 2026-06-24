@@ -149,9 +149,9 @@ The standard two-step pattern is: `WHERE geom && ST_MakeEnvelope(...) AND ST_Int
   <text x="600" y="222" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65" font-family="sans-serif">ST_AsGeoJSON → response</text>
   <text x="600" y="236" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.65" font-family="sans-serif">FeatureCollection</text>
   <!-- Label: false positives annotation -->
-  <line x1="490" y1="110" x2="520" y2="60" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="4,3"/>
-  <text x="522" y="55" font-size="9" fill="currentColor" opacity="0.55" font-family="sans-serif">bbox overlap</text>
-  <text x="522" y="67" font-size="9" fill="currentColor" opacity="0.55" font-family="sans-serif">≠ exact match</text>
+  <line x1="465" y1="80" x2="465" y2="58" stroke="currentColor" stroke-width="1" opacity="0.35" stroke-dasharray="4,3"/>
+  <text x="465" y="48" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.55" font-family="sans-serif">bbox overlap</text>
+  <text x="465" y="38" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.55" font-family="sans-serif">≠ exact match</text>
 </svg>
 
 ---

@@ -143,9 +143,9 @@ When modelling spatial resources as detailed in [Spatial Resource Modeling Patte
   <text x="75" y="158" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.8">GET /api/features</text>
   <text x="75" y="172" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.7">Accept: ???</text>
   <!-- Arrow client → router -->
-  <line x1="140" y1="146" x2="188" y2="146" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
+  <line x1="140" y1="146" x2="206" y2="146" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.6"/>
   <!-- Content negotiation diamond -->
-  <polygon points="220,110 310,146 220,182 130,146" transform="translate(80,0)" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+  <polygon points="300,110 390,146 300,182 210,146" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
   <text x="300" y="141" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" font-weight="600">Accept</text>
   <text x="300" y="156" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" font-weight="600">header?</text>
   <!-- Arrow → GeoJSON branch -->
