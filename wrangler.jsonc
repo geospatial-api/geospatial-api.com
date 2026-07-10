@@ -1,0 +1,21 @@
+{
+  // Static-assets Worker (migrated from a Cloudflare Pages project).
+  // Serves the Eleventy build output in ./_site. No Worker script (assets-only).
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "geospatial-api-com",
+  "compatibility_date": "2026-07-10",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./_site"
+    // Clean directory-style URLs (/path/ -> /path/index.html) are handled by the
+    // default html_handling ("auto-trailing-slash"). No custom 404 page exists,
+    // so not_found_handling is left at its default (plain 404 on a miss).
+  },
+  // Custom hostnames attached via Worker "routes" — they bind to the EXISTING
+  // proxied DNS records and take precedence over the Pages project, so no DNS
+  // record changes and the migration is instantly reversible (delete the route).
+  "routes": [
+    { "pattern": "geospatial-api.com/*", "zone_name": "geospatial-api.com" },
+    { "pattern": "www.geospatial-api.com/*", "zone_name": "geospatial-api.com" }
+  ]
+}

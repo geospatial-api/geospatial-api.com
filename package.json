@@ -7,8 +7,8 @@
     "start": "eleventy --serve --config=eleventy.config.js",
     "build": "NODE_ENV=production eleventy --config=eleventy.config.js",
     "dev": "eleventy --serve --config=eleventy.config.js",
-    "deploy": "npm run build && wrangler pages deploy _site --project-name geospatial-api-com",
-    "deploy:preview": "npm run build && wrangler pages deploy _site --project-name geospatial-api-com --branch preview"
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:preview": "npm run build && wrangler versions upload"
   },
   "keywords": [],
   "author": "",

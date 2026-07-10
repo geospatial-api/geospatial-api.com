@@ -1,6 +1,0 @@
-name = "geospatial-api-com"
-pages_build_output_dir = "_site"
-
-[env.production]
-name = "geospatial-api-com"
-
