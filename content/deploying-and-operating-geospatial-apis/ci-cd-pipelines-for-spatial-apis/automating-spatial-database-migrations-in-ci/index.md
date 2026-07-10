@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Automating Spatial Database Migrations in CI"
 description: "Run Alembic migrations with GeoAlchemy2 safely in CI: create the PostGIS extension, stop autogenerate from dropping spatial_ref_sys and geometry columns, build GiST indexes with CREATE INDEX CONCURRENTLY outside the transaction, and verify reversibility."
 slug: "automating-spatial-database-migrations-in-ci"
-type: "long_tail"
 breadcrumb:
   - label: "Deploying & Operating Geospatial APIs"
     url: "/deploying-and-operating-geospatial-apis/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Deploying & Operating Geospatial APIs", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/"},
-        {"@type": "ListItem", "position": 2, "name": "CI/CD Pipelines for Spatial APIs", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/"},
-        {"@type": "ListItem", "position": 3, "name": "Automating Spatial Database Migrations in CI", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/automating-spatial-database-migrations-in-ci/"}
+        {"@type": "ListItem", "position": 1, "name": "Deploying & Operating Geospatial APIs", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/"},
+        {"@type": "ListItem", "position": 2, "name": "CI/CD Pipelines for Spatial APIs", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/"},
+        {"@type": "ListItem", "position": 3, "name": "Automating Spatial Database Migrations in CI", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/automating-spatial-database-migrations-in-ci/"}
       ]
     },
     {
@@ -55,7 +54,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [CI/CD Pipelines for Spatial APIs](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/)
+← Back to [CI/CD Pipelines for Spatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/)
 
 # Automating spatial database migrations in CI
 
@@ -63,7 +62,7 @@ Run Alembic migrations against PostGIS in CI without the three failures GeoAlche
 
 ## Context & when to use
 
-Every CI pipeline for a FastAPI + PostGIS service runs `alembic upgrade head` as a gate before the image is deployed — it is [step five of the pipeline](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/). For a plain relational schema this step is uneventful. With GeoAlchemy2 in the mix it is not, because spatial schemas carry objects PostGIS manages on your behalf and index-creation patterns that clash with how Alembic wraps each migration in a transaction.
+Every CI pipeline for a FastAPI + PostGIS service runs `alembic upgrade head` as a gate before the image is deployed — it is [step five of the pipeline](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/). For a plain relational schema this step is uneventful. With GeoAlchemy2 in the mix it is not, because spatial schemas carry objects PostGIS manages on your behalf and index-creation patterns that clash with how Alembic wraps each migration in a transaction.
 
 Use this guidance whenever your models declare `geoalchemy2.Geometry` columns, whenever you rely on `--autogenerate` to draft migrations, or whenever a migration creates a spatial index on a table large enough that you cannot afford an `ACCESS EXCLUSIVE` lock. The techniques matter most in CI precisely because CI is where a broken migration should be caught — reproducibly, against the same `postgis/postgis:16-3.4` you deploy — rather than during a production rollout.
 
@@ -165,7 +164,7 @@ def run_migrations_online():
 run_migrations_online()
 ```
 
-Without the `import geoalchemy2` line, Alembic reflects a `geometry` column it does not recognise and autogenerate proposes `op.drop_column('parcels', 'geom')` followed by a re-add — a destructive no-op that will wipe geometries if it ever runs. The import registers the type so reflection round-trips cleanly. These `geom` columns model the domain entities described in [spatial resource modelling patterns](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/); keeping their type stable across migrations is what makes autogenerate trustworthy.
+Without the `import geoalchemy2` line, Alembic reflects a `geometry` column it does not recognise and autogenerate proposes `op.drop_column('parcels', 'geom')` followed by a re-add — a destructive no-op that will wipe geometries if it ever runs. The import registers the type so reflection round-trips cleanly. These `geom` columns model the domain entities described in [spatial resource modelling patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/); keeping their type stable across migrations is what makes autogenerate trustworthy.
 
 ### 2. Build the GiST index concurrently, outside the transaction
 
@@ -194,7 +193,7 @@ def downgrade():
         op.execute("DROP INDEX CONCURRENTLY IF EXISTS idx_parcels_geom")
 ```
 
-The `IF NOT EXISTS` / `IF EXISTS` guards make the migration re-runnable, which matters because `CREATE INDEX CONCURRENTLY` is not transactional: if it fails partway it can leave an `INVALID` index behind. Guarding lets a retried CI run — or a re-applied migration after a failed deploy — succeed instead of erroring on a half-built index. The concurrency and locking trade-offs here connect directly to [async PostGIS transaction patterns](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/), which covers how these DDL locks interact with in-flight spatial writes.
+The `IF NOT EXISTS` / `IF EXISTS` guards make the migration re-runnable, which matters because `CREATE INDEX CONCURRENTLY` is not transactional: if it fails partway it can leave an `INVALID` index behind. Guarding lets a retried CI run — or a re-applied migration after a failed deploy — succeed instead of erroring on a half-built index. The concurrency and locking trade-offs here connect directly to [async PostGIS transaction patterns](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/), which covers how these DDL locks interact with in-flight spatial writes.
 
 ### 3. Run it in the pipeline
 
@@ -277,8 +276,8 @@ An `indisvalid` of `f` means a concurrent build failed and left an invalid index
 
 ## Related
 
-- [CI/CD Pipelines for Spatial APIs](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/) — the pipeline whose migrate step this page implements
-- [GitHub Actions Integration Tests with a PostGIS Service Container](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/github-actions-integration-tests-with-a-postgis-service-container/) — the job that runs `alembic upgrade head` against a real PostGIS
-- [Async PostGIS Transaction Patterns](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/) — how DDL locks and concurrent builds interact with in-flight spatial writes
+- [CI/CD Pipelines for Spatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/) — the pipeline whose migrate step this page implements
+- [GitHub Actions Integration Tests with a PostGIS Service Container](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/github-actions-integration-tests-with-a-postgis-service-container/) — the job that runs `alembic upgrade head` against a real PostGIS
+- [Async PostGIS Transaction Patterns](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/) — how DDL locks and concurrent builds interact with in-flight spatial writes
 
-← Back to [CI/CD Pipelines for Spatial APIs](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/)
+← Back to [CI/CD Pipelines for Spatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/)

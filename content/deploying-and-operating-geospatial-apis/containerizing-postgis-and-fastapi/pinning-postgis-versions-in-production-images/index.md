@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Pinning PostGIS Versions in Production Images"
 description: "Floating tags like postgis/postgis:latest silently change ST_ algorithm output and break reproducibility. Pin by exact tag and sha256 digest, keep client GDAL aligned, and follow the safe ALTER EXTENSION postgis UPDATE upgrade path."
 slug: "pinning-postgis-versions-in-production-images"
-type: "long_tail"
 breadcrumb:
   - label: "Deploying & Operating Geospatial APIs"
     url: "/deploying-and-operating-geospatial-apis/"
@@ -36,9 +35,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Deploying & Operating Geospatial APIs", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/"},
-        {"@type": "ListItem", "position": 2, "name": "Containerizing PostGIS & FastAPI", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/"},
-        {"@type": "ListItem", "position": 3, "name": "Pinning PostGIS Versions in Production Images", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/"}
+        {"@type": "ListItem", "position": 1, "name": "Deploying & Operating Geospatial APIs", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/"},
+        {"@type": "ListItem", "position": 2, "name": "Containerizing PostGIS & FastAPI", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/"},
+        {"@type": "ListItem", "position": 3, "name": "Pinning PostGIS Versions in Production Images", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/"}
       ]
     },
     {
@@ -56,7 +55,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Containerizing PostGIS & FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/)
+← Back to [Containerizing PostGIS & FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/)
 
 # Pinning PostGIS versions in production images
 
@@ -66,7 +65,7 @@ A floating `postgis/postgis:latest` tag turns a routine image pull into a silent
 
 PostGIS is not a passive store; it is the engine that computes your geometry. Its `ST_` functions call into GEOS and PROJ, and those libraries evolve. Between PostGIS 3.3 and 3.4, or between the GEOS versions two minor image tags bundle, functions like `ST_SimplifyPreserveTopology`, `ST_Buffer`, `ST_MakeValid`, and even `ST_IsValid` can return *different but equally correct* results — a slightly different vertex set, a polygon that was previously flagged invalid now repaired, a simplification that keeps one more point. When your image references `:latest` or a bare major like `:16`, a rebuild months apart pulls a newer build, and suddenly a regression test comparing serialized geometry fails, a cached tile no longer matches a freshly rendered one, or a downstream diff pipeline reports thousands of "changed" features that nobody edited.
 
-Pin whenever an environment must be reproducible: production, staging, and CI all need to run the *same* PostGIS build so that a geometry computed in CI equals the one computed in production. This is the operational complement to the base-image discipline in [Containerizing PostGIS & FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/) — that guide pins the tag; this one pins the immutable digest and covers the upgrade path. The precondition is a private or trusted registry mirror if you need the pinned digest to survive an upstream tag being re-pushed.
+Pin whenever an environment must be reproducible: production, staging, and CI all need to run the *same* PostGIS build so that a geometry computed in CI equals the one computed in production. This is the operational complement to the base-image discipline in [Containerizing PostGIS & FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/) — that guide pins the tag; this one pins the immutable digest and covers the upgrade path. The precondition is a private or trusted registry mirror if you need the pinned digest to survive an upstream tag being re-pushed.
 
 ---
 
@@ -194,7 +193,7 @@ SELECT PostGIS_Full_Version();
 
 - **A minor bump silently changes `ST_` output.** Upgrading the pinned digest from a GEOS 3.11 build to a 3.12 build can shift `ST_SimplifyPreserveTopology`, `ST_Buffer`, and `ST_MakeValid` results by a vertex or a coordinate. A geometry-diff regression suite then reports mass "changes." This is expected, not a bug — treat every digest bump as a change that requires re-baselining golden geometry fixtures, and gate it behind the same review as a schema migration handled in CI.
 
-- **Mismatched PROJ data between client and server.** If the API container's `pyproj`/`libproj25` bundles a different PROJ datum grid than the database, an `ST_Transform` computed server-side and a `pyproj` transform computed client-side can disagree by centimetres to metres for datum-shifting SRIDs. Pin the client PROJ to the same major as the database, and prefer doing all reprojection in one place — see the serialization trade-offs in [GeoJSON vs GeoParquet serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/).
+- **Mismatched PROJ data between client and server.** If the API container's `pyproj`/`libproj25` bundles a different PROJ datum grid than the database, an `ST_Transform` computed server-side and a `pyproj` transform computed client-side can disagree by centimetres to metres for datum-shifting SRIDs. Pin the client PROJ to the same major as the database, and prefer doing all reprojection in one place — see the serialization trade-offs in [GeoJSON vs GeoParquet serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/).
 
 - **Downgrade is effectively impossible.** `ALTER EXTENSION postgis UPDATE` moves forward only; there is no `DOWNGRADE`. If a bumped digest breaks you, the pinned *old* digest still exists in the registry, but a data directory already touched by the newer binary will refuse to start under the older one (`database files are incompatible with server`). Always snapshot the volume (or take a `pg_dump`) before bumping, so rollback is a restore, not a prayer.
 
@@ -232,8 +231,8 @@ If `PostGIS_Full_Version()` reports a GEOS or PROJ version you did not expect, t
 
 ## Related
 
-- [Containerizing PostGIS & FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/) — base image selection, the compose stack, and PostGIS-aware healthchecks this pinning strategy locks down
-- [Multi-Stage Docker Builds for PostGIS & FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/multi-stage-docker-builds-for-postgis-fastapi/) — align the builder and runtime GDAL versions so a pinned image stays reproducible
-- [GeoJSON vs GeoParquet serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — where reprojection and serialization belong when client and server PROJ versions must agree
+- [Containerizing PostGIS & FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/) — base image selection, the compose stack, and PostGIS-aware healthchecks this pinning strategy locks down
+- [Multi-Stage Docker Builds for PostGIS & FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/multi-stage-docker-builds-for-postgis-fastapi/) — align the builder and runtime GDAL versions so a pinned image stays reproducible
+- [GeoJSON vs GeoParquet serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — where reprojection and serialization belong when client and server PROJ versions must agree
 
-← Back to [Containerizing PostGIS & FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/)
+← Back to [Containerizing PostGIS & FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/)

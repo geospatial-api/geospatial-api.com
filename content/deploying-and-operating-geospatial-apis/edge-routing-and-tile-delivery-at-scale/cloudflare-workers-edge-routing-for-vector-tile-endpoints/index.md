@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Cloudflare Workers Edge Routing for Vector Tile Endpoints"
 description: "A Cloudflare Worker that parses /tiles/{z}/{x}/{y}.mvt, checks the Cache API, fetches from the FastAPI origin on a miss, stores the tile with Cache-Control, and rejects invalid tile coordinates before any origin round-trip."
 slug: "cloudflare-workers-edge-routing-for-vector-tile-endpoints"
-type: "long_tail"
 breadcrumb:
   - label: "Deploying & Operating Geospatial APIs"
     url: "/deploying-and-operating-geospatial-apis/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Deploying & Operating Geospatial APIs", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/"},
-        {"@type": "ListItem", "position": 2, "name": "Edge Routing & Tile Delivery at Scale", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/"},
-        {"@type": "ListItem", "position": 3, "name": "Cloudflare Workers Edge Routing for Vector Tile Endpoints", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/cloudflare-workers-edge-routing-for-vector-tile-endpoints/"}
+        {"@type": "ListItem", "position": 1, "name": "Deploying & Operating Geospatial APIs", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/"},
+        {"@type": "ListItem", "position": 2, "name": "Edge Routing & Tile Delivery at Scale", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/"},
+        {"@type": "ListItem", "position": 3, "name": "Cloudflare Workers Edge Routing for Vector Tile Endpoints", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/cloudflare-workers-edge-routing-for-vector-tile-endpoints/"}
       ]
     },
     {
@@ -56,7 +55,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Edge Routing & Tile Delivery at Scale](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/)
+← Back to [Edge Routing & Tile Delivery at Scale](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/)
 
 # Cloudflare Workers edge routing for vector tile endpoints
 
@@ -64,11 +63,11 @@ Put a Cloudflare Worker in front of your FastAPI `ST_AsMVT` origin so tile coord
 
 ## Context & when to use
 
-A plain origin-pull CDN forwards every cache miss to your origin verbatim: it cannot reject a malformed `z=30` request, cannot normalise a fragmenting query string out of the cache key, and cannot add CORS headers your FastAPI app forgot. A Cloudflare Worker runs your own JavaScript at every PoP before the cache is consulted, which lets you do all three at the edge. This is the edge-compute row of the decision matrix in [Edge Routing & Tile Delivery at Scale](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/) — reach for it when you need logic in front of the cache, not just caching.
+A plain origin-pull CDN forwards every cache miss to your origin verbatim: it cannot reject a malformed `z=30` request, cannot normalise a fragmenting query string out of the cache key, and cannot add CORS headers your FastAPI app forgot. A Cloudflare Worker runs your own JavaScript at every PoP before the cache is consulted, which lets you do all three at the edge. This is the edge-compute row of the decision matrix in [Edge Routing & Tile Delivery at Scale](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/) — reach for it when you need logic in front of the cache, not just caching.
 
 Prefer a Worker over a bare CDN when you want to validate tile coordinates before they reach the origin, strip a signed `token`/`exp` pair out of the cache key so per-user tokens do not shatter the hit ratio, or serve map clients on other origins that need `Access-Control-Allow-Origin`. If none of those apply and your origin already sends correct `Cache-Control`, a plain origin-pull CDN is simpler and you do not need this page.
 
-The Worker below is JavaScript because it runs on Cloudflare's V8 edge runtime, not on your Python origin. Your `ST_AsMVT` tile generation stays in FastAPI exactly as described in [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/); the Worker only routes and caches in front of it.
+The Worker below is JavaScript because it runs on Cloudflare's V8 edge runtime, not on your Python origin. Your `ST_AsMVT` tile generation stays in FastAPI exactly as described in [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/); the Worker only routes and caches in front of it.
 
 **Preconditions:** a deployed FastAPI tile origin reachable from Cloudflare, a Worker route bound to your tile hostname (`tiles.example.com/*`), and `wrangler` for local development and deploy.
 
@@ -310,9 +309,9 @@ A `MISS` that never becomes a `HIT` on repeat means the cache key still contains
 
 ## Related
 
-- [Edge Routing & Tile Delivery at Scale](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/) — the tile contract, versioned cache keys, and where edge compute fits among the three delivery architectures
-- [Caching Vector Tiles at the Edge with Cache-Control](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/caching-vector-tiles-at-the-edge-with-cache-control/) — the exact `Cache-Control` directives the Worker attaches to stored tiles
-- [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — the FastAPI `ST_AsMVT` origin this Worker sits in front of
+- [Edge Routing & Tile Delivery at Scale](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/) — the tile contract, versioned cache keys, and where edge compute fits among the three delivery architectures
+- [Caching Vector Tiles at the Edge with Cache-Control](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/caching-vector-tiles-at-the-edge-with-cache-control/) — the exact `Cache-Control` directives the Worker attaches to stored tiles
+- [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — the FastAPI `ST_AsMVT` origin this Worker sits in front of
 
-← Back to [Edge Routing & Tile Delivery at Scale](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/)
+← Back to [Edge Routing & Tile Delivery at Scale](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/)
 </content>

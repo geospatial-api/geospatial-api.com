@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Optimizing KNN Queries with the PostGIS <-> Operator"
 description: "Use the PostGIS <-> distance operator with ORDER BY and LIMIT to trigger GiST index-assisted KNN scans, cutting nearest-neighbor query complexity from O(N log N) to O(log N + K) in production FastAPI endpoints."
 slug: optimizing-knn-queries-with-postgis-operator
-type: long_tail
 breadcrumb:
   - label: "K-Nearest Neighbor Routing Algorithms"
     url: "/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/"
@@ -38,19 +37,19 @@ dateModified: "2026-06-23"
           "@type": "ListItem",
           "position": 1,
           "name": "Advanced Spatial Endpoints & Data Contracts",
-          "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/"
+          "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/"
         },
         {
           "@type": "ListItem",
           "position": 2,
           "name": "K-Nearest Neighbor Routing Algorithms",
-          "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/"
+          "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/"
         },
         {
           "@type": "ListItem",
           "position": 3,
           "name": "Optimizing KNN Queries with the PostGIS <-> Operator",
-          "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/optimizing-knn-queries-with-postgis-operator/"
+          "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/optimizing-knn-queries-with-postgis-operator/"
         }
       ]
     },
@@ -89,7 +88,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [K-Nearest Neighbor Routing Algorithms](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/)
+← Back to [K-Nearest Neighbor Routing Algorithms](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/)
 
 # Optimizing KNN Queries with the PostGIS `<->` Operator
 
@@ -99,11 +98,11 @@ Place `<->` in the `ORDER BY` clause with an explicit `LIMIT` to activate Postgr
 
 The `<->` operator is PostGIS's distance operator for GiST-indexed nearest-neighbor traversal. When the query planner sees `<->` in `ORDER BY` paired with `LIMIT`, it replaces the standard `Sort + Seq Scan` plan with a progressive GiST tree walk that fetches only the K closest candidates — it never reads the full table. On a dataset of one million points, this typically drops median query latency from several seconds to under 20 ms.
 
-Use this pattern whenever your [K-nearest neighbor routing algorithms](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) need a fast candidate-generation step: finding the nearest service locations, routing waypoints, or POI lookups. It is the correct choice when K is small (typically 1–100) and the geometry column holds point or moderate-complexity polygon data indexed with `USING GIST`.
+Use this pattern whenever your [K-nearest neighbor routing algorithms](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) need a fast candidate-generation step: finding the nearest service locations, routing waypoints, or POI lookups. It is the correct choice when K is small (typically 1–100) and the geometry column holds point or moderate-complexity polygon data indexed with `USING GIST`.
 
 Prefer this approach over `ST_DWithin` radius scans when you do not know the search radius in advance and need a fixed count of results. For large non-point geometries (complex polygons, linestrings with thousands of vertices), `<->` operates on minimum bounding rectangles (MBRs), so the ordering is approximate; combine it with an exact `ST_Distance` projection in the `SELECT` list to get correct metric values without a full-table scan.
 
-The pattern has one hard precondition: the spatial column must carry a GiST index. Without it, PostgreSQL falls back to a sequential scan and sort, eliminating all performance benefit. As part of setting up [strict Pydantic validation for geometry inputs](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/), always enforce that incoming coordinates match the SRID of the indexed column — a mismatch forces an implicit cast that breaks index usage.
+The pattern has one hard precondition: the spatial column must carry a GiST index. Without it, PostgreSQL falls back to a sequential scan and sort, eliminating all performance benefit. As part of setting up [strict Pydantic validation for geometry inputs](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/), always enforce that incoming coordinates match the SRID of the indexed column — a mismatch forces an implicit cast that breaks index usage.
 
 ---
 
@@ -276,7 +275,7 @@ WHERE geom IS NULL;
 
 - **Function wrapping breaks the index path.** Writing `ORDER BY ST_Transform(geom, 3857) <-> ...` pushes a function over the indexed column. PostgreSQL cannot traverse the GiST tree through the transform. Keep the raw column name on the left of `<->` and convert the query point instead.
 
-- **SRID mismatch forces an implicit cast.** If `geom` is stored as EPSG:3857 but the query point is EPSG:4326 without an explicit `ST_Transform`, PostGIS silently computes Euclidean distances in mismatched coordinate units. The result set will look plausible but be wrong. Validate incoming coordinates match the column CRS as part of your [strict Pydantic geometry validation](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) layer.
+- **SRID mismatch forces an implicit cast.** If `geom` is stored as EPSG:3857 but the query point is EPSG:4326 without an explicit `ST_Transform`, PostGIS silently computes Euclidean distances in mismatched coordinate units. The result set will look plausible but be wrong. Validate incoming coordinates match the column CRS as part of your [strict Pydantic geometry validation](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) layer.
 
 - **Missing `LIMIT` degrades to a full sort.** Without `LIMIT`, `EXPLAIN` shows `Sort` + `Seq Scan` instead of `Index Scan`. The query still returns correct results but at O(N log N) cost. Always include `LIMIT` even when the caller requests a large result set — cap it at a sane maximum (e.g. 100) to protect the database under concurrent load.
 
@@ -284,7 +283,7 @@ WHERE geom IS NULL;
 
 - **`<->` on non-point geometries returns MBR distance.** For polygon or linestring columns, `<->` ranks by MBR-to-MBR distance, not centroid-to-point or boundary-to-point. This is a fast approximation, not exact ordering. When strict rank accuracy matters, over-fetch (e.g. `LIMIT K*3`) and re-sort in application code using the `exact_distance_m` column.
 
-- **Concurrent KNN bursts exhaust `shared_buffers`.** Each KNN scan reads a stack of GiST pages. Under 200+ concurrent requests, buffer eviction spikes and latency degrades. Monitor `pg_stat_bgwriter` hit ratios. For datasets over 10 M rows, consider partitioning by geographic region and routing queries to the relevant partition — the pattern integrates naturally with the broader [bounding-box spatial index query](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) strategy.
+- **Concurrent KNN bursts exhaust `shared_buffers`.** Each KNN scan reads a stack of GiST pages. Under 200+ concurrent requests, buffer eviction spikes and latency degrades. Monitor `pg_stat_bgwriter` hit ratios. For datasets over 10 M rows, consider partitioning by geographic region and routing queries to the relevant partition — the pattern integrates naturally with the broader [bounding-box spatial index query](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) strategy.
 
 ## Verification Snippet
 
@@ -333,15 +332,15 @@ def test_knn_distances_are_sorted():
     assert distances == sorted(distances), "KNN results are not sorted by distance"
 ```
 
-For deeper query plan analysis, the [reading EXPLAIN ANALYZE for spatial query optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/) guide covers interpreting buffer hit ratios and cost node breakdowns in detail.
+For deeper query plan analysis, the [reading EXPLAIN ANALYZE for spatial query optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/) guide covers interpreting buffer hit ratios and cost node breakdowns in detail.
 
 ---
 
 ## Related
 
-- [K-Nearest Neighbor Routing Algorithms](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) — architectural patterns for integrating KNN results into routing and graph-traversal pipelines
-- [Bounding-Box Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — `ST_Within` and `ST_Intersects` patterns that complement KNN for radius and polygon containment searches
-- [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — validate coordinate SRID and range before the query reaches PostGIS
-- [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — broader guide to reading PostgreSQL execution plans for spatial workloads
+- [K-Nearest Neighbor Routing Algorithms](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) — architectural patterns for integrating KNN results into routing and graph-traversal pipelines
+- [Bounding-Box Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — `ST_Within` and `ST_Intersects` patterns that complement KNN for radius and polygon containment searches
+- [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — validate coordinate SRID and range before the query reaches PostGIS
+- [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — broader guide to reading PostgreSQL execution plans for spatial workloads
 
-← Back to [K-Nearest Neighbor Routing Algorithms](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/)
+← Back to [K-Nearest Neighbor Routing Algorithms](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/)

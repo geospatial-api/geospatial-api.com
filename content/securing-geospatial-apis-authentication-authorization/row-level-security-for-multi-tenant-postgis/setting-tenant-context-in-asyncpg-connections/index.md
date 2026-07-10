@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Setting Tenant Context in asyncpg Connections"
 description: "Set app.tenant_id correctly per request with asyncpg and SQLAlchemy AsyncSession behind PgBouncer transaction pooling: use SET LOCAL inside the transaction, never session-level SET, and bind the tenant with set_config to avoid injection."
 slug: "setting-tenant-context-in-asyncpg-connections"
-type: "long_tail"
 breadcrumb:
   - label: "Securing Geospatial APIs"
     url: "/securing-geospatial-apis-authentication-authorization/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Securing Geospatial APIs", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
-        {"@type": "ListItem", "position": 2, "name": "Row-Level Security for Multi-Tenant PostGIS", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/"},
-        {"@type": "ListItem", "position": 3, "name": "Setting Tenant Context in asyncpg Connections", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/"}
+        {"@type": "ListItem", "position": 1, "name": "Securing Geospatial APIs", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
+        {"@type": "ListItem", "position": 2, "name": "Row-Level Security for Multi-Tenant PostGIS", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/"},
+        {"@type": "ListItem", "position": 3, "name": "Setting Tenant Context in asyncpg Connections", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/"}
       ]
     },
     {
@@ -55,7 +54,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Row-Level Security for Multi-Tenant PostGIS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/)
+← Back to [Row-Level Security for Multi-Tenant PostGIS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/)
 
 # Setting tenant context in asyncpg connections
 
@@ -63,9 +62,9 @@ Set `app.tenant_id` per request so PostGIS row-level security has a tenant to fi
 
 ## Context & when to use
 
-This is the operational half of [row-level security for multi-tenant PostGIS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/): the policies are inert until each request establishes its tenant on the connection running the query. The subtlety is connection pooling. Under PgBouncer in **transaction** mode, a single PostgreSQL backend is handed to different clients transaction by transaction, so any state you set *outside* a transaction — a session-level `SET app.tenant_id` — persists on that backend and is inherited by the next, unrelated request. In a multi-tenant system that is a direct cross-tenant data breach: tenant B's request runs against a backend still carrying tenant A's context.
+This is the operational half of [row-level security for multi-tenant PostGIS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/): the policies are inert until each request establishes its tenant on the connection running the query. The subtlety is connection pooling. Under PgBouncer in **transaction** mode, a single PostgreSQL backend is handed to different clients transaction by transaction, so any state you set *outside* a transaction — a session-level `SET app.tenant_id` — persists on that backend and is inherited by the next, unrelated request. In a multi-tenant system that is a direct cross-tenant data breach: tenant B's request runs against a backend still carrying tenant A's context.
 
-Use `SET LOCAL` (or its function form `set_config(name, value, true)`) which binds the value to the *current transaction only* and is discarded automatically on `COMMIT`/`ROLLBACK`. The pooling-mode caveat is exactly the one described in [connection pooling & PgBouncer setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — transaction pooling does not preserve session state, which is what makes `SET LOCAL` both necessary and safe. Apply this whenever RLS is enabled and you sit behind PgBouncer transaction pooling, `pgcat`, RDS Proxy, or Supavisor in transaction mode.
+Use `SET LOCAL` (or its function form `set_config(name, value, true)`) which binds the value to the *current transaction only* and is discarded automatically on `COMMIT`/`ROLLBACK`. The pooling-mode caveat is exactly the one described in [connection pooling & PgBouncer setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — transaction pooling does not preserve session state, which is what makes `SET LOCAL` both necessary and safe. Apply this whenever RLS is enabled and you sit behind PgBouncer transaction pooling, `pgcat`, RDS Proxy, or Supavisor in transaction mode.
 
 **Preconditions:** RLS policies already reference `app.tenant_id`; the app connects as a non-owner, non-`BYPASSRLS` role; `asyncpg` runs with `statement_cache_size=0` behind the pooler; and every request has a validated `tenant_id` (typically a JWT claim resolved by a FastAPI dependency).
 
@@ -218,7 +217,7 @@ With the `ContextVar` set from a middleware that decodes the JWT, every transact
 
 - **`unrecognized configuration parameter "app.tenant_id"` (SQLSTATE 42704).** The query ran on a connection where the context was never set and the policy used strict `current_setting('app.tenant_id')`. Either guarantee the context via the begin-event hook above, or use `current_setting('app.tenant_id', true)` in the policy for NULL-and-no-rows behaviour. Decide which is your fail-closed default.
 
-- **asyncpg `prepared statement "__asyncpg_..." does not exist` behind PgBouncer.** Unrelated to tenancy but co-occurs: transaction pooling breaks asyncpg's statement cache. Set `statement_cache_size=0` in `connect_args`, as detailed in [connection pooling & PgBouncer setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
+- **asyncpg `prepared statement "__asyncpg_..." does not exist` behind PgBouncer.** Unrelated to tenancy but co-occurs: transaction pooling breaks asyncpg's statement cache. Set `statement_cache_size=0` in `connect_args`, as detailed in [connection pooling & PgBouncer setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
 
 ---
 
@@ -256,8 +255,8 @@ A final assertion in PostgreSQL log review: enable `log_statement = 'all'` brief
 
 ## Related
 
-- [Row-Level Security for Multi-Tenant PostGIS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/) — the policies this context activates, with the RLS-vs-alternatives decision matrix
-- [Enforcing Tenant Geometry Isolation with PostGIS RLS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/enforcing-tenant-geometry-isolation-with-postgis-rls/) — the concrete policy set that reads `app.tenant_id`
-- [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — why transaction pooling mandates `SET LOCAL` and `statement_cache_size=0`
+- [Row-Level Security for Multi-Tenant PostGIS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/) — the policies this context activates, with the RLS-vs-alternatives decision matrix
+- [Enforcing Tenant Geometry Isolation with PostGIS RLS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/enforcing-tenant-geometry-isolation-with-postgis-rls/) — the concrete policy set that reads `app.tenant_id`
+- [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — why transaction pooling mandates `SET LOCAL` and `statement_cache_size=0`
 
-← Back to [Row-Level Security for Multi-Tenant PostGIS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/)
+← Back to [Row-Level Security for Multi-Tenant PostGIS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/)

@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Spatial Pagination & Cursor Strategies"
 description: "Replace OFFSET/LIMIT with cursor-based spatial pagination in FastAPI and PostGIS. Use deterministic keyset traversal tokens for constant-time page fetches at scale."
 slug: "spatial-pagination-cursor-strategies"
-type: "cluster"
 breadcrumb: "Core Geospatial API Architecture → Spatial Pagination & Cursor Strategies"
 datePublished: "2024-01-15"
 dateModified: "2026-06-23"
@@ -24,9 +23,9 @@ dateModified: "2026-06-23"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Core Geospatial API Architecture", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/" },
-        { "@type": "ListItem", "position": 3, "name": "Spatial Pagination & Cursor Strategies", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/" }
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Core Geospatial API Architecture", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/" },
+        { "@type": "ListItem", "position": 3, "name": "Spatial Pagination & Cursor Strategies", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/" }
       ]
     },
     {
@@ -64,7 +63,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [Core Geospatial API Architecture](/core-geospatial-api-architecture-with-fastapi-postgis/)
+← Back to [Core Geospatial API Architecture](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/)
 
 # Spatial Pagination & Cursor Strategies
 
@@ -158,7 +157,7 @@ Before implementing spatial cursors, confirm these baseline requirements:
 - Python 3.10+ for union-type annotations (`str | None`)
 - `orjson` or `msgspec` for high-throughput GeoJSON serialization
 
-Your spatial table must carry a properly tuned GiST index on the geometry column. Verify index health with `pg_stat_user_indexes` and ensure `work_mem` is sized for spatial sort operations (128 MB or more on large datasets). For geometry column design and SRID conventions, follow the [Spatial Resource Modeling Patterns](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) baseline.
+Your spatial table must carry a properly tuned GiST index on the geometry column. Verify index health with `pg_stat_user_indexes` and ensure `work_mem` is sized for spatial sort operations (128 MB or more on large datasets). For geometry column design and SRID conventions, follow the [Spatial Resource Modeling Patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) baseline.
 
 ---
 
@@ -200,7 +199,7 @@ CREATE INDEX idx_locations_id ON locations USING btree (id);
 
 Use `GEOMETRY(Point, 4326)` or the `geography` type on your `geom` column. The `geography` type computes accurate spherical distances in metres without an explicit `ST_Transform`, which simplifies cursor value comparison. Avoid storing pre-calculated distances as a column; compute them at query time to maintain index selectivity.
 
-For a complete schema design reference including multi-geometry tables and SRID conventions, see [Spatial Resource Modeling Patterns](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/).
+For a complete schema design reference including multi-geometry tables and SRID conventions, see [Spatial Resource Modeling Patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/).
 
 ### Step 2: Secure Cursor Encoding & Decoding
 
@@ -290,9 +289,9 @@ async def fetch_proximity_page(
     return {"items": [r[0] for r in rows], "next_cursor": next_cursor}
 ```
 
-The `ST_Transform` to EPSG:3857 converts distances to metres for consistent cursor comparison regardless of input geometry units. For bounding box scans that use [bounding box spatial index queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) instead of proximity, replace `ST_Distance` ordering with a stable primary key sort — the cursor then encodes only the `id` value.
+The `ST_Transform` to EPSG:3857 converts distances to metres for consistent cursor comparison regardless of input geometry units. For bounding box scans that use [bounding box spatial index queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) instead of proximity, replace `ST_Distance` ordering with a stable primary key sort — the cursor then encodes only the `id` value.
 
-For deep optimisation of the KNN operator and `<->` vs `<#>` trade-offs, see [Optimizing KNN Queries with the PostGIS Operator](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/optimizing-knn-queries-with-postgis-operator/).
+For deep optimisation of the KNN operator and `<->` vs `<#>` trade-offs, see [Optimizing KNN Queries with the PostGIS Operator](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/optimizing-knn-queries-with-postgis-operator/).
 
 ### Step 4: Response Serialization & Next-Cursor Injection
 
@@ -340,9 +339,9 @@ async def get_nearby_locations(
     )
 ```
 
-When response payload size is a concern — especially for large feature collections — evaluate whether binary formats reduce wire cost. The [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix covers the trade-offs between text-based GeoJSON and columnar formats for cursor-paginated endpoints.
+When response payload size is a concern — especially for large feature collections — evaluate whether binary formats reduce wire cost. The [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix covers the trade-offs between text-based GeoJSON and columnar formats for cursor-paginated endpoints.
 
-For [API versioning](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) on cursor endpoints, encode the cursor version (`"v": 1`) so you can introduce new sort keys in a future API version without breaking existing client tokens.
+For [API versioning](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) on cursor endpoints, encode the cursor version (`"v": 1`) so you can introduce new sort keys in a future API version without breaking existing client tokens.
 
 ---
 
@@ -524,7 +523,7 @@ ORDER BY distance_m, id
 LIMIT 50;
 ```
 
-Expected output should include `Index Scan using idx_locations_geom` and `Buffers: shared hit=…` with a low heap-fetch count. If you see `Seq Scan` instead, confirm `work_mem` is at least 64 MB and that the GiST index exists on the transformed geometry. For a detailed walkthrough of query plan analysis, see [Reading EXPLAIN ANALYZE for Spatial Query Optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
+Expected output should include `Index Scan using idx_locations_geom` and `Buffers: shared hit=…` with a low heap-fetch count. If you see `Seq Scan` instead, confirm `work_mem` is at least 64 MB and that the GiST index exists on the transformed geometry. For a detailed walkthrough of query plan analysis, see [Reading EXPLAIN ANALYZE for Spatial Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
 
 ### Unit Test Skeleton
 
@@ -584,7 +583,7 @@ Key levers:
 
 - **`work_mem`**: raise from the PostgreSQL default (4 MB) to at least 64–128 MB for sessions running spatial sort operations. Set it per-connection via `SET LOCAL work_mem = '128MB'` in a SQLAlchemy `@event.listens_for(engine, "connect")` hook to avoid global impact.
 - **Async sessions**: each FastAPI request should borrow a pooled connection from `asyncpg`. Avoid synchronous `session.execute()` calls in async routes — they block the event loop.
-- **Connection pool sizing**: use `pgBouncer` in transaction mode for high-concurrency deployments. See [Connection Pooling & pgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) for spatial-workload pool configuration.
+- **Connection pool sizing**: use `pgBouncer` in transaction mode for high-concurrency deployments. See [Connection Pooling & pgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) for spatial-workload pool configuration.
 - **Avoid `SELECT *`**: always project only the columns you need. Fetching the geometry column as WKB and converting client-side is 30–60% slower than using `ST_AsGeoJSON` at the SQL layer.
 
 ---
@@ -616,10 +615,10 @@ Use `ST_Distance` in both the `ORDER BY` and the keyset `WHERE` boundary. The `<
 
 ## Related
 
-- [Implementing Cursor-Based Pagination for Spatial Queries](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/) — deep implementation walkthrough with async connection patterns
-- [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choose the right response format for paginated spatial endpoints
-- [Spatial Resource Modeling Patterns](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) — geometry column design and SRID conventions
-- [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — version cursor tokens alongside API changes
-- [Bounding Box Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — cursor pagination adapted for `ST_Within` and `ST_Intersects` scans
+- [Implementing Cursor-Based Pagination for Spatial Queries](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/) — deep implementation walkthrough with async connection patterns
+- [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choose the right response format for paginated spatial endpoints
+- [Spatial Resource Modeling Patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) — geometry column design and SRID conventions
+- [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — version cursor tokens alongside API changes
+- [Bounding Box Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — cursor pagination adapted for `ST_Within` and `ST_Intersects` scans
 
-← Back to [Core Geospatial API Architecture](/core-geospatial-api-architecture-with-fastapi-postgis/)
+← Back to [Core Geospatial API Architecture](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/)

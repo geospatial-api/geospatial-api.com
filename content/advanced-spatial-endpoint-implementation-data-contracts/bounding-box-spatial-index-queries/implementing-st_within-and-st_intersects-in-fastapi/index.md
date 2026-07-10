@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Implementing ST_Within and ST_Intersects in FastAPI"
 description: "Step-by-step guide to wiring PostGIS ST_Within and ST_Intersects into a FastAPI endpoint: Pydantic v2 geometry validation, GeoAlchemy2 mapping, GiST index usage, and production hardening."
 slug: implementing-st_within-and-st_intersects-in-fastapi
-type: long_tail
 breadcrumb:
   - label: "Bounding Box & Spatial Index Queries"
     url: "/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/"
@@ -32,19 +31,19 @@ dateModified: "2026-06-23"
           "@type": "ListItem",
           "position": 1,
           "name": "Advanced Spatial Endpoints",
-          "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/"
+          "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/"
         },
         {
           "@type": "ListItem",
           "position": 2,
           "name": "Bounding Box & Spatial Index Queries",
-          "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/"
+          "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/"
         },
         {
           "@type": "ListItem",
           "position": 3,
           "name": "Implementing ST_Within and ST_Intersects in FastAPI",
-          "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/"
+          "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/"
         }
       ]
     },
@@ -83,7 +82,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/)
+← Back to [Bounding Box & Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/)
 
 # Implementing ST_Within and ST_Intersects in FastAPI
 
@@ -100,7 +99,7 @@ Choose `ST_Within` when the business rule demands full containment and partial o
 
 The precondition for either predicate is that both geometries must share the same Spatial Reference Identifier (SRID). A mismatch causes PostGIS to compare coordinates in different systems and return silent `FALSE` results with no error. Always normalize to a single SRID — typically EPSG:4326 for WGS84 web APIs — before running the predicate.
 
-For the broader indexing and query-planning decisions that determine which spatial predicate pair to reach for at the architecture level, see [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/).
+For the broader indexing and query-planning decisions that determine which spatial predicate pair to reach for at the architecture level, see [Bounding Box & Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/).
 
 ## How ST_Within and ST_Intersects Relate to the GiST Index
 
@@ -148,7 +147,7 @@ Phase 1 uses the `&&` bounding-box operator, which the GiST index answers in O(l
 
 ## Runnable Implementation
 
-The endpoint below accepts a GeoJSON geometry, validates it with Pydantic v2, repairs topology with Shapely, normalizes to EPSG:4326, and executes either `ST_Intersects` or `ST_Within` using SQLAlchemy 2.0 syntax. Geometry validation patterns used here build on the approach described in [Validating WKT and GeoJSON with Pydantic v2](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/).
+The endpoint below accepts a GeoJSON geometry, validates it with Pydantic v2, repairs topology with Shapely, normalizes to EPSG:4326, and executes either `ST_Intersects` or `ST_Within` using SQLAlchemy 2.0 syntax. Geometry validation patterns used here build on the approach described in [Validating WKT and GeoJSON with Pydantic v2](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/).
 
 ```python
 # requirements: fastapi>=0.111, sqlalchemy>=2.0, geoalchemy2>=0.14,
@@ -294,7 +293,7 @@ The `&&` pre-filter on line 3 of the query is what ensures the GiST index is act
 
 - **`make_valid` changes geometry type.** For degenerate inputs (e.g., a polygon that collapses to a line), `make_valid` may return a `GeometryCollection` instead of a `Polygon`. If your `Geometry` column is typed as `POLYGON`, the subsequent insert or comparison raises `InvalidParameterValue: Geometry type (GeometryCollection) does not match column type (Polygon)`. Handle the returned type after repair.
 
-- **Large result sets and memory.** `db.scalars(stmt).all()` loads the entire result set into Python memory. For endpoints that may return thousands of features, apply [cursor-based pagination](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) rather than `LIMIT/OFFSET`, and stream [GeoJSON serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) to avoid buffering full feature collections.
+- **Large result sets and memory.** `db.scalars(stmt).all()` loads the entire result set into Python memory. For endpoints that may return thousands of features, apply [cursor-based pagination](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) rather than `LIMIT/OFFSET`, and stream [GeoJSON serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) to avoid buffering full feature collections.
 
 ## Verification Snippet
 
@@ -344,9 +343,9 @@ A `count` of `0` when you expect results almost always means an SRID mismatch or
 
 ## Related
 
-- [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — index design, `&&` operator semantics, and query plan analysis for spatial endpoints
-- [Validating WKT and GeoJSON with Pydantic v2](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/) — Pydantic v2 geometry validators, coordinate bounds checking, and topology repair patterns
-- [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — cursor-based pagination for large spatial result sets
-- [Reading EXPLAIN ANALYZE for Spatial Query Optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/) — interpreting PostGIS query plans and confirming index usage
+- [Bounding Box & Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — index design, `&&` operator semantics, and query plan analysis for spatial endpoints
+- [Validating WKT and GeoJSON with Pydantic v2](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/) — Pydantic v2 geometry validators, coordinate bounds checking, and topology repair patterns
+- [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — cursor-based pagination for large spatial result sets
+- [Reading EXPLAIN ANALYZE for Spatial Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/) — interpreting PostGIS query plans and confirming index usage
 
-← Back to [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/)
+← Back to [Bounding Box & Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/)

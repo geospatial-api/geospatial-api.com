@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "PostGIS Materialized Views vs Redis Query Caching"
 description: "A direct comparison for caching spatial aggregation results: freshness and invalidation models, storage location, query flexibility, operational cost, and cold-start. Includes a decision table, runnable examples of both, and the gotchas of stacking them."
 slug: "postgis-materialized-views-vs-redis-query-caching"
-type: "long_tail"
 breadcrumb:
   - label: "High-Performance Caching & Query Optimization"
     url: "/high-performance-caching-query-optimization/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "High-Performance Caching & Query Optimization", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/" },
-        { "@type": "ListItem", "position": 2, "name": "Materialized Views for Spatial Aggregations", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/" },
-        { "@type": "ListItem", "position": 3, "name": "PostGIS Materialized Views vs Redis Query Caching", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/postgis-materialized-views-vs-redis-query-caching/" }
+        { "@type": "ListItem", "position": 1, "name": "High-Performance Caching & Query Optimization", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/" },
+        { "@type": "ListItem", "position": 2, "name": "Materialized Views for Spatial Aggregations", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/" },
+        { "@type": "ListItem", "position": 3, "name": "PostGIS Materialized Views vs Redis Query Caching", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/postgis-materialized-views-vs-redis-query-caching/" }
       ]
     },
     {
@@ -55,7 +54,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Materialized Views for Spatial Aggregations](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/)
+← Back to [Materialized Views for Spatial Aggregations](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/)
 
 # PostGIS materialized views vs Redis query caching
 
@@ -63,7 +62,7 @@ When a spatial aggregation is too expensive to run per request, you can precompu
 
 ## Context & when to use
 
-Both techniques exist to avoid re-running an expensive computation. But they cache different things at different layers. A [materialized view](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/) stores the *aggregated rows* on disk inside Postgres, still queryable with SQL and spatial indexes. A [Redis cache](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) stores the *finished response bytes* in memory, keyed by a single lookup string. That difference drives every trade-off below.
+Both techniques exist to avoid re-running an expensive computation. But they cache different things at different layers. A [materialized view](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/) stores the *aggregated rows* on disk inside Postgres, still queryable with SQL and spatial indexes. A [Redis cache](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) stores the *finished response bytes* in memory, keyed by a single lookup string. That difference drives every trade-off below.
 
 Reach for a **materialized view** when one heavy aggregation feeds many query shapes. A dissolved administrative boundary or a per-cell heatmap grid gets filtered by bounding box, joined to attribute tables, sorted by count, and clipped to different zoom levels — all off the same precomputed result, each using the view's GiST index. Redis cannot do any of that; it can only return the exact response you stored under the exact key you ask for.
 
@@ -193,7 +192,7 @@ async def heatmap_cached(
     return payload
 ```
 
-The tags-and-keys strategy for spatial Redis keys is covered in [configuring Redis cache tags for bounding-box queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/configuring-redis-cache-tags-for-bounding-box-queries/). Note that Option B still runs the full aggregation on every cache miss — Redis does nothing to make the *underlying* query cheaper, which is exactly why stacking it over Option A is common.
+The tags-and-keys strategy for spatial Redis keys is covered in [configuring Redis cache tags for bounding-box queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/configuring-redis-cache-tags-for-bounding-box-queries/). Note that Option B still runs the full aggregation on every cache miss — Redis does nothing to make the *underlying* query cheaper, which is exactly why stacking it over Option A is common.
 
 ---
 
@@ -216,7 +215,7 @@ The tags-and-keys strategy for spatial Redis keys is covered in [configuring Red
 
 - **Redis does not reduce aggregation cost.** On a cache miss, Option B runs the full `ST_SnapToGrid` + `GROUP BY` live — the first request after every TTL expiry pays the multi-second cost and can stampede under concurrency. A materialized view eliminates that cost for *all* reads. If misses are expensive and frequent, materialize.
 
-- **`cannot refresh materialized view concurrently`.** Forgetting the UNIQUE index breaks concurrent refresh entirely. See [scheduling concurrent refresh](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/scheduling-concurrent-refresh-of-spatial-materialized-views/) for the full requirement.
+- **`cannot refresh materialized view concurrently`.** Forgetting the UNIQUE index breaks concurrent refresh entirely. See [scheduling concurrent refresh](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/scheduling-concurrent-refresh-of-spatial-materialized-views/) for the full requirement.
 
 - **Redis eviction under `noeviction`.** If Redis fills and the policy is `noeviction`, `SETEX` starts returning `OOM command not allowed when used memory > 'maxmemory'` and caching silently fails open to the database. Use an LRU/LFU eviction policy for pure cache workloads.
 
@@ -250,8 +249,8 @@ If the view query shows a `Seq Scan`, run `ANALYZE mv_ping_heatmap;`. If the Red
 
 ## Related
 
-- [Materialized Views for Spatial Aggregations](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/) — build, index, and serve the precomputed aggregate
-- [Scheduling Concurrent Refresh of Spatial Materialized Views](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/scheduling-concurrent-refresh-of-spatial-materialized-views/) — keep view staleness bounded with pg_cron
-- [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — TTL-based response caching and cache-tag invalidation
+- [Materialized Views for Spatial Aggregations](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/) — build, index, and serve the precomputed aggregate
+- [Scheduling Concurrent Refresh of Spatial Materialized Views](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/scheduling-concurrent-refresh-of-spatial-materialized-views/) — keep view staleness bounded with pg_cron
+- [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — TTL-based response caching and cache-tag invalidation
 
-← Back to [Materialized Views for Spatial Aggregations](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/)
+← Back to [Materialized Views for Spatial Aggregations](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/)

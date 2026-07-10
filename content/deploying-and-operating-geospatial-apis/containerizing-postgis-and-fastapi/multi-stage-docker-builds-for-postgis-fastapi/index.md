@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Multi-Stage Docker Builds for PostGIS & FastAPI"
 description: "Compile shapely, pyproj, and the GDAL bindings in a builder stage, then copy only the virtualenv and runtime shared libraries into a slim non-root final image — with the ldd checks that prove no .so is missing."
 slug: "multi-stage-docker-builds-for-postgis-fastapi"
-type: "long_tail"
 breadcrumb:
   - label: "Deploying & Operating Geospatial APIs"
     url: "/deploying-and-operating-geospatial-apis/"
@@ -36,9 +35,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Deploying & Operating Geospatial APIs", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/"},
-        {"@type": "ListItem", "position": 2, "name": "Containerizing PostGIS & FastAPI", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/"},
-        {"@type": "ListItem", "position": 3, "name": "Multi-Stage Docker Builds for PostGIS & FastAPI", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/multi-stage-docker-builds-for-postgis-fastapi/"}
+        {"@type": "ListItem", "position": 1, "name": "Deploying & Operating Geospatial APIs", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/"},
+        {"@type": "ListItem", "position": 2, "name": "Containerizing PostGIS & FastAPI", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/"},
+        {"@type": "ListItem", "position": 3, "name": "Multi-Stage Docker Builds for PostGIS & FastAPI", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/multi-stage-docker-builds-for-postgis-fastapi/"}
       ]
     },
     {
@@ -56,7 +55,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Containerizing PostGIS & FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/)
+← Back to [Containerizing PostGIS & FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/)
 
 # Multi-stage Docker builds for PostGIS & FastAPI
 
@@ -66,7 +65,7 @@ Compile the geospatial Python stack once in a throwaway builder stage, then ship
 
 A single-stage image that can *build* `rasterio` and the GDAL bindings must contain `build-essential`, `libgdal-dev`, `libgeos-dev`, and `libproj-dev` — hundreds of megabytes of compilers and headers that do nothing at runtime and widen your attack surface. A multi-stage build separates the two concerns: a `builder` stage has the full toolchain and produces a self-contained virtualenv, and a `runtime` stage starts fresh from `python:3.12-slim`, installs only the runtime shared libraries, and copies the finished venv across. The final image is smaller, faster to pull, and contains no compiler for an attacker to leverage.
 
-Reach for this pattern once your image is heading to production or to any registry pull path that matters — CI, autoscaling, or edge nodes. For purely local development, the single-stage Dockerfile in the parent guide, [Containerizing PostGIS & FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/), is simpler and rebuilds just as fast thanks to layer caching. The one precondition that makes multi-stage safe for geospatial code is **library-version alignment**: the `libgdal-dev` the bindings compile against in the builder must have the same major version as the `libgdal32` runtime package in the final stage, or the copied extension will fail to load. Because both come from the same Debian bookworm source package here, they align automatically.
+Reach for this pattern once your image is heading to production or to any registry pull path that matters — CI, autoscaling, or edge nodes. For purely local development, the single-stage Dockerfile in the parent guide, [Containerizing PostGIS & FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/), is simpler and rebuilds just as fast thanks to layer caching. The one precondition that makes multi-stage safe for geospatial code is **library-version alignment**: the `libgdal-dev` the bindings compile against in the builder must have the same major version as the `libgdal32` runtime package in the final stage, or the copied extension will fail to load. Because both come from the same Debian bookworm source package here, they align automatically.
 
 ---
 
@@ -219,7 +218,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 - **GDAL version mismatch between build and runtime.** If the builder compiles the bindings against `libgdal-dev` 3.6 but the runtime stage installs a `libgdal32` from a different distro release (say 3.8), the import fails with `symbol lookup error` or a segfault on the first GDAL call. Keep both stages on the same base distribution (`python:3.12-slim`, both bookworm) so `apt` resolves the same GDAL major.
 
-- **Layer cache invalidation from copying source too early.** Placing `COPY . .` before the `pip install` step means any code edit busts the dependency layer and recompiles the entire geospatial stack — minutes per build. Copy `requirements.txt` first, install, *then* copy the source. The parent guide, [Containerizing PostGIS & FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/), applies the same ordering to the single-stage image.
+- **Layer cache invalidation from copying source too early.** Placing `COPY . .` before the `pip install` step means any code edit busts the dependency layer and recompiles the entire geospatial stack — minutes per build. Copy `requirements.txt` first, install, *then* copy the source. The parent guide, [Containerizing PostGIS & FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/), applies the same ordering to the single-stage image.
 
 - **Copying `site-packages` instead of the venv.** Copying `/usr/local/lib/python3.12/site-packages` across stages misses console-script shims and `pyvenv.cfg`, so entry points like `uvicorn` are absent. Copy the whole `/opt/venv` and put it on `PATH`.
 
@@ -253,14 +252,14 @@ docker run --rm geo-api:multistage sh -c '
 ```
 {% endraw %}
 
-A `not found` in any `ldd` line is the multi-stage failure signature: a runtime `.so` the builder had but the runtime stage lacks. Add the missing `libXXX` package to the runtime stage and rebuild. Once this is clean, pin the image so the resolved versions never drift — see [Pinning PostGIS Versions in Production Images](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/).
+A `not found` in any `ldd` line is the multi-stage failure signature: a runtime `.so` the builder had but the runtime stage lacks. Add the missing `libXXX` package to the runtime stage and rebuild. Once this is clean, pin the image so the resolved versions never drift — see [Pinning PostGIS Versions in Production Images](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/).
 
 ---
 
 ## Related
 
-- [Containerizing PostGIS & FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/) — base image choices, the compose stack, and PostGIS-aware healthchecks this build slots into
-- [Pinning PostGIS Versions in Production Images](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/) — lock the resolved library versions by tag and digest so builds stay reproducible
-- [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/) — the delivery guide covering CI, migrations, and edge tile distribution
+- [Containerizing PostGIS & FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/) — base image choices, the compose stack, and PostGIS-aware healthchecks this build slots into
+- [Pinning PostGIS Versions in Production Images](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/) — lock the resolved library versions by tag and digest so builds stay reproducible
+- [Deploying & Operating Geospatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/) — the delivery guide covering CI, migrations, and edge tile distribution
 
-← Back to [Containerizing PostGIS & FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/)
+← Back to [Containerizing PostGIS & FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/)

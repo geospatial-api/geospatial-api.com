@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Implementing Cursor-Based Pagination for Spatial Queries"
 description: "Step-by-step guide to replacing OFFSET/LIMIT with keyset cursor pagination in FastAPI and PostGIS: GiST index alignment, Base64 cursor encoding, stable ORDER BY, and edge-case handling."
 slug: implementing-cursor-based-pagination-for-spatial-queries
-type: long_tail
 breadcrumb:
   - label: "Core Geospatial API Architecture"
     url: "/core-geospatial-api-architecture-with-fastapi-postgis/"
@@ -26,21 +25,21 @@ dateModified: "2026-06-23"
       "datePublished": "2024-03-15",
       "dateModified": "2026-06-23",
       "author": {"@type": "Organization", "name": "geospatial-api.com"},
-      "url": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/"
+      "url": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/"
     },
     {
       "@type": "Article",
       "headline": "Implementing Cursor-Based Pagination for Spatial Queries",
       "datePublished": "2024-03-15",
       "dateModified": "2026-06-23",
-      "url": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/"
+      "url": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/"
     },
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Core Geospatial API Architecture", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/"},
-        {"@type": "ListItem", "position": 2, "name": "Spatial Pagination & Cursor Strategies", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/"},
-        {"@type": "ListItem", "position": 3, "name": "Implementing Cursor-Based Pagination for Spatial Queries", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/"}
+        {"@type": "ListItem", "position": 1, "name": "Core Geospatial API Architecture", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/"},
+        {"@type": "ListItem", "position": 2, "name": "Spatial Pagination & Cursor Strategies", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/"},
+        {"@type": "ListItem", "position": 3, "name": "Implementing Cursor-Based Pagination for Spatial Queries", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/"}
       ]
     },
     {
@@ -78,7 +77,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/)
+← Back to [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/)
 
 # Implementing Cursor-Based Pagination for Spatial Queries
 
@@ -88,13 +87,13 @@ Replace `OFFSET`/`LIMIT` with a deterministic keyset cursor so PostGIS bounding-
 
 `OFFSET`-based pagination asks PostgreSQL to materialize the entire filtered result set, sort it, discard the first N rows, then return the next batch. For spatial workloads this is doubly expensive: the GiST index that accelerates `&&` or `ST_DWithin` cannot skip scanned tuples, so query latency grows linearly as page depth increases. At page 500 of a 20-row page, the database discards 9 980 rows on every request.
 
-Keyset pagination eliminates that waste. Instead of skipping rows, the API decodes a cursor representing the last returned row's primary key, applies a `WHERE id > :cursor_id` clause, and lets the B-tree index jump straight to that boundary. Query cost becomes proportional to the page size — not the page number. This is the technique described in [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) and the right choice whenever your API must serve deep, stable pages of spatial features.
+Keyset pagination eliminates that waste. Instead of skipping rows, the API decodes a cursor representing the last returned row's primary key, applies a `WHERE id > :cursor_id` clause, and lets the B-tree index jump straight to that boundary. Query cost becomes proportional to the page size — not the page number. This is the technique described in [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) and the right choice whenever your API must serve deep, stable pages of spatial features.
 
 Use this approach when:
 
 - The result set has more than ~1 000 features and clients page forward sequentially (maps, exports, feeds).
 - Concurrent writes are possible between page requests — offset drift produces duplicate or missing rows, keyset traversal does not.
-- You want your [geospatial API architecture](/core-geospatial-api-architecture-with-fastapi-postgis/) to stay stateless: the cursor encodes all resume state so the server stores nothing between requests.
+- You want your [geospatial API architecture](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/) to stay stateless: the cursor encodes all resume state so the server stores nothing between requests.
 
 It is **not** the right tool when clients need random page access (jump to page 47), because keyset traversal is inherently forward-only. For random access, materialize result sets into Redis or accept the offset trade-off on bounded datasets.
 
@@ -369,8 +368,8 @@ A valid response on the second call must not repeat any `id` from the first page
 
 ## Related
 
-- [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — decision matrix comparing keyset, offset, and seek-method patterns for spatial APIs
-- [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choosing the right response format once your pagination is stable
-- [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — evolving cursor schemas across API versions without breaking clients
+- [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — decision matrix comparing keyset, offset, and seek-method patterns for spatial APIs
+- [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choosing the right response format once your pagination is stable
+- [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — evolving cursor schemas across API versions without breaking clients
 
-← Back to [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/)
+← Back to [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/)

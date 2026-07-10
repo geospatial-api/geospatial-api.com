@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Redis Sliding-Window Rate Limits for Spatial Endpoints"
 description: "Build an atomic sliding-window rate limiter in Redis using a sorted set (ZADD/ZREMRANGEBYSCORE/ZCARD) driven by a Lua script, applied per API key on FastAPI tile and geofence routes."
 slug: "redis-sliding-window-rate-limits-for-spatial-endpoints"
-type: "long_tail"
 breadcrumb:
   - label: "Securing Geospatial APIs"
     url: "/securing-geospatial-apis-authentication-authorization/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Securing Geospatial APIs", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
-        {"@type": "ListItem", "position": 2, "name": "Rate Limiting Geofence & Tile Endpoints", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/"},
-        {"@type": "ListItem", "position": 3, "name": "Redis Sliding-Window Rate Limits for Spatial Endpoints", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/"}
+        {"@type": "ListItem", "position": 1, "name": "Securing Geospatial APIs", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
+        {"@type": "ListItem", "position": 2, "name": "Rate Limiting Geofence & Tile Endpoints", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/"},
+        {"@type": "ListItem", "position": 3, "name": "Redis Sliding-Window Rate Limits for Spatial Endpoints", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/"}
       ]
     },
     {
@@ -56,7 +55,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Rate Limiting Geofence & Tile Endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/)
+← Back to [Rate Limiting Geofence & Tile Endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/)
 
 # Redis sliding-window rate limits for spatial endpoints
 
@@ -64,9 +63,9 @@ Enforce an exact, burst-smooth per-API-key request limit on FastAPI tile and geo
 
 ## Context & when to use
 
-A fixed-window counter — increment a key, reset it every second — is trivial but wrong at the boundary: a client can fire the full limit in the last 10 ms of one window and again in the first 10 ms of the next, sending 2× the intended rate in a 20 ms burst. For a cheap route nobody notices. For a geofence route where each request can hold a [pooled connection](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) for seconds, that doubled burst is exactly the overload the limit was meant to prevent.
+A fixed-window counter — increment a key, reset it every second — is trivial but wrong at the boundary: a client can fire the full limit in the last 10 ms of one window and again in the first 10 ms of the next, sending 2× the intended rate in a 20 ms burst. For a cheap route nobody notices. For a geofence route where each request can hold a [pooled connection](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) for seconds, that doubled burst is exactly the overload the limit was meant to prevent.
 
-A sliding-window log fixes this by remembering the *timestamp of every request* in a rolling window rather than a single bucket count. At each request it discards timestamps older than the window and counts what remains; the limit is enforced against a window that slides continuously with the clock, so there is no boundary to exploit. Reach for this when you need exact, fair per-client limits on expensive spatial routes and your per-window limit is modest (up to a few thousand). When requests differ enormously in cost, layer [cost-based throttling](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/) on top so a large-radius `ST_DWithin` counts for more than a point lookup. The algorithm trade-offs against fixed-window and token-bucket are laid out in the parent [rate limiting geofence and tile endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/) guide.
+A sliding-window log fixes this by remembering the *timestamp of every request* in a rolling window rather than a single bucket count. At each request it discards timestamps older than the window and counts what remains; the limit is enforced against a window that slides continuously with the clock, so there is no boundary to exploit. Reach for this when you need exact, fair per-client limits on expensive spatial routes and your per-window limit is modest (up to a few thousand). When requests differ enormously in cost, layer [cost-based throttling](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/) on top so a large-radius `ST_DWithin` counts for more than a point lookup. The algorithm trade-offs against fixed-window and token-bucket are laid out in the parent [rate limiting geofence and tile endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/) guide.
 
 The single hard requirement is **atomicity**. Trim, count, and conditionally add must happen with no other client interleaving, or two concurrent requests both read "9 used" and both get admitted. Redis runs a Lua script to completion without interleaving other commands, which is what makes the check-decide-write a single indivisible step.
 
@@ -201,7 +200,7 @@ class SlidingWindowLimiter:
         return Decision(allowed=False, remaining=0, retry_after=max(1, round(int(meta) / 1000)))
 ```
 
-Apply it as a FastAPI dependency scoped to the expensive routes, keyed on the API key extracted from the request (the same identity your [JWT spatial scopes](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) establish):
+Apply it as a FastAPI dependency scoped to the expensive routes, keyed on the API key extracted from the request (the same identity your [JWT spatial scopes](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) establish):
 
 ```python
 # app/deps.py
@@ -292,8 +291,8 @@ async def test_no_overadmit(limiter):
 
 ## Related
 
-- [Rate Limiting Geofence & Tile Endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/) — algorithm decision matrix, keying strategies, and the full middleware
-- [Cost-Based Throttling for Expensive PostGIS Queries](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/) — weight the window by query cost, not a flat count
-- [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — reuse the same Redis to cache tile responses so the limiter only guards misses
+- [Rate Limiting Geofence & Tile Endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/) — algorithm decision matrix, keying strategies, and the full middleware
+- [Cost-Based Throttling for Expensive PostGIS Queries](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/) — weight the window by query cost, not a flat count
+- [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — reuse the same Redis to cache tile responses so the limiter only guards misses
 
-← Back to [Rate Limiting Geofence & Tile Endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/)
+← Back to [Rate Limiting Geofence & Tile Endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/)

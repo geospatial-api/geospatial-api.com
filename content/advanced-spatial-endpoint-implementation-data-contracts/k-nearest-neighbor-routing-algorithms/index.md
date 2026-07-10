@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "K-Nearest Neighbor Routing in FastAPI & PostGIS"
 description: "Implement KNN proximity queries in FastAPI and PostGIS using the <-> distance operator with GiST indexes. Step-by-step guide covering schema design, async execution, and production hardening for sub-50ms nearest-neighbor responses at scale."
 slug: k-nearest-neighbor-routing-algorithms
-type: cluster
 breadcrumb:
   - label: "Advanced Spatial Endpoints & Data Contracts"
     url: "/advanced-spatial-endpoint-implementation-data-contracts/"
@@ -24,19 +23,19 @@ dateModified: "2026-06-23"
       "datePublished": "2024-11-01",
       "dateModified": "2026-06-23",
       "author": { "@type": "Organization", "name": "geospatial-api.com" },
-      "url": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/"
+      "url": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/"
     },
     {
       "@type": "Article",
       "headline": "K-Nearest Neighbor Routing in FastAPI & PostGIS",
-      "url": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/"
+      "url": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/"
     },
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
-        { "@type": "ListItem", "position": 3, "name": "K-Nearest Neighbor Routing Algorithms", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/" }
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
+        { "@type": "ListItem", "position": 3, "name": "K-Nearest Neighbor Routing Algorithms", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/" }
       ]
     },
     {
@@ -83,13 +82,13 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [Advanced Spatial Endpoints & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/)
+← Back to [Advanced Spatial Endpoints & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/)
 
 # K-Nearest Neighbor Routing Algorithms in FastAPI & PostGIS
 
 K-nearest neighbor (KNN) proximity search finds the `k` closest geometries to a query point — without scanning the full table. In production FastAPI architectures this capability powers real-time asset dispatch, facility matching, delivery zone assignment, and service area lookups. The challenge at scale is not the algorithm itself, but ensuring that PostgreSQL uses its spatial index for neighbor traversal rather than computing distances for every row.
 
-When PostGIS's `<->` distance operator appears in an `ORDER BY … LIMIT` clause against a GiST-indexed column, the query planner switches to an index-assisted nearest-neighbor scan — visiting only the tree branches that could contain closer results. This guide walks through every layer: schema design, strict [Pydantic v2 geometry validation](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/), async FastAPI wiring, query construction, and production hardening.
+When PostGIS's `<->` distance operator appears in an `ORDER BY … LIMIT` clause against a GiST-indexed column, the query planner switches to an index-assisted nearest-neighbor scan — visiting only the tree branches that could contain closer results. This guide walks through every layer: schema design, strict [Pydantic v2 geometry validation](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/), async FastAPI wiring, query construction, and production hardening.
 
 ---
 
@@ -201,9 +200,9 @@ CREATE INDEX idx_service_assets_geom
 
 On highly clustered point data (e.g. delivery addresses within a city), benchmark `USING SPGIST` as an alternative — it can halve traversal depth for uniform distributions. For mixed geometry workloads or geographic spread, GiST remains the safer default.
 
-When building ingestion pipelines for large geometry batches, decouple ingest from query serving using background workers. The [Async Bulk Uploads with Celery](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) pattern stages, validates, and indexes geometries without blocking API threads.
+When building ingestion pipelines for large geometry batches, decouple ingest from query serving using background workers. The [Async Bulk Uploads with Celery](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) pattern stages, validates, and indexes geometries without blocking API threads.
 
-Pre-filter with bounding box constraints (`&&`) before invoking `<->` to shrink the candidate row set. See [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) for how `ST_Within` and `ST_Intersects` compose with the KNN path.
+Pre-filter with bounding box constraints (`&&`) before invoking `<->` to shrink the candidate row set. See [Bounding Box & Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) for how `ST_Within` and `ST_Intersects` compose with the KNN path.
 
 ### 2. Request Contract Definition
 
@@ -234,7 +233,7 @@ class KNNQuery(BaseModel):
 
 The GeoJSON specification ([RFC 7946](https://datatracker.ietf.org/doc/html/rfc7946)) mandates `[longitude, latitude]` ordering. `geojson-pydantic` enforces this at the model level — any axis-flipped payload returns a `422 Unprocessable Entity` before touching the database.
 
-For deeper geometry validation patterns, including WKT parsing and multi-geometry boundary checks, see [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/).
+For deeper geometry validation patterns, including WKT parsing and multi-geometry boundary checks, see [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/).
 
 ### 3. Async FastAPI Endpoint
 
@@ -328,7 +327,7 @@ async def execute_knn(
     return [dict(r) for r in rows]
 ```
 
-For deeper query plan analysis, index tuning, and `work_mem` configuration specific to the `<->` operator, see [Optimizing KNN Queries with the PostGIS `<->` Operator](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/optimizing-knn-queries-with-postgis-operator/).
+For deeper query plan analysis, index tuning, and `work_mem` configuration specific to the `<->` operator, see [Optimizing KNN Queries with the PostGIS `<->` Operator](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/optimizing-knn-queries-with-postgis-operator/).
 
 ### 5. Response Serialization & Error Handling
 
@@ -355,7 +354,7 @@ def serialize_results(rows: List[Dict[str, Any]]) -> dict:
     return {"type": "FeatureCollection", "features": features}
 ```
 
-Wrap database calls in `try/except asyncpg.exceptions.QueryCanceledError` to catch statement timeouts and return `504 Gateway Timeout`. Log `k` requested vs. `k` returned, execution time, and SRID validation failures for every request. For large result sets, consider GeoParquet as an alternative response format — the [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix covers when each format wins.
+Wrap database calls in `try/except asyncpg.exceptions.QueryCanceledError` to catch statement timeouts and return `504 Gateway Timeout`. Log `k` requested vs. `k` returned, execution time, and SRID validation failures for every request. For large result sets, consider GeoParquet as an alternative response format — the [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix covers when each format wins.
 
 ---
 
@@ -559,7 +558,7 @@ On a table of 1 million evenly distributed points with a GiST index:
 
 These benchmarks degrade under concurrent writes (index maintenance overhead) and with category filters that scan more rows before finding `k` qualifying candidates. Monitor `EXPLAIN (ANALYZE, BUFFERS)` regularly — look for `Buffers: shared hit=...` growing unexpectedly, which signals index bloat requiring `VACUUM`.
 
-For connection pool tuning in multi-service deployments, the [Connection Pooling & pgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) guide covers pgBouncer transaction-mode pooling, which reduces per-process connection overhead when many FastAPI workers share the same PostGIS instance.
+For connection pool tuning in multi-service deployments, the [Connection Pooling & pgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) guide covers pgBouncer transaction-mode pooling, which reduces per-process connection overhead when many FastAPI workers share the same PostGIS instance.
 
 ---
 
@@ -581,10 +580,10 @@ Add `ST_DWithin(geom::geography, query_point::geography, radius_meters)` as a `W
 
 ## Related
 
-- [Optimizing KNN Queries with the PostGIS `<->` Operator](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/optimizing-knn-queries-with-postgis-operator/) — deep dive into `EXPLAIN ANALYZE` output, SP-GiST vs GiST benchmarks, and `work_mem` tuning
-- [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — combine `&&` pre-filters with `ST_Within` and `ST_Intersects` to shrink KNN candidate sets
-- [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — enforce WGS84 bounds, geometry type constraints, and WKT/GeoJSON parsing at the API boundary
-- [Async Bulk Uploads with Celery](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) — stage and index large geometry batches without blocking KNN query threads
-- [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choose the right response format for large KNN result sets
+- [Optimizing KNN Queries with the PostGIS `<->` Operator](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/optimizing-knn-queries-with-postgis-operator/) — deep dive into `EXPLAIN ANALYZE` output, SP-GiST vs GiST benchmarks, and `work_mem` tuning
+- [Bounding Box & Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — combine `&&` pre-filters with `ST_Within` and `ST_Intersects` to shrink KNN candidate sets
+- [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — enforce WGS84 bounds, geometry type constraints, and WKT/GeoJSON parsing at the API boundary
+- [Async Bulk Uploads with Celery](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) — stage and index large geometry batches without blocking KNN query threads
+- [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choose the right response format for large KNN result sets
 
-← Back to [Advanced Spatial Endpoints & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/)
+← Back to [Advanced Spatial Endpoints & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/)

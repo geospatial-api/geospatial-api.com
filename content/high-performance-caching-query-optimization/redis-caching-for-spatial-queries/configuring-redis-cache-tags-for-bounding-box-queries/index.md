@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Redis Cache Tags for Bounding Box Queries"
 description: "Implement Redis cache tags for spatial bounding box queries using Redis Sets. Invalidate whole grid cells atomically when PostGIS geometry data changes."
 slug: configuring-redis-cache-tags-for-bounding-box-queries
-type: long_tail
 breadcrumb:
   - label: "Geospatial Caching and Query Optimization"
     url: "/high-performance-caching-query-optimization/"
@@ -26,14 +25,14 @@ dateModified: "2026-06-23"
       "datePublished": "2025-04-14",
       "dateModified": "2026-06-23",
       "author": { "@type": "Organization", "name": "geospatial-api.com" },
-      "url": "https://geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/configuring-redis-cache-tags-for-bounding-box-queries/"
+      "url": "https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/configuring-redis-cache-tags-for-bounding-box-queries/"
     },
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Geospatial Caching and Query Optimization", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/" },
-        { "@type": "ListItem", "position": 2, "name": "Redis Caching for Spatial Queries", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/" },
-        { "@type": "ListItem", "position": 3, "name": "Redis Cache Tags for Bounding Box Queries", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/configuring-redis-cache-tags-for-bounding-box-queries/" }
+        { "@type": "ListItem", "position": 1, "name": "Geospatial Caching and Query Optimization", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/" },
+        { "@type": "ListItem", "position": 2, "name": "Redis Caching for Spatial Queries", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/" },
+        { "@type": "ListItem", "position": 3, "name": "Redis Cache Tags for Bounding Box Queries", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/configuring-redis-cache-tags-for-bounding-box-queries/" }
       ]
     },
     {
@@ -70,7 +69,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/)
+← Back to [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/)
 
 # Redis Cache Tags for Bounding Box Queries
 
@@ -82,9 +81,9 @@ Standard cache strategies break down for spatial bounding box endpoints because 
 
 The tag-based approach solves this by introducing a level of indirection. Every bbox cache key is registered into a Redis Set that represents the coarse grid cell it falls within. When geometry in a cell changes, you fetch the Set membership and purge the whole batch. The cost is two extra Redis commands on write (`SADD`) and one pipeline on invalidation (`SMEMBERS` + `UNLINK` + `DEL`), both of which are negligible compared to the PostGIS query they replace.
 
-Use this pattern when: your bbox parameters are user-driven and unpredictable (map panning, viewport resizing); your underlying spatial data changes frequently enough that stale responses are a correctness concern; and you need sub-50 ms read latency under high concurrency. If your spatial data is nearly static, a simpler approach — a global TTL plus periodic cache warming — is sufficient. For the foundational key structure and connection setup, read the [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) guide first.
+Use this pattern when: your bbox parameters are user-driven and unpredictable (map panning, viewport resizing); your underlying spatial data changes frequently enough that stale responses are a correctness concern; and you need sub-50 ms read latency under high concurrency. If your spatial data is nearly static, a simpler approach — a global TTL plus periodic cache warming — is sufficient. For the foundational key structure and connection setup, read the [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) guide first.
 
-This technique also complements [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) work: once you know which `ST_Intersects` or `ST_Within` calls dominate your `EXPLAIN ANALYZE` output, tag-driven caching is the next layer to add so those expensive plans run as rarely as possible.
+This technique also complements [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) work: once you know which `ST_Intersects` or `ST_Within` calls dominate your `EXPLAIN ANALYZE` output, tag-driven caching is the next layer to add so those expensive plans run as rarely as possible.
 
 ## Tag Architecture Diagram
 
@@ -167,7 +166,7 @@ The diagram below shows the data flow from an incoming bbox request through the 
 
 The implementation below uses `redis-py` 5.0+ async client and Python 3.10+. It covers coordinate normalization, deterministic key generation, atomic cache writes with tag registration, and the invalidation routine. Wire `invalidate_layer_bbox` into any FastAPI mutation route that persists geometry to PostGIS.
 
-For the PostGIS query inside `fetch_features_from_db`, use `ST_Intersects` or `ST_Within` with a properly maintained `GIST` index — see [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) for the full index setup. If you are returning large feature sets, consider the [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix before choosing a serialization format for the cached payload.
+For the PostGIS query inside `fetch_features_from_db`, use `ST_Intersects` or `ST_Within` with a properly maintained `GIST` index — see [Bounding Box & Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) for the full index setup. If you are returning large feature sets, consider the [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix before choosing a serialization format for the cached payload.
 
 ```python
 import math
@@ -370,9 +369,9 @@ redis-cli TTL "tag:bbox:roads:-1.0:51.0"
 
 ## Related
 
-- [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — cache-aside architecture, key normalization, and async FastAPI middleware
-- [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — use `EXPLAIN ANALYZE` to identify which PostGIS operations benefit most from caching
-- [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — PostGIS `GIST` index setup and `ST_Intersects` query patterns that feed the cache
-- [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — reduce PostGIS connection pressure on cache misses
+- [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — cache-aside architecture, key normalization, and async FastAPI middleware
+- [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — use `EXPLAIN ANALYZE` to identify which PostGIS operations benefit most from caching
+- [Bounding Box & Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — PostGIS `GIST` index setup and `ST_Intersects` query patterns that feed the cache
+- [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — reduce PostGIS connection pressure on cache misses
 
-← Back to [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/)
+← Back to [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/)

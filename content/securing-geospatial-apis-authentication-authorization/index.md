@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Securing Geospatial APIs — Authentication & Authorization"
 description: "A production security reference for FastAPI + PostGIS spatial APIs: JWT authentication with spatial scope claims, PostgreSQL row-level security for multi-tenant geometry isolation, and cost-based rate limiting for expensive geofence and tile endpoints."
 slug: securing-geospatial-apis-authentication-authorization
-type: pillar
 breadcrumb: Securing Geospatial APIs
 datePublished: "2025-03-18"
 dateModified: "2026-07-10"
@@ -20,8 +19,8 @@ dateModified: "2026-07-10"
       "datePublished": "2025-03-18",
       "dateModified": "2026-07-10",
       "author": { "@type": "Organization", "name": "geospatial-api.com" },
-      "publisher": { "@type": "Organization", "name": "geospatial-api.com", "url": "https://geospatial-api.com" },
-      "mainEntityOfPage": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/"
+      "publisher": { "@type": "Organization", "name": "geospatial-api.com", "url": "https://www.geospatial-api.com" },
+      "mainEntityOfPage": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/"
     },
     {
       "@type": "Article",
@@ -32,8 +31,8 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Securing Geospatial APIs", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/" }
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Securing Geospatial APIs", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/" }
       ]
     },
     {
@@ -82,7 +81,7 @@ dateModified: "2026-07-10"
 
 # Securing geospatial APIs: authentication and authorization
 
-Backend engineers and GIS platform architects shipping multi-tenant spatial services face a threat surface that ordinary CRUD APIs never expose: a single leaked geometry can reveal a competitor's asset locations, a forged scope claim can unlock a neighbouring tenant's parcels, and one unbounded `ST_DWithin` call can pin a database CPU for seconds. This reference covers the full security stack for a production FastAPI and PostGIS API — edge rate limiting, JWT authentication with spatial scope claims, database-enforced tenant isolation, and the audit and rotation practices that keep the system defensible under real traffic. It builds directly on the [core geospatial API architecture](/core-geospatial-api-architecture-with-fastapi-postgis/), adding the authentication and authorization layers that turn a working spatial API into one you can safely expose to untrusted clients.
+Backend engineers and GIS platform architects shipping multi-tenant spatial services face a threat surface that ordinary CRUD APIs never expose: a single leaked geometry can reveal a competitor's asset locations, a forged scope claim can unlock a neighbouring tenant's parcels, and one unbounded `ST_DWithin` call can pin a database CPU for seconds. This reference covers the full security stack for a production FastAPI and PostGIS API — edge rate limiting, JWT authentication with spatial scope claims, database-enforced tenant isolation, and the audit and rotation practices that keep the system defensible under real traffic. It builds directly on the [core geospatial API architecture](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/), adding the authentication and authorization layers that turn a working spatial API into one you can safely expose to untrusted clients.
 
 ## Architectural Blueprint: layered defence for a spatial request
 
@@ -132,7 +131,7 @@ Security for a spatial API is defence in depth, not a single middleware. A reque
   </defs>
 </svg>
 
-The ordering is deliberate and non-negotiable. The edge layer is first because rejecting an abusive request costs nothing at the database; letting it reach PostGIS costs a connection slot and CPU. Authentication precedes authorization because you cannot scope a caller you have not identified. The spatial scope check runs inside the FastAPI dependency — before the query is built — so that an out-of-area request never generates SQL. Row-level security sits last and lowest because it is the only layer that survives an application bug: even a hand-written raw query with a wrong `WHERE` clause cannot cross a tenant boundary when the policy is `FORCE`d. Each of the three interior gates has a dedicated deep-dive: [JWT authentication for spatial scopes](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/), [row-level security for multi-tenant PostGIS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/), and [rate limiting geofence and tile endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/).
+The ordering is deliberate and non-negotiable. The edge layer is first because rejecting an abusive request costs nothing at the database; letting it reach PostGIS costs a connection slot and CPU. Authentication precedes authorization because you cannot scope a caller you have not identified. The spatial scope check runs inside the FastAPI dependency — before the query is built — so that an out-of-area request never generates SQL. Row-level security sits last and lowest because it is the only layer that survives an application bug: even a hand-written raw query with a wrong `WHERE` clause cannot cross a tenant boundary when the policy is `FORCE`d. Each of the three interior gates has a dedicated deep-dive: [JWT authentication for spatial scopes](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/), [row-level security for multi-tenant PostGIS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/), and [rate limiting geofence and tile endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/).
 
 ## Authentication and the token layer
 
@@ -184,7 +183,7 @@ Human users authenticate through an interactive flow, but most spatial API traff
 
 ### Encoding spatial scope into the token
 
-The authorization data — the geographic area the caller may touch — travels as a custom claim. Keep it compact: JWTs ride in an `Authorization` header on every request, and a claim carrying a 500-vertex polygon will bloat headers past proxy limits. Encode the scope as one of three compact forms — a set of H3 cell indexes, an axis-aligned bounding box, or a simplified geofence in WKT — and resolve the full geometry server-side. The trade-offs between these encodings are the subject of [encoding geofence boundaries in JWT scope claims](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/encoding-geofence-boundaries-in-jwt-scope-claims/).
+The authorization data — the geographic area the caller may touch — travels as a custom claim. Keep it compact: JWTs ride in an `Authorization` header on every request, and a claim carrying a 500-vertex polygon will bloat headers past proxy limits. Encode the scope as one of three compact forms — a set of H3 cell indexes, an axis-aligned bounding box, or a simplified geofence in WKT — and resolve the full geometry server-side. The trade-offs between these encodings are the subject of [encoding geofence boundaries in JWT scope claims](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/encoding-geofence-boundaries-in-jwt-scope-claims/).
 
 ```json
 {
@@ -244,11 +243,11 @@ def require_bbox_within_scope(
     return {"claims": claims, "bbox": (minx, miny, maxx, maxy)}
 ```
 
-The dependency approach mirrors the validation pattern used throughout the [core architecture](/core-geospatial-api-architecture-with-fastapi-postgis/): reject at the boundary, cheaply, before the database is involved. The full mechanics of parsing, caching, and testing these dependencies are covered in [validating spatial scope claims in FastAPI dependencies](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/validating-spatial-scope-claims-in-fastapi-dependencies/).
+The dependency approach mirrors the validation pattern used throughout the [core architecture](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/): reject at the boundary, cheaply, before the database is involved. The full mechanics of parsing, caching, and testing these dependencies are covered in [validating spatial scope claims in FastAPI dependencies](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/validating-spatial-scope-claims-in-fastapi-dependencies/).
 
 ### The fine-grained check inside PostGIS
 
-The coarse gate protects against gross out-of-scope requests, but a bounding box can straddle the scope boundary — partly inside, partly outside. The per-row check enforces the exact boundary with a spatial predicate in the query itself. Pass the resolved scope geometry as a parameter and AND an `ST_Within` (or `ST_Intersects`, depending on whether partial overlaps are permitted) against it. This is the same index-backed predicate pattern documented in [bounding-box spatial index queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/), applied here as an authorization control rather than a filter.
+The coarse gate protects against gross out-of-scope requests, but a bounding box can straddle the scope boundary — partly inside, partly outside. The per-row check enforces the exact boundary with a spatial predicate in the query itself. Pass the resolved scope geometry as a parameter and AND an `ST_Within` (or `ST_Intersects`, depending on whether partial overlaps are permitted) against it. This is the same index-backed predicate pattern documented in [bounding-box spatial index queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/), applied here as an authorization control rather than a filter.
 
 ```sql
 SELECT id, name, ST_AsGeoJSON(geom, 6)::json AS geometry
@@ -273,7 +272,7 @@ The encoding you choose for `geo_scope` is a contract between the identity provi
 | WKT geofence (simplified) | Medium (0.1–2 KB) | Arbitrary polygon | `ST_GeomFromText` + validity check | Admin boundaries, contract territories |
 | Scope reference id | Tiny (~30 B) | Unlimited (server lookup) | DB/Redis lookup per request | Complex or frequently changing geofences |
 
-For anything beyond a rectangle, prefer H3 cell sets: they are compact, they union without slivers, and equality checks are integer comparisons rather than geometry operations. Reserve raw WKT for genuinely irregular boundaries, and always simplify with `ST_SimplifyPreserveTopology` before minting the claim so a token never carries thousands of vertices. When a geofence is large or changes often, store it server-side and put only a stable `scope_ref` id in the token — the token stays small and revoking or editing the boundary does not require re-issuing every client's credentials. Note the parallel with output shaping: how much geometry precision you *return* is a serialisation concern covered by the [GeoJSON vs GeoParquet serialisation](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix, while how much geometry you *authorize* is the contract above.
+For anything beyond a rectangle, prefer H3 cell sets: they are compact, they union without slivers, and equality checks are integer comparisons rather than geometry operations. Reserve raw WKT for genuinely irregular boundaries, and always simplify with `ST_SimplifyPreserveTopology` before minting the claim so a token never carries thousands of vertices. When a geofence is large or changes often, store it server-side and put only a stable `scope_ref` id in the token — the token stays small and revoking or editing the boundary does not require re-issuing every client's credentials. Note the parallel with output shaping: how much geometry precision you *return* is a serialisation concern covered by the [GeoJSON vs GeoParquet serialisation](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix, while how much geometry you *authorize* is the contract above.
 
 ## Database security layer: PostGIS row-level security
 
@@ -311,7 +310,7 @@ async def with_tenant(session, claims: dict):
     )
 ```
 
-The pooling interaction is subtle and easy to get wrong; the safe patterns for asyncpg and PgBouncer are detailed in [setting tenant context in asyncpg connections](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/), which builds on the transaction-pooling model from [connection pooling and PgBouncer setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/). The end-to-end policy design, including per-tenant geometry partitioning, is covered in [enforcing tenant geometry isolation with PostGIS RLS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/enforcing-tenant-geometry-isolation-with-postgis-rls/).
+The pooling interaction is subtle and easy to get wrong; the safe patterns for asyncpg and PgBouncer are detailed in [setting tenant context in asyncpg connections](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/), which builds on the transaction-pooling model from [connection pooling and PgBouncer setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/). The end-to-end policy design, including per-tenant geometry partitioning, is covered in [enforcing tenant geometry isolation with PostGIS RLS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/enforcing-tenant-geometry-isolation-with-postgis-rls/).
 
 ## Performance and scalability
 
@@ -319,11 +318,11 @@ Security controls are only sustainable if they are cheap. The two that touch the
 
 ### RLS impact on GiST index scans
 
-An RLS policy is a predicate PostgreSQL ANDs onto every statement. When the predicate filters on an indexed `tenant_id`, the planner treats it as an ordinary conjunct: it can use a composite index or intersect a btree on `tenant_id` with the GiST index on `geom`. Measured on a 12-million-row `features` table on an 8-vCPU instance, a bounding-box query took a p95 of 9.4 ms without RLS and 10.1 ms with the `tenant_isolation` policy — roughly 7 % overhead. The cost only explodes when the policy expression is *not* index-backed: a policy that calls a volatile function, or one that runs an `ST_` predicate against a scope geometry per row, forces evaluation on every candidate and can double query time. Keep the policy expression a simple indexed equality, push spatial scope enforcement into the query where the `&&` operator pre-filters, and verify with `EXPLAIN (ANALYZE, BUFFERS)` that the tenant filter appears as an `Index Cond`, not a post-scan `Filter`. This is the same query-plan discipline as [reading EXPLAIN ANALYZE for spatial query optimisation](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/).
+An RLS policy is a predicate PostgreSQL ANDs onto every statement. When the predicate filters on an indexed `tenant_id`, the planner treats it as an ordinary conjunct: it can use a composite index or intersect a btree on `tenant_id` with the GiST index on `geom`. Measured on a 12-million-row `features` table on an 8-vCPU instance, a bounding-box query took a p95 of 9.4 ms without RLS and 10.1 ms with the `tenant_isolation` policy — roughly 7 % overhead. The cost only explodes when the policy expression is *not* index-backed: a policy that calls a volatile function, or one that runs an `ST_` predicate against a scope geometry per row, forces evaluation on every candidate and can double query time. Keep the policy expression a simple indexed equality, push spatial scope enforcement into the query where the `&&` operator pre-filters, and verify with `EXPLAIN (ANALYZE, BUFFERS)` that the tenant filter appears as an `Index Cond`, not a post-scan `Filter`. This is the same query-plan discipline as [reading EXPLAIN ANALYZE for spatial query optimisation](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/).
 
 ### Rate-limit lookup overhead
 
-A Redis sliding-window counter adds one network round-trip — typically 0.2–0.5 ms on a co-located instance — to each request. That is negligible next to a spatial query, and it is the cost that *prevents* a far larger cost: a single abusive `ST_DWithin` with a continental radius can hold a backend for seconds. Run the limiter as a Lua script so the read-decide-write is atomic under concurrency; the implementation and its benchmarks live in [Redis sliding-window rate limits for spatial endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/).
+A Redis sliding-window counter adds one network round-trip — typically 0.2–0.5 ms on a co-located instance — to each request. That is negligible next to a spatial query, and it is the cost that *prevents* a far larger cost: a single abusive `ST_DWithin` with a continental radius can hold a backend for seconds. Run the limiter as a Lua script so the read-decide-write is atomic under concurrency; the implementation and its benchmarks live in [Redis sliding-window rate limits for spatial endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/).
 
 ## Abuse protection and rate limiting
 
@@ -344,7 +343,7 @@ def estimate_cost(bbox: tuple[float, float, float, float], zoom: int | None) -> 
     return min(base, 500)                     # clamp so one request cannot drain the bucket
 ```
 
-Apply strict budgets to geofence and tile routes and looser ones to metadata endpoints, and separate them onto different Redis key namespaces so a burst of tile traffic cannot starve legitimate feature reads. The full policy, including per-endpoint tiers and burst allowances, is in [rate limiting geofence and tile endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/) and the deeper cost model in [cost-based throttling for expensive PostGIS queries](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/).
+Apply strict budgets to geofence and tile routes and looser ones to metadata endpoints, and separate them onto different Redis key namespaces so a burst of tile traffic cannot starve legitimate feature reads. The full policy, including per-endpoint tiers and burst allowances, is in [rate limiting geofence and tile endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/) and the deeper cost model in [cost-based throttling for expensive PostGIS queries](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/).
 
 ### The database backstop: statement_timeout
 
@@ -355,7 +354,7 @@ Rate limiting caps request frequency; it does not cap the runtime of a request t
 ALTER ROLE api_runtime SET statement_timeout = '8s';
 ```
 
-Combine this with the two-pool separation from the [core architecture](/core-geospatial-api-architecture-with-fastapi-postgis/) — a lightweight pool for point and bounding-box reads, a small heavy pool for aggregations — so one slow query cannot exhaust the connections serving fast traffic. A canceled statement returns `57014 query_canceled`; catch it and return `503` with a `Retry-After` header rather than a raw `500`.
+Combine this with the two-pool separation from the [core architecture](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/) — a lightweight pool for point and bounding-box reads, a small heavy pool for aggregations — so one slow query cannot exhaust the connections serving fast traffic. A canceled statement returns `57014 query_canceled`; catch it and return `503` with a `Retry-After` header rather than a raw `500`.
 
 ## Production readiness: secrets, rotation, and audit
 
@@ -363,7 +362,7 @@ The controls above are only as trustworthy as the keys that sign the tokens and 
 
 ### Secrets handling and key rotation
 
-Never bake signing keys, database credentials, or Redis passwords into images or environment files committed to source. Load them from a secrets manager (AWS Secrets Manager, Vault, or the platform equivalent) at process start, and give the API only the *public* key for JWT verification. Rotate signing keys on a schedule using key IDs: the identity provider signs with a current key and stamps its `kid` in the JWT header; the API keeps a small map of `kid → public key` and looks up the right key per token. Publishing the map as a JWKS document lets you introduce a new key, let both keys validate during an overlap window, then retire the old one — all without downtime and without a flag-day where every client must re-authenticate at once. Version and deprecate these auth changes with the same discipline as the [API versioning for GIS endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) approach, so a key rollover never silently breaks a partner integration.
+Never bake signing keys, database credentials, or Redis passwords into images or environment files committed to source. Load them from a secrets manager (AWS Secrets Manager, Vault, or the platform equivalent) at process start, and give the API only the *public* key for JWT verification. Rotate signing keys on a schedule using key IDs: the identity provider signs with a current key and stamps its `kid` in the JWT header; the API keeps a small map of `kid → public key` and looks up the right key per token. Publishing the map as a JWKS document lets you introduce a new key, let both keys validate during an overlap window, then retire the old one — all without downtime and without a flag-day where every client must re-authenticate at once. Version and deprecate these auth changes with the same discipline as the [API versioning for GIS endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) approach, so a key rollover never silently breaks a partner integration.
 
 ### Auditing spatial access
 
@@ -420,8 +419,8 @@ Always pass an explicit allow-list of algorithms to the decode call, for example
 
 ## Related
 
-- [JWT Authentication for Spatial Scopes](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) — verifying tokens safely and encoding geographic authority into scope claims
-- [Row-Level Security for Multi-Tenant PostGIS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/) — FORCE RLS, tenant context, and geometry isolation at the database row
-- [Rate Limiting Geofence & Tile Endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/) — sliding-window and cost-based throttling for expensive spatial routes
-- [Core Geospatial API Architecture](/core-geospatial-api-architecture-with-fastapi-postgis/) — the FastAPI + PostGIS foundation these security layers protect
-- [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — roll out auth and key-rotation changes without breaking existing clients
+- [JWT Authentication for Spatial Scopes](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) — verifying tokens safely and encoding geographic authority into scope claims
+- [Row-Level Security for Multi-Tenant PostGIS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/) — FORCE RLS, tenant context, and geometry isolation at the database row
+- [Rate Limiting Geofence & Tile Endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/) — sliding-window and cost-based throttling for expensive spatial routes
+- [Core Geospatial API Architecture](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/) — the FastAPI + PostGIS foundation these security layers protect
+- [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — roll out auth and key-rotation changes without breaking existing clients

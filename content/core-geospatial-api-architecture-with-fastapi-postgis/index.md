@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Core Geospatial API Architecture with FastAPI & PostGIS"
 description: "A complete architectural reference for backend engineers building production spatial APIs: PostGIS configuration, async FastAPI patterns, OGC-compliant serialisation, cursor-based pagination, and deployment hardening."
 slug: core-geospatial-api-architecture-with-fastapi-postgis
-type: pillar
 breadcrumb: Core Geospatial API Architecture
 datePublished: "2025-01-15"
 dateModified: "2026-06-23"
@@ -20,14 +19,14 @@ dateModified: "2026-06-23"
       "datePublished": "2025-01-15",
       "dateModified": "2026-06-23",
       "author": { "@type": "Organization", "name": "geospatial-api.com" },
-      "publisher": { "@type": "Organization", "name": "geospatial-api.com", "url": "https://geospatial-api.com" },
-      "mainEntityOfPage": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/"
+      "publisher": { "@type": "Organization", "name": "geospatial-api.com", "url": "https://www.geospatial-api.com" },
+      "mainEntityOfPage": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/"
     },
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Core Geospatial API Architecture", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/" }
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Core Geospatial API Architecture", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/" }
       ]
     },
     {
@@ -108,7 +107,7 @@ A production spatial API divides cleanly into three tiers. Blurring the boundari
   </defs>
 </svg>
 
-FastAPI owns Tiers 1 and 3 because of its async runtime, Pydantic v2 validation, and OpenAPI documentation generation. PostGIS owns Tier 2 because C-level spatial algorithms cannot be meaningfully replicated in application code. The architecture succeeds when these tiers communicate through well-defined contracts rather than leaking concerns across boundaries — the exact principle behind [spatial resource modelling patterns](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/), which keeps geometries, attributes, and temporal metadata decoupled from routing logic.
+FastAPI owns Tiers 1 and 3 because of its async runtime, Pydantic v2 validation, and OpenAPI documentation generation. PostGIS owns Tier 2 because C-level spatial algorithms cannot be meaningfully replicated in application code. The architecture succeeds when these tiers communicate through well-defined contracts rather than leaking concerns across boundaries — the exact principle behind [spatial resource modelling patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/), which keeps geometries, attributes, and temporal metadata decoupled from routing logic.
 
 ## Database Layer: PostGIS as the Spatial Engine
 
@@ -217,7 +216,7 @@ async def create_feature(
     ...
 ```
 
-This pattern produces structured `422 Unprocessable Entity` responses for invalid geometries before a single database round-trip. For the full Pydantic v2 validation approach — including WKT vs GeoJSON handling and coordinate-bound enforcement — see [strict Pydantic validation for geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/).
+This pattern produces structured `422 Unprocessable Entity` responses for invalid geometries before a single database round-trip. For the full Pydantic v2 validation approach — including WKT vs GeoJSON handling and coordinate-bound enforcement — see [strict Pydantic validation for geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/).
 
 ### Async Execution and Avoiding Event-Loop Blocking
 
@@ -266,7 +265,7 @@ How you serialise spatial data determines bandwidth consumption, client renderin
 | GeoParquet | 0.1–0.2× | Very fast | No | Column-selective | Analytics pipelines, bulk exports |
 | WKB (raw) | 0.2–0.3× | Very fast | No | Yes | Database-to-database transfer |
 
-Expose format negotiation via the `Accept` header or a `?format=` query parameter. Use the [GeoJSON vs GeoParquet serialisation](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix to choose the right approach for each endpoint family, and reserve `StreamingResponse` for exports that may return millions of features.
+Expose format negotiation via the `Accept` header or a `?format=` query parameter. Use the [GeoJSON vs GeoParquet serialisation](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix to choose the right approach for each endpoint family, and reserve `StreamingResponse` for exports that may return millions of features.
 
 ```python
 from fastapi.responses import StreamingResponse
@@ -342,7 +341,7 @@ Spatial aggregations (`ST_Union`, `ST_ConvexHull`) should never share a connecti
 
 Offset pagination (`LIMIT n OFFSET m`) is unsuitable for spatial datasets: it triggers a full sequential scan to reach offset `m`, produces duplicates during concurrent inserts, and returns different rows as the dataset shifts. Replace it with keyset pagination using a stable spatial ordering.
 
-Three strategies are covered in depth in [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/):
+Three strategies are covered in depth in [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/):
 
 - **Z-order (Morton) cursors**: Map `(x, y)` coordinates to a 1D integer key. Range scans on the Z-order index are fast and deterministic.
 - **Tile-based pagination**: Align pages with map tile boundaries (`/features?tile=z/x/y`). Each response corresponds to exactly one tile, eliminating overlap.
@@ -372,7 +371,7 @@ async def paginate_features(
     return {"features": [dict(r) for r in rows], "next_cursor": next_cursor}
 ```
 
-For the full implementation including Z-order cursors and tile-aligned paging, see [implementing cursor-based pagination for spatial queries](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/).
+For the full implementation including Z-order cursors and tile-aligned paging, see [implementing cursor-based pagination for spatial queries](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/).
 
 ### API Versioning for GIS Endpoints
 
@@ -391,7 +390,7 @@ async def features_v1(...): ...   # GeoJSON with EPSG:4326
 async def features_v2(...): ...   # GeoJSON + GeoParquet negotiation, SRID-aware
 ```
 
-When migrating spatial schemas, use PostgreSQL views to keep the v1 endpoint pointing at a stable projection of the new table. Deprecation guidance for each version lives in [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/).
+When migrating spatial schemas, use PostgreSQL views to keep the v1 endpoint pointing at a stable projection of the new table. Deprecation guidance for each version lives in [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/).
 
 ### Security: Rate Limiting and Row-Level Security
 
@@ -461,10 +460,10 @@ The following mistakes appear repeatedly in production spatial APIs. Each has ca
 
 ## Related
 
-- [Spatial Resource Modelling Patterns](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) — how to structure FastAPI routers and PostGIS tables around spatial domain entities
-- [GeoJSON vs GeoParquet Serialisation](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — format decision matrix and streaming strategy for spatial responses
-- [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — keyset, Z-order, and tile-based pagination for geometry endpoints
-- [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — URL versioning, view-backed migrations, and deprecation patterns
-- [Advanced Spatial Endpoint Implementation & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/) — strict Pydantic v2 validators, async bulk uploads, and bounding-box query patterns
-- [Securing Geospatial APIs](/securing-geospatial-apis-authentication-authorization/) — JWT spatial scope claims, PostGIS row-level security, and rate limiting for spatial endpoints
-- [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/) — containerizing PostGIS and FastAPI, CI/CD with spatial integration tests, and edge tile delivery
+- [Spatial Resource Modelling Patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) — how to structure FastAPI routers and PostGIS tables around spatial domain entities
+- [GeoJSON vs GeoParquet Serialisation](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — format decision matrix and streaming strategy for spatial responses
+- [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — keyset, Z-order, and tile-based pagination for geometry endpoints
+- [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — URL versioning, view-backed migrations, and deprecation patterns
+- [Advanced Spatial Endpoint Implementation & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/) — strict Pydantic v2 validators, async bulk uploads, and bounding-box query patterns
+- [Securing Geospatial APIs](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/) — JWT spatial scope claims, PostGIS row-level security, and rate limiting for spatial endpoints
+- [Deploying & Operating Geospatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/) — containerizing PostGIS and FastAPI, CI/CD with spatial integration tests, and edge tile delivery

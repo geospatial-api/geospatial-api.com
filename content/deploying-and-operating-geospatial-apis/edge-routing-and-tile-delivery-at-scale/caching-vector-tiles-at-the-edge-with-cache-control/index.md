@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Caching Vector Tiles at the Edge with Cache-Control"
 description: "The exact Cache-Control strategy for vector tiles: immutable versioned tiles vs mutable tiles, s-maxage, stale-while-revalidate, ETag, and purge-on-publish via a version segment in the tile path — with runnable FastAPI header code."
 slug: "caching-vector-tiles-at-the-edge-with-cache-control"
-type: "long_tail"
 breadcrumb:
   - label: "Deploying & Operating Geospatial APIs"
     url: "/deploying-and-operating-geospatial-apis/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Deploying & Operating Geospatial APIs", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/"},
-        {"@type": "ListItem", "position": 2, "name": "Edge Routing & Tile Delivery at Scale", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/"},
-        {"@type": "ListItem", "position": 3, "name": "Caching Vector Tiles at the Edge with Cache-Control", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/caching-vector-tiles-at-the-edge-with-cache-control/"}
+        {"@type": "ListItem", "position": 1, "name": "Deploying & Operating Geospatial APIs", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/"},
+        {"@type": "ListItem", "position": 2, "name": "Edge Routing & Tile Delivery at Scale", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/"},
+        {"@type": "ListItem", "position": 3, "name": "Caching Vector Tiles at the Edge with Cache-Control", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/caching-vector-tiles-at-the-edge-with-cache-control/"}
       ]
     },
     {
@@ -56,7 +55,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Edge Routing & Tile Delivery at Scale](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/)
+← Back to [Edge Routing & Tile Delivery at Scale](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/)
 
 # Caching vector tiles at the edge with Cache-Control
 
@@ -66,7 +65,7 @@ Get the `Cache-Control` header exactly right so immutable versioned tiles cache 
 
 The single header that decides your edge hit ratio is `Cache-Control`. Send it wrong and either the edge over-caches stale geometry for a year, or it revalidates on every request and your `ST_AsMVT` origin melts. There are exactly two cases, and they need different headers: a **versioned tile** whose URL contains a data-version segment (`/tiles/v42/...`) is immutable — its bytes can never change under that URL — and a **mutable tile** at a stable URL (`/tiles/roads/...`) that must reflect data updates within some freshness window.
 
-Use immutable caching whenever you can put a version in the path, which the delivery architecture in [Edge Routing & Tile Delivery at Scale](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/) is built around — it gives the highest hit ratio and the cleanest invalidation. Use mutable caching with `stale-while-revalidate` only when you cannot version the URL (for example, a third-party consumer hardcoded a stable tile template). This page is the header-level companion to the [Cloudflare Workers edge router](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/cloudflare-workers-edge-routing-for-vector-tile-endpoints/), which attaches these exact directives to tiles it stores, and to the origin query in [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/).
+Use immutable caching whenever you can put a version in the path, which the delivery architecture in [Edge Routing & Tile Delivery at Scale](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/) is built around — it gives the highest hit ratio and the cleanest invalidation. Use mutable caching with `stale-while-revalidate` only when you cannot version the URL (for example, a third-party consumer hardcoded a stable tile template). This page is the header-level companion to the [Cloudflare Workers edge router](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/cloudflare-workers-edge-routing-for-vector-tile-endpoints/), which attaches these exact directives to tiles it stores, and to the origin query in [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/).
 
 ---
 
@@ -262,9 +261,9 @@ A mutable tile whose `age` climbs past `s-maxage` while still returning `200` in
 
 ## Related
 
-- [Edge Routing & Tile Delivery at Scale](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/) — the versioned tile contract and purge-on-publish strategy these headers implement
-- [Cloudflare Workers Edge Routing for Vector Tile Endpoints](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/cloudflare-workers-edge-routing-for-vector-tile-endpoints/) — a Worker that attaches these directives to tiles it stores in the Cache API
-- [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — the `ST_AsMVT` origin and CDN caching layers that consume these headers
+- [Edge Routing & Tile Delivery at Scale](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/) — the versioned tile contract and purge-on-publish strategy these headers implement
+- [Cloudflare Workers Edge Routing for Vector Tile Endpoints](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/cloudflare-workers-edge-routing-for-vector-tile-endpoints/) — a Worker that attaches these directives to tiles it stores in the Cache API
+- [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — the `ST_AsMVT` origin and CDN caching layers that consume these headers
 
-← Back to [Edge Routing & Tile Delivery at Scale](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/)
+← Back to [Edge Routing & Tile Delivery at Scale](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/)
 </content>

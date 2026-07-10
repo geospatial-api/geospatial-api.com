@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Edge Routing & Tile Delivery at Scale"
 description: "Put a CDN or edge-compute tier in front of a FastAPI ST_AsMVT origin to serve vector tiles at scale: the /tiles/{z}/{x}/{y}.mvt contract, versioned cache keys, invalidation on data change, and signed tile access."
 slug: "edge-routing-and-tile-delivery-at-scale"
-type: "cluster"
 breadcrumb:
   - label: "Deploying & Operating Geospatial APIs"
     url: "/deploying-and-operating-geospatial-apis/"
@@ -24,8 +23,8 @@ dateModified: "2026-07-10"
       "datePublished": "2026-01-20",
       "dateModified": "2026-07-10",
       "author": {"@type": "Organization", "name": "geospatial-api.com"},
-      "publisher": {"@type": "Organization", "name": "geospatial-api.com", "url": "https://geospatial-api.com"},
-      "mainEntityOfPage": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/"
+      "publisher": {"@type": "Organization", "name": "geospatial-api.com", "url": "https://www.geospatial-api.com"},
+      "mainEntityOfPage": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/"
     },
     {
       "@type": "Article",
@@ -36,9 +35,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/"},
-        {"@type": "ListItem", "position": 2, "name": "Deploying & Operating Geospatial APIs", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/"},
-        {"@type": "ListItem", "position": 3, "name": "Edge Routing & Tile Delivery at Scale", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/"}
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Deploying & Operating Geospatial APIs", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/"},
+        {"@type": "ListItem", "position": 3, "name": "Edge Routing & Tile Delivery at Scale", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/"}
       ]
     },
     {
@@ -85,13 +84,13 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/)
+← Back to [Deploying & Operating Geospatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/)
 
 # Edge routing and tile delivery at scale
 
 A vector-tile endpoint that works flawlessly for one developer on localhost becomes a database-melting liability the moment a map goes viral: a single MapLibre client panning across a city fires dozens of `/tiles/{z}/{x}/{y}.mvt` requests per second, and every uncached one runs a fresh `ST_AsMVT` aggregation on PostGIS. The fix is not a bigger database — it is an edge tier that answers the overwhelming majority of tile requests before they ever reach your FastAPI origin. This guide covers the tile contract that makes edge caching correct, how to build cache keys that invalidate cleanly, the three architectures for putting a CDN or edge runtime in front of the origin, and how to authorize tile access without destroying the cache hit ratio.
 
-The tile-generation mechanics — the `ST_AsMVT` and `ST_AsMVTGeom` query, the Web Mercator envelope math, and the Redis hot-tile layer — are covered in depth in [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/). This page assumes that origin exists and focuses on the operational layer above it: routing, keying, versioning, and offload. For where this fits in the wider operational stack, see the [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/) overview.
+The tile-generation mechanics — the `ST_AsMVT` and `ST_AsMVTGeom` query, the Web Mercator envelope math, and the Redis hot-tile layer — are covered in depth in [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/). This page assumes that origin exists and focuses on the operational layer above it: routing, keying, versioning, and offload. For where this fits in the wider operational stack, see the [Deploying & Operating Geospatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/) overview.
 
 ---
 
@@ -132,7 +131,7 @@ Install the origin dependencies:
 pip install "fastapi>=0.100" "uvicorn>=0.27" "asyncpg>=0.29"
 ```
 
-Your geometry column needs a GiST spatial index or every cache miss becomes a full table scan. See [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) for confirming the index engages with `EXPLAIN ANALYZE`, and [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) for keeping the origin pool from exhausting under the miss traffic that survives the edge.
+Your geometry column needs a GiST spatial index or every cache miss becomes a full table scan. See [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) for confirming the index engages with `EXPLAIN ANALYZE`, and [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) for keeping the origin pool from exhausting under the miss traffic that survives the edge.
 
 ---
 
@@ -202,7 +201,7 @@ Three architectures put a caching tier between the client and PostGIS. They diff
 | **Edge compute** (Workers / Lambda@Edge) | The edge runtime | Only cold-region misses hit FastAPI | Version segment + KV flag | 20–200 ms cold, ~1 ms warm | Coordinate validation, auth, custom keys at the edge |
 | **Pre-rendered tile store** (R2 / S3 + CDN) | A batch job, ahead of time | Zero at request time | Rewrite objects under new version prefix | 5–15 ms (object fetch) | Slowly-changing basemaps, huge read:write ratios |
 
-**Origin-pull CDN** is the default and the right starting point: the CDN forwards misses to FastAPI unchanged and caches whatever the origin's `Cache-Control` header permits. **Edge compute** moves coordinate validation, signed-URL checks, and cache-key normalisation into the PoP so invalid or unauthorised requests never consume an origin round-trip — the [Cloudflare Workers edge routing](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/cloudflare-workers-edge-routing-for-vector-tile-endpoints/) walkthrough builds exactly this. **Pre-rendered tile stores** eliminate the database from the hot path entirely by baking every tile up to some zoom into object storage; they trade freshness and storage cost for the lowest possible miss latency, and are the natural extension of the batch generation described in [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/).
+**Origin-pull CDN** is the default and the right starting point: the CDN forwards misses to FastAPI unchanged and caches whatever the origin's `Cache-Control` header permits. **Edge compute** moves coordinate validation, signed-URL checks, and cache-key normalisation into the PoP so invalid or unauthorised requests never consume an origin round-trip — the [Cloudflare Workers edge routing](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/cloudflare-workers-edge-routing-for-vector-tile-endpoints/) walkthrough builds exactly this. **Pre-rendered tile stores** eliminate the database from the hot path entirely by baking every tile up to some zoom into object storage; they trade freshness and storage cost for the lowest possible miss latency, and are the natural extension of the batch generation described in [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/).
 
 Most production systems combine them: an origin-pull CDN for the broad request volume, a pre-rendered store for the low-zoom basemap tiles that everyone requests, and edge compute for authorization.
 
@@ -218,11 +217,11 @@ The cache key is the contract. For an origin-pull CDN the key is the path, so `v
 key = (version, layer, z, x, y)
 ```
 
-Anything the response body depends on must appear in the key. If tiles differ by tenant, the tenant identity must be in the key too — usually derived from the signed token, not a raw header, to prevent [cross-tenant cache bleed](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/).
+Anything the response body depends on must appear in the key. If tiles differ by tenant, the tenant identity must be in the key too — usually derived from the signed token, not a raw header, to prevent [cross-tenant cache bleed](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/).
 
 ### Step 2: Set `Cache-Control` correctly at the origin
 
-Because the version is in the path, a versioned tile is immutable — its bytes can never change under that URL. That unlocks the strongest possible caching directive. The exact directive strategy, including `s-maxage`, `stale-while-revalidate`, and `immutable`, is the entire subject of [Caching Vector Tiles at the Edge with Cache-Control](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/caching-vector-tiles-at-the-edge-with-cache-control/). In short:
+Because the version is in the path, a versioned tile is immutable — its bytes can never change under that URL. That unlocks the strongest possible caching directive. The exact directive strategy, including `s-maxage`, `stale-while-revalidate`, and `immutable`, is the entire subject of [Caching Vector Tiles at the Edge with Cache-Control](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/caching-vector-tiles-at-the-edge-with-cache-control/). In short:
 
 ```python
 # Immutable versioned tile: browser and edge may hold it effectively forever
@@ -248,7 +247,7 @@ When data changes, increment the version token (a table row, a Redis counter, or
 
 ## Production Code Example
 
-A complete FastAPI origin route for the versioned MVT contract. It validates coordinates, verifies a signed token, runs `ST_AsMVT`, and sets immutable cache headers. This is the origin that both the [Workers edge router](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/cloudflare-workers-edge-routing-for-vector-tile-endpoints/) and a plain origin-pull CDN sit in front of.
+A complete FastAPI origin route for the versioned MVT contract. It validates coordinates, verifies a signed token, runs `ST_AsMVT`, and sets immutable cache headers. This is the origin that both the [Workers edge router](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/cloudflare-workers-edge-routing-for-vector-tile-endpoints/) and a plain origin-pull CDN sit in front of.
 
 ```python
 # app/routes/tiles.py
@@ -401,7 +400,7 @@ assert "roads" in decoded            # layer present in the tile
 
 **Origin offload compounds with pre-rendering.** Baking low-zoom tiles (z 0–8, only ~87,000 tiles worldwide) into an object store removes the most-requested, most-expensive-to-aggregate tiles from the database entirely. The origin then only computes high-zoom, low-traffic tiles on demand.
 
-**Miss latency is dominated by `ST_AsMVT`.** A cold tile is 20–200 ms depending on feature density; an edge hit is 5–15 ms including network. This is why keeping the origin pool healthy still matters — the surviving miss traffic must be served fast so the edge repopulates quickly after a version bump. Route the origin through PgBouncer as described in [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/), and put a [Redis hot-tile cache](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) between FastAPI and PostGIS to absorb the thundering-herd of misses that follows every publish.
+**Miss latency is dominated by `ST_AsMVT`.** A cold tile is 20–200 ms depending on feature density; an edge hit is 5–15 ms including network. This is why keeping the origin pool healthy still matters — the surviving miss traffic must be served fast so the edge repopulates quickly after a version bump. Route the origin through PgBouncer as described in [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/), and put a [Redis hot-tile cache](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) between FastAPI and PostGIS to absorb the thundering-herd of misses that follows every publish.
 
 **Compression happens once.** MVTs are already compact protobuf, but gzip still shaves 20–40%. Let the edge compress and cache the compressed variant — do not compress on the origin per request, or you burn CPU on every miss for no additional cache benefit.
 
@@ -425,12 +424,12 @@ Reject out-of-range coordinates before any database work: enforce `0 <= z <= max
 
 ## Related
 
-- [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — the `ST_AsMVT` origin query, Web Mercator math, and Redis hot-tile layer this page sits on top of
-- [Cloudflare Workers Edge Routing for Vector Tile Endpoints](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/cloudflare-workers-edge-routing-for-vector-tile-endpoints/) — a Worker that validates coordinates, checks the Cache API, and fetches from the origin on a miss
-- [Caching Vector Tiles at the Edge with Cache-Control](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/caching-vector-tiles-at-the-edge-with-cache-control/) — the exact directive strategy for immutable versioned vs mutable tiles
-- [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — keep the origin pool healthy under the miss traffic that survives the edge
-- [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — absorb the thundering-herd of misses that follows every version bump
+- [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — the `ST_AsMVT` origin query, Web Mercator math, and Redis hot-tile layer this page sits on top of
+- [Cloudflare Workers Edge Routing for Vector Tile Endpoints](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/cloudflare-workers-edge-routing-for-vector-tile-endpoints/) — a Worker that validates coordinates, checks the Cache API, and fetches from the origin on a miss
+- [Caching Vector Tiles at the Edge with Cache-Control](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/caching-vector-tiles-at-the-edge-with-cache-control/) — the exact directive strategy for immutable versioned vs mutable tiles
+- [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — keep the origin pool healthy under the miss traffic that survives the edge
+- [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — absorb the thundering-herd of misses that follows every version bump
 
-← Back to [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/)
+← Back to [Deploying & Operating Geospatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/)
 </content>
 </invoke>

@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Generating Typed Clients from Spatial OpenAPI Schemas"
 description: "Produce typed Python and TypeScript clients from a spatial openapi.json with openapi-python-client and openapi-generator-cli, and understand how GeoJSON discriminated unions map to client types for map frontends."
 slug: "generating-typed-clients-from-spatial-openapi-schemas"
-type: "long_tail"
 breadcrumb:
   - label: "Advanced Spatial Endpoints & Data Contracts"
     url: "/advanced-spatial-endpoint-implementation-data-contracts/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
-        { "@type": "ListItem", "position": 2, "name": "OpenAPI Schema Generation for Spatial Types", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/" },
-        { "@type": "ListItem", "position": 3, "name": "Generating Typed Clients from Spatial OpenAPI Schemas", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/generating-typed-clients-from-spatial-openapi-schemas/" }
+        { "@type": "ListItem", "position": 1, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
+        { "@type": "ListItem", "position": 2, "name": "OpenAPI Schema Generation for Spatial Types", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/" },
+        { "@type": "ListItem", "position": 3, "name": "Generating Typed Clients from Spatial OpenAPI Schemas", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/generating-typed-clients-from-spatial-openapi-schemas/" }
       ]
     },
     {
@@ -56,7 +55,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [OpenAPI Schema Generation for Spatial Types](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/)
+← Back to [OpenAPI Schema Generation for Spatial Types](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/)
 
 # Generating typed clients from spatial OpenAPI schemas
 
@@ -66,7 +65,7 @@ Compile a spatial `openapi.json` into typed Python and TypeScript SDKs, and map 
 
 Once the API emits an accurate schema — typed geometry models, a `oneOf` with a discriminator, valid examples — the payoff is that clients no longer have to be written by hand. A generator reads `openapi.json` and produces request/response models, method stubs, and (crucially for geospatial work) a tagged union for `geometry` that a TypeScript map frontend can `switch` on. Generate clients when more than one team or language consumes the API, when you want compile-time safety against schema drift, or when a map UI needs geometry types it can narrow rather than probe at runtime.
 
-This is the downstream end of the pipeline in [OpenAPI schema generation for spatial types](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/): the quality of the generated client is capped by the quality of the schema, so a clean discriminated union upstream is what makes a clean sum type downstream. Prefer generated clients over hand-written HTTP calls for anything beyond a throwaway script; the main cost is a regeneration step in CI whenever the schema changes.
+This is the downstream end of the pipeline in [OpenAPI schema generation for spatial types](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/): the quality of the generated client is capped by the quality of the schema, so a clean discriminated union upstream is what makes a clean sum type downstream. Prefer generated clients over hand-written HTTP calls for anything beyond a throwaway script; the main cost is a regeneration step in CI whenever the schema changes.
 
 The two generators covered here occupy different niches. `openapi-python-client` is Python-native, produces `attrs`-based models and an `httpx` transport, and tends to render `oneOf` unions faithfully as `typing.Union` with per-variant classes — a good fit when the consumer is another Python service. `openapi-generator-cli` is the polyglot workhorse (dozens of target languages) and is usually how a TypeScript map frontend gets its client; its `typescript-fetch` generator maps a discriminated `oneOf` onto a TypeScript tagged union that narrows on the discriminator. Pick per consumer; there is no need to standardise on one generator across languages.
 
@@ -226,9 +225,9 @@ Regeneration is meant to be cheap and frequent, so keep both the export command 
 
 ## Gotchas & failure modes
 
-- **`oneOf` without a discriminator generates an untagged union.** If the schema has `oneOf` but no `discriminator.mapping`, `openapi-generator-cli` emits `Point | Polygon` with no tag, so `switch (geom.type)` does not narrow and you are back to runtime casts. Fix upstream: add `Field(discriminator="type")` as shown in [OpenAPI schema generation for spatial types](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/).
+- **`oneOf` without a discriminator generates an untagged union.** If the schema has `oneOf` but no `discriminator.mapping`, `openapi-generator-cli` emits `Point | Polygon` with no tag, so `switch (geom.type)` does not narrow and you are back to runtime casts. Fix upstream: add `Field(discriminator="type")` as shown in [OpenAPI schema generation for spatial types](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/).
 - **`additionalProperties: true` on geometry weakens the type.** If a geometry model allows extra properties, some generators widen it to `[key: string]: any`, defeating strictness. Set `model_config = {"extra": "forbid"}` on the geometry models so the schema emits `additionalProperties: false`.
-- **Schema drift silently breaks the client.** Regenerating against a changed schema can rename or drop model classes; consumers fail to compile with no warning until then. Regenerate in CI and fail the build on a non-empty `git diff` of the generated directory so drift is caught at the source, in step with [versioning geospatial APIs without breaking clients](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/versioning-geospatial-apis-without-breaking-clients/).
+- **Schema drift silently breaks the client.** Regenerating against a changed schema can rename or drop model classes; consumers fail to compile with no warning until then. Regenerate in CI and fail the build on a non-empty `git diff` of the generated directory so drift is caught at the source, in step with [versioning geospatial APIs without breaking clients](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/versioning-geospatial-apis-without-breaking-clients/).
 - **Unbounded coordinate arrays generate `number[]` with no shape.** If the schema did not constrain `coordinates` length, the client types a position as `number[]`, so `const [lon, lat]` gives no safety. Bound the position array upstream so `minItems`/`maxItems` reach the generator.
 - **JRE missing for `openapi-generator-cli`.** The CLI is a Java tool; `npx @openapitools/openapi-generator-cli` fails with `Unable to locate a Java Runtime` if no JDK/JRE is on `PATH`. Install a JRE 11+ or use the Docker image `openapitools/openapi-generator-cli`.
 - **FastAPI operationIds produce ugly method names.** Names like `create_feature_features_post` come from the default operationId. Set explicit `operation_id=` on routes (or a custom `generate_unique_id_function`) before exporting the schema for cleaner generated method names.
@@ -256,8 +255,8 @@ A successful `mypy`/`tsc` pass proves the discriminated union survived the schem
 
 ## Related
 
-- [OpenAPI Schema Generation for Spatial Types](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/) — produce the discriminated-union schema these generators consume
-- [Documenting GeoJSON Request Bodies in OpenAPI](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/documenting-geojson-request-bodies-in-openapi/) — the request examples that ship into the generated SDK
-- [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — manage schema drift so regenerated clients do not break consumers
+- [OpenAPI Schema Generation for Spatial Types](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/) — produce the discriminated-union schema these generators consume
+- [Documenting GeoJSON Request Bodies in OpenAPI](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/documenting-geojson-request-bodies-in-openapi/) — the request examples that ship into the generated SDK
+- [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — manage schema drift so regenerated clients do not break consumers
 
-← Back to [OpenAPI Schema Generation for Spatial Types](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/)
+← Back to [OpenAPI Schema Generation for Spatial Types](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/)

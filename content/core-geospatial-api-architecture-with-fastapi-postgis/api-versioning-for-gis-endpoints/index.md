@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "API Versioning for GIS Endpoints"
 description: "Version GIS endpoints in FastAPI without breaking clients. Compare URL path, header, and query-param strategies, then implement version-specific Pydantic schemas and a shared PostGIS service layer."
 slug: api-versioning-for-gis-endpoints
-type: cluster
 breadcrumb:
   - label: "Core Geospatial API Architecture"
     url: "/core-geospatial-api-architecture-with-fastapi-postgis/"
@@ -33,13 +32,13 @@ dateModified: "2026-06-23"
           "@type": "ListItem",
           "position": 1,
           "name": "Core Geospatial API Architecture",
-          "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/"
+          "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/"
         },
         {
           "@type": "ListItem",
           "position": 2,
           "name": "API Versioning for GIS Endpoints",
-          "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/"
+          "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/"
         }
       ]
     },
@@ -87,7 +86,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [Core Geospatial API Architecture with FastAPI & PostGIS](/core-geospatial-api-architecture-with-fastapi-postgis/)
+← Back to [Core Geospatial API Architecture with FastAPI & PostGIS](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/)
 
 # API Versioning for GIS Endpoints
 
@@ -196,7 +195,7 @@ The diagram below maps the three mainstream versioning approaches against the co
   <text x="170" y="300" class="dm-label">Avoid</text>
 </svg>
 
-**URL path versioning** wins for GIS workloads. It aligns with CDN caching strategies, simplifies routing in API gateways, avoids ambiguity when debugging spatial query failures across mixed client fleets, and integrates cleanly with the [spatial resource modeling patterns](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) already established in the core architecture. Header-based versioning forces every cache layer to handle `Vary` headers, which destroys tile and feature cacheability. Query parameters conflict with OGC-compliant spatial filter parameters like `bbox` and `datetime`, which makes them error-prone and semantically confusing.
+**URL path versioning** wins for GIS workloads. It aligns with CDN caching strategies, simplifies routing in API gateways, avoids ambiguity when debugging spatial query failures across mixed client fleets, and integrates cleanly with the [spatial resource modeling patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) already established in the core architecture. Header-based versioning forces every cache layer to handle `Vary` headers, which destroys tile and feature cacheability. Query parameters conflict with OGC-compliant spatial filter parameters like `bbox` and `datetime`, which makes them error-prone and semantically confusing.
 
 ---
 
@@ -258,7 +257,7 @@ class FeatureV2(GeoJSONFeature):
     crs: Literal["EPSG:4326", "EPSG:3857"] = "EPSG:4326"
 ```
 
-The v1 schema accepts any dictionary as `geometry`, which is safe for legacy clients that send non-standard extensions. V2 enforces full [strict Pydantic geometry validation](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) using `geojson-pydantic`, rejecting malformed rings or unknown geometry types at the boundary layer before they reach PostGIS.
+The v1 schema accepts any dictionary as `geometry`, which is safe for legacy clients that send non-standard extensions. V2 enforces full [strict Pydantic geometry validation](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) using `geojson-pydantic`, rejecting malformed rings or unknown geometry types at the boundary layer before they reach PostGIS.
 
 This pattern prevents accidental field drift and makes breaking changes explicit at the schema level rather than at runtime.
 
@@ -312,13 +311,13 @@ async def get_features_v2(
     return result.scalars().all()
 ```
 
-The v2 repository adds cursor-based pagination — a pattern covered in detail in [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — without touching the v1 path. Always validate that `GIST` indexes remain effective after schema migrations: PostGIS query planners are highly sensitive to geometry type changes, and a column alteration can silently flip a spatial query from an index scan to a sequential scan.
+The v2 repository adds cursor-based pagination — a pattern covered in detail in [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — without touching the v1 path. Always validate that `GIST` indexes remain effective after schema migrations: PostGIS query planners are highly sensitive to geometry type changes, and a column alteration can silently flip a spatial query from an index scan to a sequential scan.
 
 By decoupling repository implementations per version, you can safely deprecate legacy spatial functions (e.g., `ST_AsText` in v1) without disrupting active clients.
 
 ### 4. Handle Serialization and Format Negotiation
 
-Early API versions default to verbose GeoJSON for maximum interoperability. Later versions may adopt binary or columnar formats to reduce latency and bandwidth. The [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix covers the trade-offs between text-based and binary spatial formats in detail.
+Early API versions default to verbose GeoJSON for maximum interoperability. Later versions may adopt binary or columnar formats to reduce latency and bandwidth. The [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix covers the trade-offs between text-based and binary spatial formats in detail.
 
 When introducing new serialization options, expose them as distinct endpoints within the same versioned router rather than through content negotiation headers (which reintroduce the CDN caching problem):
 
@@ -529,10 +528,10 @@ Add `Deprecation` and `Sunset` response headers from day one of the successor ve
 
 ## Related
 
-- [Versioning Geospatial APIs Without Breaking Clients](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/versioning-geospatial-apis-without-breaking-clients/) — contract testing, shadow routing, and gradual rollout patterns
-- [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choosing the right format for versioned spatial responses
-- [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — cursor-based pagination in versioned spatial endpoints
-- [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — enforcing geometry contracts at the v2 schema boundary
-- [Spatial Resource Modeling Patterns](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) — structuring FastAPI routers and PostGIS table hierarchies
+- [Versioning Geospatial APIs Without Breaking Clients](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/versioning-geospatial-apis-without-breaking-clients/) — contract testing, shadow routing, and gradual rollout patterns
+- [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choosing the right format for versioned spatial responses
+- [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — cursor-based pagination in versioned spatial endpoints
+- [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — enforcing geometry contracts at the v2 schema boundary
+- [Spatial Resource Modeling Patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) — structuring FastAPI routers and PostGIS table hierarchies
 
-← Back to [Core Geospatial API Architecture with FastAPI & PostGIS](/core-geospatial-api-architecture-with-fastapi-postgis/)
+← Back to [Core Geospatial API Architecture with FastAPI & PostGIS](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/)

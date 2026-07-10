@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Cost-Based Throttling for Expensive PostGIS Queries"
 description: "Price each spatial request by its bounding-box area, radius, or expected vertex count, deduct that cost from a per-client token budget in Redis, and reject with 429 plus Retry-After when the budget is exhausted."
 slug: "cost-based-throttling-for-expensive-postgis-queries"
-type: "long_tail"
 breadcrumb:
   - label: "Securing Geospatial APIs"
     url: "/securing-geospatial-apis-authentication-authorization/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Securing Geospatial APIs", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
-        {"@type": "ListItem", "position": 2, "name": "Rate Limiting Geofence & Tile Endpoints", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/"},
-        {"@type": "ListItem", "position": 3, "name": "Cost-Based Throttling for Expensive PostGIS Queries", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/"}
+        {"@type": "ListItem", "position": 1, "name": "Securing Geospatial APIs", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
+        {"@type": "ListItem", "position": 2, "name": "Rate Limiting Geofence & Tile Endpoints", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/"},
+        {"@type": "ListItem", "position": 3, "name": "Cost-Based Throttling for Expensive PostGIS Queries", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/"}
       ]
     },
     {
@@ -56,7 +55,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Rate Limiting Geofence & Tile Endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/)
+← Back to [Rate Limiting Geofence & Tile Endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/)
 
 # Cost-based throttling for expensive PostGIS queries
 
@@ -64,11 +63,11 @@ Count tokens, not requests: price each spatial call by its bounding-box area or 
 
 ## Context & when to use
 
-A flat request-per-second limit assumes every request costs the same. Spatial requests violate that assumption by orders of magnitude. On one geofence route, an `ST_DWithin` with a 10 m radius touches a handful of index entries and returns in a millisecond; the same route with a 300 km radius scans a huge candidate set and holds a [pooled connection](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) for seconds. A limit set for the cheap case waves the expensive case straight through to your database; a limit set for the expensive case needlessly throttles honest cheap traffic.
+A flat request-per-second limit assumes every request costs the same. Spatial requests violate that assumption by orders of magnitude. On one geofence route, an `ST_DWithin` with a 10 m radius touches a handful of index entries and returns in a millisecond; the same route with a 300 km radius scans a huge candidate set and holds a [pooled connection](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) for seconds. A limit set for the cheap case waves the expensive case straight through to your database; a limit set for the expensive case needlessly throttles honest cheap traffic.
 
-Cost-based throttling resolves the tension by charging a request in proportion to how much work it will demand. Each client gets a token budget that refills at a steady rate. A cheap point lookup withdraws one token; a large-radius or low-zoom-tile request withdraws many. A client can fire hundreds of cheap requests a second or a few heavy ones — either way it consumes its fair share of a finite database, and no single request class can monopolise the pool. Use this when your routes have a wide cost spread and a flat [sliding-window limit](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/) either over-throttles or under-protects. For routes where every request is roughly equal, the simpler sliding window is enough; the two compose well, and the parent [rate limiting geofence and tile endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/) guide covers when to reach for each.
+Cost-based throttling resolves the tension by charging a request in proportion to how much work it will demand. Each client gets a token budget that refills at a steady rate. A cheap point lookup withdraws one token; a large-radius or low-zoom-tile request withdraws many. A client can fire hundreds of cheap requests a second or a few heavy ones — either way it consumes its fair share of a finite database, and no single request class can monopolise the pool. Use this when your routes have a wide cost spread and a flat [sliding-window limit](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/) either over-throttles or under-protects. For routes where every request is roughly equal, the simpler sliding window is enough; the two compose well, and the parent [rate limiting geofence and tile endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/) guide covers when to reach for each.
 
-The cost estimate must be cheap and derived from the request itself — the bounding box, the radius, the requested feature limit — computed *before* the query runs. Deriving the cost from a `bbox` is the same geometry you already parse for [bounding-box spatial index queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/), so it adds no meaningful overhead.
+The cost estimate must be cheap and derived from the request itself — the bounding box, the radius, the requested feature limit — computed *before* the query runs. Deriving the cost from a `bbox` is the same geometry you already parse for [bounding-box spatial index queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/), so it adds no meaningful overhead.
 
 ---
 
@@ -278,7 +277,7 @@ async def within(
 
 ## Gotchas & failure modes
 
-- **Underestimating cost lets the expensive case through.** If `RADIUS_WEIGHT` is too low, a large-radius query costs almost the same as a small one and the throttle does nothing. Calibrate weights against real `EXPLAIN ANALYZE` timings — pull the actual plans with [query plan analysis and index tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) and set weights so a query that runs 10× longer costs roughly 10× the tokens.
+- **Underestimating cost lets the expensive case through.** If `RADIUS_WEIGHT` is too low, a large-radius query costs almost the same as a small one and the throttle does nothing. Calibrate weights against real `EXPLAIN ANALYZE` timings — pull the actual plans with [query plan analysis and index tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) and set weights so a query that runs 10× longer costs roughly 10× the tokens.
 
 - **Unbounded radius or bbox exhausts the budget in one call.** Without `COST_MAX` and a route-level `le=` cap on `radius`, a single request for a 5,000 km radius withdraws thousands of tokens (or worse, more than `capacity`, which can never be satisfied). Clamp cost to `COST_MAX < capacity` *and* reject absurd inputs with a `422` at the parameter level, as the `Query(..., le=50000)` above does.
 
@@ -321,9 +320,9 @@ assert costs[-1] <= 60.0               # clamped at COST_MAX
 
 ## Related
 
-- [Rate Limiting Geofence & Tile Endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/) — where cost-based throttling fits among fixed-window, sliding-window, and token-bucket approaches
-- [Redis Sliding-Window Rate Limits for Spatial Endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/) — the flat-count limiter to layer beneath cost throttling
-- [Bounding-Box Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — the same envelope geometry that feeds the cost estimate
-- [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — measure real query cost to calibrate the token weights
+- [Rate Limiting Geofence & Tile Endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/) — where cost-based throttling fits among fixed-window, sliding-window, and token-bucket approaches
+- [Redis Sliding-Window Rate Limits for Spatial Endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/) — the flat-count limiter to layer beneath cost throttling
+- [Bounding-Box Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — the same envelope geometry that feeds the cost estimate
+- [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — measure real query cost to calibrate the token weights
 
-← Back to [Rate Limiting Geofence & Tile Endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/)
+← Back to [Rate Limiting Geofence & Tile Endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/)

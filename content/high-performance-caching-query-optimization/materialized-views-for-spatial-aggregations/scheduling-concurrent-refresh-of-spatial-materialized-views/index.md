@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Scheduling Concurrent Refresh of Spatial Materialized Views"
 description: "Keep a PostGIS materialized view readable while it rebuilds with REFRESH MATERIALIZED VIEW CONCURRENTLY, schedule it with pg_cron or an external scheduler, monitor refresh duration, and prevent overlapping refreshes with advisory locks."
 slug: "scheduling-concurrent-refresh-of-spatial-materialized-views"
-type: "long_tail"
 breadcrumb:
   - label: "High-Performance Caching & Query Optimization"
     url: "/high-performance-caching-query-optimization/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "High-Performance Caching & Query Optimization", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/" },
-        { "@type": "ListItem", "position": 2, "name": "Materialized Views for Spatial Aggregations", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/" },
-        { "@type": "ListItem", "position": 3, "name": "Scheduling Concurrent Refresh of Spatial Materialized Views", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/scheduling-concurrent-refresh-of-spatial-materialized-views/" }
+        { "@type": "ListItem", "position": 1, "name": "High-Performance Caching & Query Optimization", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/" },
+        { "@type": "ListItem", "position": 2, "name": "Materialized Views for Spatial Aggregations", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/" },
+        { "@type": "ListItem", "position": 3, "name": "Scheduling Concurrent Refresh of Spatial Materialized Views", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/scheduling-concurrent-refresh-of-spatial-materialized-views/" }
       ]
     },
     {
@@ -55,7 +54,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Materialized Views for Spatial Aggregations](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/)
+← Back to [Materialized Views for Spatial Aggregations](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/)
 
 # Scheduling concurrent refresh of spatial materialized views
 
@@ -63,7 +62,7 @@ Refresh a PostGIS materialized view on a schedule without ever blocking readers 
 
 ## Context & when to use
 
-A [materialized view](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/) is a snapshot: it only reflects new base-table data after you refresh it. A plain `REFRESH MATERIALIZED VIEW` takes an `ACCESS EXCLUSIVE` lock, so every read against the view blocks until the rebuild finishes — unacceptable when a heatmap or boundary endpoint is serving live traffic. `REFRESH MATERIALIZED VIEW CONCURRENTLY` solves that: it builds a fresh copy in the background, diffs it against the current view through a UNIQUE index, and applies only the delta, so readers keep hitting the old snapshot until the swap completes.
+A [materialized view](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/) is a snapshot: it only reflects new base-table data after you refresh it. A plain `REFRESH MATERIALIZED VIEW` takes an `ACCESS EXCLUSIVE` lock, so every read against the view blocks until the rebuild finishes — unacceptable when a heatmap or boundary endpoint is serving live traffic. `REFRESH MATERIALIZED VIEW CONCURRENTLY` solves that: it builds a fresh copy in the background, diffs it against the current view through a UNIQUE index, and applies only the delta, so readers keep hitting the old snapshot until the swap completes.
 
 Use concurrent refresh when the view backs a read endpoint that cannot tolerate downtime and your freshness SLA is measured in minutes, not seconds. The trade-off is cost: `CONCURRENTLY` builds a full temp copy and does a row-by-row diff, so it is slower and does substantially more I/O than a plain refresh. If reads can tolerate a brief lock in an off-peak window, plain refresh is cheaper. For sub-second freshness, neither fits — route those reads to a live query instead.
 
@@ -220,7 +219,7 @@ if __name__ == "__main__":
     main()
 ```
 
-Reducing base-table churn between refreshes — for example by fronting the read endpoint with a short [Redis TTL](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — is discussed alongside the [materialized view vs Redis comparison](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/postgis-materialized-views-vs-redis-query-caching/).
+Reducing base-table churn between refreshes — for example by fronting the read endpoint with a short [Redis TTL](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — is discussed alongside the [materialized view vs Redis comparison](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/postgis-materialized-views-vs-redis-query-caching/).
 
 ---
 
@@ -288,8 +287,8 @@ SELECT refresh_ping_heatmap();
 
 ## Related
 
-- [Materialized Views for Spatial Aggregations](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/) — create and index the view this refresh keeps current
-- [PostGIS Materialized Views vs Redis Query Caching](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/postgis-materialized-views-vs-redis-query-caching/) — when a scheduled refresh beats a TTL cache
-- [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — front the view with a short TTL to smooth base-table churn
+- [Materialized Views for Spatial Aggregations](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/) — create and index the view this refresh keeps current
+- [PostGIS Materialized Views vs Redis Query Caching](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/postgis-materialized-views-vs-redis-query-caching/) — when a scheduled refresh beats a TTL cache
+- [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — front the view with a short TTL to smooth base-table churn
 
-← Back to [Materialized Views for Spatial Aggregations](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/)
+← Back to [Materialized Views for Spatial Aggregations](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/)

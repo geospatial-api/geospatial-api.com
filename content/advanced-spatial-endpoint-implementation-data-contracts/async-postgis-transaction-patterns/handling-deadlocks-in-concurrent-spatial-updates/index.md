@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Handling Deadlocks in Concurrent Spatial Updates"
 description: "Why concurrent updates to overlapping geometry rows deadlock, and how to fix it: consistent lock ordering with SELECT ... FOR UPDATE ORDER BY id, retrying on PostgreSQL 40P01, and pg_advisory_xact_lock for hotspot geometries."
 slug: "handling-deadlocks-in-concurrent-spatial-updates"
-type: "long_tail"
 breadcrumb:
   - label: "Advanced Spatial Endpoints & Data Contracts"
     url: "/advanced-spatial-endpoint-implementation-data-contracts/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
-        { "@type": "ListItem", "position": 2, "name": "Async PostGIS Transaction Patterns", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/" },
-        { "@type": "ListItem", "position": 3, "name": "Handling Deadlocks in Concurrent Spatial Updates", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/handling-deadlocks-in-concurrent-spatial-updates/" }
+        { "@type": "ListItem", "position": 1, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
+        { "@type": "ListItem", "position": 2, "name": "Async PostGIS Transaction Patterns", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/" },
+        { "@type": "ListItem", "position": 3, "name": "Handling Deadlocks in Concurrent Spatial Updates", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/handling-deadlocks-in-concurrent-spatial-updates/" }
       ]
     },
     {
@@ -55,7 +54,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Async PostGIS Transaction Patterns](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/)
+← Back to [Async PostGIS Transaction Patterns](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/)
 
 # Handling deadlocks in concurrent spatial updates
 
@@ -65,7 +64,7 @@ Stop concurrent updates to overlapping geometry rows from deadlocking by imposin
 
 A deadlock happens when two transactions each hold a lock the other needs. In spatial workloads this is common because a single "update" often touches several rows — a parcel edit that also updates its neighbours' shared boundaries, a merge that rewrites two overlapping polygons, or a recomputation that locks every feature inside a bounding box. If transaction A locks rows in the order `(17, 42)` and transaction B locks them as `(42, 17)`, they can each grab one and wait forever for the other. PostgreSQL breaks the cycle by killing one transaction with `ERROR: deadlock detected` (`SQLSTATE 40P01`).
 
-This is the concurrency counterpart to the width-and-boundary rules in the parent [async PostGIS transaction patterns](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/) guide. Reach for these techniques when multiple writers update the same feature set concurrently — collaborative editing, ingestion that overlaps live edits (including the chunked loads in [bulk geometry writes](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/)), or any endpoint where two requests can legitimately target overlapping geometries.
+This is the concurrency counterpart to the width-and-boundary rules in the parent [async PostGIS transaction patterns](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/) guide. Reach for these techniques when multiple writers update the same feature set concurrently — collaborative editing, ingestion that overlaps live edits (including the chunked loads in [bulk geometry writes](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/)), or any endpoint where two requests can legitimately target overlapping geometries.
 
 There are three complementary tools. **Consistent lock ordering** prevents most deadlocks outright. **Retry on `40P01`** handles the ones you cannot design away, because deadlocks are always possible in principle. **Advisory locks** serialise writers on a known hotspot so they queue politely instead of colliding.
 
@@ -240,7 +239,7 @@ Advisory locks and row locks solve different shapes of the problem. `FOR UPDATE 
 
 ## Gotchas & failure modes
 
-- **Retrying a non-idempotent write corrupts data.** The retry decorator may run the function several times. If the body does `parcel_count = parcel_count + 1` outside the locked, atomic scope, a retried transaction double-counts. Fix: make the whole operation idempotent — derive the new state from locked inputs inside the transaction, or key inserts with `ON CONFLICT DO NOTHING` — so a replay produces the same result. This is the same idempotency requirement flagged for retried bulk writes in [managing async transactions for bulk geometry writes](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/).
+- **Retrying a non-idempotent write corrupts data.** The retry decorator may run the function several times. If the body does `parcel_count = parcel_count + 1` outside the locked, atomic scope, a retried transaction double-counts. Fix: make the whole operation idempotent — derive the new state from locked inputs inside the transaction, or key inserts with `ON CONFLICT DO NOTHING` — so a replay produces the same result. This is the same idempotency requirement flagged for retried bulk writes in [managing async transactions for bulk geometry writes](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/).
 
 - **Lock ordering must be consistent across tables too.** Ordering rows by `id` within one table is not enough if transaction A locks `parcels` then `boundaries` while B locks `boundaries` then `parcels`. Fix: define a global order over tables (e.g. always lock `parcels` before `boundaries`) and honour it everywhere.
 
@@ -248,7 +247,7 @@ Advisory locks and row locks solve different shapes of the problem. `FOR UPDATE 
 
 - **Serialization failures (`40001`) are not deadlocks but need the same retry.** Under `REPEATABLE READ` or `SERIALIZABLE`, a concurrent update surfaces as `could not serialize access due to concurrent update` (`40001`). It is expected and retryable — include it in `RETRYABLE_SQLSTATES`, as above.
 
-- **Advisory locks that outlive their transaction.** `pg_advisory_lock` (session-scoped) is *not* released at `COMMIT` and, under PgBouncer transaction pooling, leaks onto a backend another client will borrow. Fix: always use the transaction-scoped `pg_advisory_xact_lock`, which releases automatically — the same `SET LOCAL` discipline described in the [connection pooling guide](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
+- **Advisory locks that outlive their transaction.** `pg_advisory_lock` (session-scoped) is *not* released at `COMMIT` and, under PgBouncer transaction pooling, leaks onto a backend another client will borrow. Fix: always use the transaction-scoped `pg_advisory_xact_lock`, which releases automatically — the same `SET LOCAL` discipline described in the [connection pooling guide](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
 
 ## Verification
 
@@ -283,8 +282,8 @@ SELECT locktype, objid, pid FROM pg_locks WHERE locktype = 'advisory';
 
 ## Related
 
-- [Async PostGIS Transaction Patterns](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/) — transaction boundaries, isolation levels, and short lock scopes
-- [Managing Async Transactions for Bulk Geometry Writes](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/) — idempotent, chunked writes that coexist with live updates
-- [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — why transaction-scoped locks and `SET LOCAL` are mandatory under pooling
+- [Async PostGIS Transaction Patterns](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/) — transaction boundaries, isolation levels, and short lock scopes
+- [Managing Async Transactions for Bulk Geometry Writes](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/) — idempotent, chunked writes that coexist with live updates
+- [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — why transaction-scoped locks and `SET LOCAL` are mandatory under pooling
 
-← Back to [Async PostGIS Transaction Patterns](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/)
+← Back to [Async PostGIS Transaction Patterns](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/)

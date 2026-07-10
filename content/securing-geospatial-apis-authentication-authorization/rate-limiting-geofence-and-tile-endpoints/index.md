@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Rate Limiting Geofence & Tile Endpoints"
 description: "Protect expensive PostGIS geofence, ST_DWithin radius, and vector-tile endpoints from abuse and accidental overload. Choose an algorithm, pick a keying strategy, and enforce Redis-backed limits in FastAPI with correct 429 and Retry-After responses."
 slug: "rate-limiting-geofence-and-tile-endpoints"
-type: "cluster"
 breadcrumb: "Securing Geospatial APIs › Rate Limiting Geofence & Tile Endpoints"
 datePublished: "2025-09-12"
 dateModified: "2026-07-10"
@@ -31,9 +30,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/"},
-        {"@type": "ListItem", "position": 2, "name": "Securing Geospatial APIs", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
-        {"@type": "ListItem", "position": 3, "name": "Rate Limiting Geofence & Tile Endpoints", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/"}
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Securing Geospatial APIs", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
+        {"@type": "ListItem", "position": 3, "name": "Rate Limiting Geofence & Tile Endpoints", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/"}
       ]
     },
     {
@@ -80,13 +79,13 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Securing Geospatial APIs](/securing-geospatial-apis-authentication-authorization/)
+← Back to [Securing Geospatial APIs](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/)
 
 # Rate limiting geofence and tile endpoints
 
-Spatial endpoints break the assumptions that ordinary rate limiters are built on. A `/users/{id}` lookup costs the same every time, so a flat requests-per-second ceiling protects it perfectly. A geofence query does not: `ST_DWithin(geom, :point, :radius)` with a 10 metre radius returns in a millisecond, while the same route with a 300 km radius scans a large candidate set, holds a pooled backend connection for seconds, and burns CPU that competes with every other query on the box. Vector-tile generation is worse still — a request for a low-zoom tile over a dense layer can serialise tens of thousands of features. Left unprotected, a handful of these requests will exhaust your [connection pool](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) and take down endpoints that have nothing to do with the offending route.
+Spatial endpoints break the assumptions that ordinary rate limiters are built on. A `/users/{id}` lookup costs the same every time, so a flat requests-per-second ceiling protects it perfectly. A geofence query does not: `ST_DWithin(geom, :point, :radius)` with a 10 metre radius returns in a millisecond, while the same route with a 300 km radius scans a large candidate set, holds a pooled backend connection for seconds, and burns CPU that competes with every other query on the box. Vector-tile generation is worse still — a request for a low-zoom tile over a dense layer can serialise tens of thousands of features. Left unprotected, a handful of these requests will exhaust your [connection pool](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) and take down endpoints that have nothing to do with the offending route.
 
-This guide covers why these endpoints need bespoke limits, where to enforce them, which algorithm to choose, how to key the counter, and how to return a correct `429`. It sits alongside [JWT authentication for spatial scopes](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) and [row-level security for multi-tenant PostGIS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/) in the broader [Securing Geospatial APIs](/securing-geospatial-apis-authentication-authorization/) reference: authentication says *who* you are, row-level security says *what* you may see, and rate limiting says *how much* of the database's finite spatial capacity you may consume.
+This guide covers why these endpoints need bespoke limits, where to enforce them, which algorithm to choose, how to key the counter, and how to return a correct `429`. It sits alongside [JWT authentication for spatial scopes](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) and [row-level security for multi-tenant PostGIS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/) in the broader [Securing Geospatial APIs](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/) reference: authentication says *who* you are, row-level security says *what* you may see, and rate limiting says *how much* of the database's finite spatial capacity you may consume.
 
 ## Enforcement layers
 
@@ -176,9 +175,9 @@ Four algorithms dominate. The right one depends on whether you care about burst 
 | Sliding window (counter) | Smooth, approximate | 2 counters | Good (weighted interpolation) | Awkward | High-cardinality keys where memory matters |
 | Token bucket | Allows controlled bursts | 2 fields | Exact | **Native** — deduct N tokens | Cost-based throttling by bbox area / radius |
 
-For a straightforward per-API-key ceiling on tile and geofence routes, the **sliding-window log** is the default: it is exact, smooths bursts, and its sorted-set structure makes weighting trivial. The full atomic implementation lives in [Redis sliding-window rate limits for spatial endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/).
+For a straightforward per-API-key ceiling on tile and geofence routes, the **sliding-window log** is the default: it is exact, smooths bursts, and its sorted-set structure makes weighting trivial. The full atomic implementation lives in [Redis sliding-window rate limits for spatial endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/).
 
-When requests are wildly unequal in cost — a 10 m radius versus a 300 km radius on the same route — a flat request count is the wrong unit. A **token bucket** whose withdrawal is proportional to the estimated query cost prices each request fairly; a large-radius `ST_DWithin` withdraws many tokens and drains the budget quickly, while cheap point lookups barely move it. That approach is developed in full in [cost-based throttling for expensive PostGIS queries](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/).
+When requests are wildly unequal in cost — a 10 m radius versus a 300 km radius on the same route — a flat request count is the wrong unit. A **token bucket** whose withdrawal is proportional to the estimated query cost prices each request fairly; a large-radius `ST_DWithin` withdraws many tokens and drains the budget quickly, while cheap point lookups barely move it. That approach is developed in full in [cost-based throttling for expensive PostGIS queries](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/).
 
 ---
 
@@ -196,19 +195,19 @@ Not every route deserves the same ceiling. Group your endpoints into cost tiers 
 | Vector tile | `GET /tiles/{z}/{x}/{y}.mvt` | 30–800 ms | 25 req/s (lower at z ≤ 8) |
 | Aggregation / export | `GET /stats/coverage` | 1–30 s | 2 req/min |
 
-The geofence and low-zoom tile classes are the ones that hurt, because their worst case is orders of magnitude slower than their median. A limit chosen for the median lets the worst case run wild; a limit chosen for the worst case throttles legitimate median traffic. This tension is exactly what cost-based throttling resolves — see the [bounding-box spatial index queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) guide for how to derive a cost from the requested `bbox` before the query runs.
+The geofence and low-zoom tile classes are the ones that hurt, because their worst case is orders of magnitude slower than their median. A limit chosen for the median lets the worst case run wild; a limit chosen for the worst case throttles legitimate median traffic. This tension is exactly what cost-based throttling resolves — see the [bounding-box spatial index queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) guide for how to derive a cost from the requested `bbox` before the query runs.
 
 ### Step 2: Choose the algorithm and the key
 
 The **key** decides who shares a budget. Three strategies, from coarse to fine:
 
-- **Per API key / tenant** — the fairness unit for a paid product. Extract the key from the `Authorization` header or a validated JWT scope. This is what a paying customer expects to be metered on, and it composes cleanly with the tenant identity already established for [row-level security](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/).
+- **Per API key / tenant** — the fairness unit for a paid product. Extract the key from the `Authorization` header or a validated JWT scope. This is what a paying customer expects to be metered on, and it composes cleanly with the tenant identity already established for [row-level security](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/).
 - **Per IP** — the only option for anonymous tile traffic. Coarse and easily defeated by rotating IPs, so use it at the edge, not as your only defence.
 - **Per IP + bbox cell** — snap the requested bounding box to a coarse grid (say 0.1°) and key on `ip:cell`. This stops a scraper from walking a dense area tile-by-tile at full speed while leaving a normal panning user unaffected.
 
 ### Step 3: Enforce atomically in middleware
 
-The check-then-set race is the classic rate-limiter bug: two workers read "9 of 10 used", both admit, and you served 11. The fix is to make the read-decide-write a single atomic Redis operation via a Lua script (which Redis runs without interleaving). The production example below does exactly that; the sliding-window variant is dissected line by line in [Redis sliding-window rate limits for spatial endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/).
+The check-then-set race is the classic rate-limiter bug: two workers read "9 of 10 used", both admit, and you served 11. The fix is to make the read-decide-write a single atomic Redis operation via a Lua script (which Redis runs without interleaving). The production example below does exactly that; the sliding-window variant is dissected line by line in [Redis sliding-window rate limits for spatial endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/).
 
 ### Step 4: Return a correct 429
 
@@ -417,7 +416,7 @@ async def test_geofence_route_rejects_after_limit():
 
 1. **In-memory counters under horizontal scaling.** A limiter that stores counts in a Python dict admits the full quota *per worker*. With four Uvicorn workers a "10 req/s" limit becomes 40 req/s. Always back the counter with shared Redis, and confirm every replica points at the same Redis database.
 
-2. **`prepared statement does not exist` after a limiter deploy through PgBouncer.** Unrelated to the limiter itself, but a Redis outage that trips fail-open floods the pool, surfacing latent transaction-pooling bugs. Keep `statement_cache_size=0` as covered in [connection pooling & PgBouncer setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
+2. **`prepared statement does not exist` after a limiter deploy through PgBouncer.** Unrelated to the limiter itself, but a Redis outage that trips fail-open floods the pool, surfacing latent transaction-pooling bugs. Keep `statement_cache_size=0` as covered in [connection pooling & PgBouncer setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
 
 3. **Check-then-set race admits over the limit.** Reading the count and writing the increment in two round trips lets concurrent requests both pass the check. The symptom is intermittent over-admission under load that disappears when you serialise the test. Fix: perform the whole decision in one Lua script, as above.
 
@@ -425,7 +424,7 @@ async def test_geofence_route_rejects_after_limit():
 
 5. **Returning `503` instead of `429`.** `503 Service Unavailable` signals a server fault; many HTTP clients retry it immediately and aggressively, amplifying the overload. Reserve `503` strictly for the fail-closed limiter-unavailable case, and use `429` for actual limit hits.
 
-6. **Keying tiles on API key when they are anonymous.** Public basemap tiles usually carry no key, so `client_key` falls back to IP. A single corporate NAT then shares one bucket across thousands of users and gets throttled unfairly. For public tiles, key on `IP + bbox cell` or move the limit to the [edge](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) where per-colo budgets are wider.
+6. **Keying tiles on API key when they are anonymous.** Public basemap tiles usually carry no key, so `client_key` falls back to IP. A single corporate NAT then shares one bucket across thousands of users and gets throttled unfairly. For public tiles, key on `IP + bbox cell` or move the limit to the [edge](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) where per-colo budgets are wider.
 
 7. **No database backstop.** If you rely solely on the counter and a bug lets one request through, a 30-second `ST_Union` still holds a connection. `SET LOCAL statement_timeout` guarantees an upper bound regardless of limiter state.
 
@@ -437,11 +436,11 @@ async def test_geofence_route_rejects_after_limit():
 
 **Limiter overhead.** The `EVALSHA` round trip to a co-located Redis adds roughly 0.2–0.5 ms per request on a warm connection — negligible next to a 20 ms bounding-box query and trivial next to a multi-second geofence. Load the script once (`SCRIPT LOAD` at startup) and call it by SHA; sending the full script body on every request wastes bandwidth and CPU.
 
-**Where the limit pays off.** The point of the limiter is not the happy path — it is the tail. Without a limit, p99 latency on your geofence route is unbounded because it is set by whoever requests the largest radius. With a cost-weighted limit, a single client cannot monopolise the pool, so p99 stays bounded even under adversarial load. This is the same tail-latency argument that motivates a separate heavy-query connection pool in the [connection pooling guide](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
+**Where the limit pays off.** The point of the limiter is not the happy path — it is the tail. Without a limit, p99 latency on your geofence route is unbounded because it is set by whoever requests the largest radius. With a cost-weighted limit, a single client cannot monopolise the pool, so p99 stays bounded even under adversarial load. This is the same tail-latency argument that motivates a separate heavy-query connection pool in the [connection pooling guide](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
 
 **Redis sizing.** A sliding-window log at 50 req/s over a 1-second window holds ~50 members per key. Ten thousand active keys is roughly 5–15 MB — comfortably in RAM. If you push limits into the thousands-per-window range, switch to the two-counter sliding-window approximation to cap memory at O(1) per key.
 
-**Tile caching beats limiting.** The cheapest request is the one you never compute. Cache generated tiles at the [CDN edge](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) and in [Redis](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) so repeat requests for the same `z/x/y` never reach PostGIS; the rate limiter then only guards genuine cache misses. For confirming that your surviving geofence queries actually use the GiST index, run the plans through [query plan analysis & index tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/).
+**Tile caching beats limiting.** The cheapest request is the one you never compute. Cache generated tiles at the [CDN edge](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) and in [Redis](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) so repeat requests for the same `z/x/y` never reach PostGIS; the rate limiter then only guards genuine cache misses. For confirming that your surviving geofence queries actually use the GiST index, run the plans through [query plan analysis & index tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/).
 
 ---
 
@@ -463,10 +462,10 @@ Return HTTP `429 Too Many Requests` with a `Retry-After` header giving the numbe
 
 ## Related
 
-- [Redis Sliding-Window Rate Limits for Spatial Endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/) — the atomic sorted-set + Lua limiter, dissected line by line
-- [Cost-Based Throttling for Expensive PostGIS Queries](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/) — price each request by bbox area or radius and deduct from a token budget
-- [Securing Geospatial APIs](/securing-geospatial-apis-authentication-authorization/) — authentication, authorization, and tenant isolation for spatial services
-- [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — the pool that rate limiting exists to protect
-- [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — cache tiles at the edge so the limiter only guards cache misses
+- [Redis Sliding-Window Rate Limits for Spatial Endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/) — the atomic sorted-set + Lua limiter, dissected line by line
+- [Cost-Based Throttling for Expensive PostGIS Queries](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/) — price each request by bbox area or radius and deduct from a token budget
+- [Securing Geospatial APIs](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/) — authentication, authorization, and tenant isolation for spatial services
+- [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — the pool that rate limiting exists to protect
+- [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — cache tiles at the edge so the limiter only guards cache misses
 
-← Back to [Securing Geospatial APIs](/securing-geospatial-apis-authentication-authorization/)
+← Back to [Securing Geospatial APIs](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/)

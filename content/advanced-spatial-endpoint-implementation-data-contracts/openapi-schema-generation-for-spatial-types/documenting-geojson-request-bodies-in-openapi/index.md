@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Documenting GeoJSON Request Bodies in OpenAPI"
 description: "Attach rich, valid GeoJSON examples to FastAPI request bodies with openapi_examples, Body(..., examples=...), and model json_schema_extra so Swagger UI shows a real Polygon and generated clients validate."
 slug: "documenting-geojson-request-bodies-in-openapi"
-type: "long_tail"
 breadcrumb:
   - label: "Advanced Spatial Endpoints & Data Contracts"
     url: "/advanced-spatial-endpoint-implementation-data-contracts/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
-        { "@type": "ListItem", "position": 2, "name": "OpenAPI Schema Generation for Spatial Types", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/" },
-        { "@type": "ListItem", "position": 3, "name": "Documenting GeoJSON Request Bodies in OpenAPI", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/documenting-geojson-request-bodies-in-openapi/" }
+        { "@type": "ListItem", "position": 1, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
+        { "@type": "ListItem", "position": 2, "name": "OpenAPI Schema Generation for Spatial Types", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/" },
+        { "@type": "ListItem", "position": 3, "name": "Documenting GeoJSON Request Bodies in OpenAPI", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/documenting-geojson-request-bodies-in-openapi/" }
       ]
     },
     {
@@ -55,7 +54,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [OpenAPI Schema Generation for Spatial Types](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/)
+← Back to [OpenAPI Schema Generation for Spatial Types](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/)
 
 # Documenting GeoJSON request bodies in OpenAPI
 
@@ -65,7 +64,7 @@ Attach real, valid GeoJSON examples to a FastAPI request body so Swagger UI show
 
 A correct schema tells a consumer what shape a geometry must have; a good *example* tells them what a real one looks like. Without an explicit example, FastAPI synthesises a placeholder from the schema — for a GeoJSON body that means `coordinates: [0]` or `"string"`, which is not valid GeoJSON and cannot be posted from the "Try it out" panel without hand-editing. For a `Polygon`, whose `coordinates` is a triply-nested array of closed rings, no consumer reconstructs a valid value from the schema alone. Examples are what make the docs operable.
 
-Reach for this whenever a route accepts a `Feature`, a raw geometry, or a `FeatureCollection` — which is most write endpoints in a spatial API. It builds directly on the models and discriminated union from [OpenAPI schema generation for spatial types](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/); here we focus purely on the example layer that sits on top of that schema. There are three insertion points — model-level `json_schema_extra`, parameter-level `Body(..., examples=...)`, and the richer `openapi_examples` — and they compose rather than compete.
+Reach for this whenever a route accepts a `Feature`, a raw geometry, or a `FeatureCollection` — which is most write endpoints in a spatial API. It builds directly on the models and discriminated union from [OpenAPI schema generation for spatial types](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/); here we focus purely on the example layer that sits on top of that schema. There are three insertion points — model-level `json_schema_extra`, parameter-level `Body(..., examples=...)`, and the richer `openapi_examples` — and they compose rather than compete.
 
 A word on why examples deserve their own treatment for geometry specifically. Most request bodies are flat objects a consumer can guess — a `name`, an `email`, an integer. GeoJSON is not: a `Polygon`'s `coordinates` is a three-level array (`[[[lon, lat], ...]]`) whose innermost ring must be closed, and the axis order is a convention no type system encodes. A consumer staring at the schema sees "array of array of array of number" and has no way to produce a valid value on the first try. A single, correct, copy-pasteable example removes that friction entirely and is often the difference between an API that gets adopted and one that generates support tickets.
 
@@ -230,7 +229,7 @@ Notes that matter for geometry specifically:
 ## Gotchas & failure modes
 
 - **Example does not validate against its own schema.** FastAPI does not check `openapi_examples` values, so a `Polygon` example with an unclosed ring or a `Point` with a single-element `coordinates` renders happily in `/docs` but 422s the moment someone clicks "Execute". Assert examples in a test (see Verification) so drift fails CI.
-- **Coordinate order silently wrong.** `[lat, lon]` is structurally valid GeoJSON — two floats in an array — so nothing rejects it, but the geometry lands in the wrong hemisphere. The `invalid_axis_order` counter-example above exists to teach this; keep every real example in `[lon, lat]` per RFC 7946, matching the enforcement in [validating WKT and GeoJSON with Pydantic v2](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/).
+- **Coordinate order silently wrong.** `[lat, lon]` is structurally valid GeoJSON — two floats in an array — so nothing rejects it, but the geometry lands in the wrong hemisphere. The `invalid_axis_order` counter-example above exists to teach this; keep every real example in `[lon, lat]` per RFC 7946, matching the enforcement in [validating WKT and GeoJSON with Pydantic v2](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/).
 - **Nested Feature example collapses to the geometry only.** If you attach the example to the `Geometry` union but the body type is `Feature`, Swagger shows a bare geometry, not a full Feature. Attach the example at the level that matches the body parameter's type.
 - **`example` (singular, 3.0) vs `examples` (3.1) confusion.** On OpenAPI 3.1, `openapi_examples` maps to the `examples` object; a stray top-level `example` key you added by hand may be dropped. Let FastAPI emit the examples rather than hand-editing the document.
 - **Giant Polygon example bloats `/openapi.json`.** A 5,000-vertex example makes the schema payload megabytes and slows `/docs` load. Keep example geometries small (a 4–6 vertex ring is plenty); real payloads can be large, documentation examples should not be.
@@ -275,8 +274,8 @@ def test_named_examples_validate():
 
 ## Related
 
-- [OpenAPI Schema Generation for Spatial Types](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/) — the discriminated-union models these examples decorate
-- [Generating Typed Clients from Spatial OpenAPI Schemas](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/generating-typed-clients-from-spatial-openapi-schemas/) — where documented examples end up in the generated SDK
-- [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — make sure the examples you document are the ones the validator accepts
+- [OpenAPI Schema Generation for Spatial Types](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/) — the discriminated-union models these examples decorate
+- [Generating Typed Clients from Spatial OpenAPI Schemas](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/generating-typed-clients-from-spatial-openapi-schemas/) — where documented examples end up in the generated SDK
+- [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — make sure the examples you document are the ones the validator accepts
 
-← Back to [OpenAPI Schema Generation for Spatial Types](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/)
+← Back to [OpenAPI Schema Generation for Spatial Types](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/)

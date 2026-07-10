@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Async Bulk Geospatial Uploads with Celery"
 description: "Queue shapefile and GeoJSON bulk uploads with Celery and FastAPI. Parse with GDAL workers, validate geometries, and write to PostGIS with ON CONFLICT idempotency. Production patterns with error handling, retries, and monitoring."
 slug: async-bulk-uploads-with-celery
-type: cluster
 breadcrumb: "Advanced Spatial Endpoints & Data Contracts > Async Bulk Uploads with Celery"
 datePublished: "2024-10-01"
 dateModified: "2026-06-23"
@@ -29,13 +28,13 @@ dateModified: "2026-06-23"
           "@type": "ListItem",
           "position": 1,
           "name": "Advanced Spatial Endpoints & Data Contracts",
-          "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/"
+          "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/"
         },
         {
           "@type": "ListItem",
           "position": 2,
           "name": "Async Bulk Uploads with Celery",
-          "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/"
+          "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/"
         }
       ]
     },
@@ -90,7 +89,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [Advanced Spatial Endpoints & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/)
+← Back to [Advanced Spatial Endpoints & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/)
 
 # Async Bulk Geospatial Uploads with Celery
 
@@ -103,7 +102,7 @@ Processing large spatial datasets synchronously blocks your request lifecycle an
 | Dependency | Minimum version | Why it matters |
 |---|---|---|
 | FastAPI | 0.100 | `UploadFile` streaming, async lifespan |
-| Pydantic | v2 | Geometry validators (see [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/)) |
+| Pydantic | v2 | Geometry validators (see [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/)) |
 | Celery | 5.3 | `task_acks_late`, chord/group primitives |
 | Redis or RabbitMQ | Redis 7 / RMQ 3.11 | Message broker and result backend |
 | PostGIS | 3.3 | `ST_MakeValid`, `ST_GeomFromText`, GiST indexes |
@@ -205,7 +204,7 @@ For multi-node worker pools, object storage staging is the correct default. Work
 
 ### Step 1 — FastAPI ingestion endpoint
 
-The endpoint's only job is to accept the file, write it to staging, and enqueue a task. It must return before any geometry parsing occurs. The [handling async file uploads for shapefile processing](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/) page covers companion-file validation (`.prj`, `.dbf`, `.cpg`) and multipart ZIP extraction in detail.
+The endpoint's only job is to accept the file, write it to staging, and enqueue a task. It must return before any geometry parsing occurs. The [handling async file uploads for shapefile processing](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/) page covers companion-file validation (`.prj`, `.dbf`, `.cpg`) and multipart ZIP extraction in detail.
 
 ```python
 from fastapi import APIRouter, UploadFile, HTTPException
@@ -333,7 +332,7 @@ def process_geospatial_upload(self, job_id: str, file_path: str):
 
 ### Step 4 — Idempotent batch insertion with `ON CONFLICT`
 
-Using `psycopg2.extras.execute_values` with `page_size=1000` and an `ON CONFLICT DO NOTHING` clause makes each task retry safe. If the worker crashes after 700 rows and retries from the top, the 700 already-committed rows are skipped rather than duplicated. This is the core of the [strict data contract](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) that governs how you enforce idempotency at the database layer.
+Using `psycopg2.extras.execute_values` with `page_size=1000` and an `ON CONFLICT DO NOTHING` clause makes each task retry safe. If the worker crashes after 700 rows and retries from the top, the 700 already-committed rows are skipped rather than duplicated. This is the core of the [strict data contract](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) that governs how you enforce idempotency at the database layer.
 
 ```python
 import psycopg2
@@ -418,7 +417,7 @@ async def job_status(job_id: str):
     return state
 ```
 
-A client polling every 2 seconds with exponential backoff can track progress without long-polling infrastructure. When `status == "completed"`, it can immediately run [bounding-box spatial index queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) against the newly ingested features, or issue [K-nearest-neighbor routing queries](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) against the populated geometry table.
+A client polling every 2 seconds with exponential backoff can track progress without long-polling infrastructure. When `status == "completed"`, it can immediately run [bounding-box spatial index queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) against the newly ingested features, or issue [K-nearest-neighbor routing queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) against the populated geometry table.
 
 ---
 
@@ -481,7 +480,7 @@ def test_duplicate_task_is_idempotent(db_conn, sample_shapefile):
 
 ## Failure Modes & Edge Cases
 
-1. **Missing CRS in shapefile** — `pyogrio.read_info()` returns `crs: None` when a `.prj` companion file is absent. The task raises `ValueError` and retries. After `max_retries`, the job is marked `failed`. Fix: reject uploads lacking `.prj` at the FastAPI layer before staging; see [handling async file uploads for shapefile processing](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/).
+1. **Missing CRS in shapefile** — `pyogrio.read_info()` returns `crs: None` when a `.prj` companion file is absent. The task raises `ValueError` and retries. After `max_retries`, the job is marked `failed`. Fix: reject uploads lacking `.prj` at the FastAPI layer before staging; see [handling async file uploads for shapefile processing](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/).
 
 2. **Lat/lon axis swap producing ocean-based geometries** — Omitting `always_xy=True` from `Transformer.from_crs()` swaps axes for CRS definitions that declare (latitude, longitude) order (e.g. EPSG:4269, EPSG:4326 in strict mode). Symptoms: all geometries land in the ocean or Antarctica. Always pass `always_xy=True`.
 
@@ -491,7 +490,7 @@ def test_duplicate_task_is_idempotent(db_conn, sample_shapefile):
 
 5. **Redis TTL expiry before client polls** — `result_expires=86_400` means job metadata disappears after 24 hours. If a client polls after that window, it receives a 404. Persist completed job summaries to a `job_log` Postgres table before they expire in Redis if you need longer audit trails.
 
-6. **GiST index bloat after bulk insert** — Inserting millions of geometries in rapid succession fragments the GiST index. Query plans for [bounding-box queries using `ST_Within` and `ST_Intersects`](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/) may degrade significantly. Schedule `VACUUM ANALYZE spatial_features` and `REINDEX INDEX spatial_features_geometry_idx` in a maintenance window after each large bulk load.
+6. **GiST index bloat after bulk insert** — Inserting millions of geometries in rapid succession fragments the GiST index. Query plans for [bounding-box queries using `ST_Within` and `ST_Intersects`](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/) may degrade significantly. Schedule `VACUUM ANALYZE spatial_features` and `REINDEX INDEX spatial_features_geometry_idx` in a maintenance window after each large bulk load.
 
 7. **Celery task swallowing exceptions silently** — If `self.retry(exc=exc)` is called inside a bare `except Exception` block without re-raising, Celery may mark the task `SUCCESS` after the retry limit is reached. Always use `raise self.retry(exc=exc)` to propagate correctly.
 
@@ -520,7 +519,7 @@ CREATE INDEX CONCURRENTLY spatial_features_geometry_idx
 VACUUM ANALYZE spatial_features;
 ```
 
-`CREATE INDEX CONCURRENTLY` avoids a full table lock but takes longer. Use it in production where you cannot afford downtime on spatial queries. This intersects with the connection pool tuning discussed in [Connection Pooling & pgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — ensure your pgBouncer pool size accommodates the CONCURRENTLY build's additional session.
+`CREATE INDEX CONCURRENTLY` avoids a full table lock but takes longer. Use it in production where you cannot afford downtime on spatial queries. This intersects with the connection pool tuning discussed in [Connection Pooling & pgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — ensure your pgBouncer pool size accommodates the CONCURRENTLY build's additional session.
 
 ---
 
@@ -548,10 +547,10 @@ Celery workers are stateless — spawn additional worker processes or pods point
 
 ## Related
 
-- [Handling Async File Uploads for Shapefile Processing](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/) — companion-file validation, ZIP extraction, and chunked multipart parsing
-- [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — enforce geometry types and CRS contracts at the request boundary before queueing
-- [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — query the PostGIS tables populated by this pipeline
-- [K-Nearest Neighbor Routing Algorithms](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) — KNN queries over bulk-inserted geometry datasets
-- [Connection Pooling & pgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — tune database connection pools for high-concurrency bulk ingest
+- [Handling Async File Uploads for Shapefile Processing](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/) — companion-file validation, ZIP extraction, and chunked multipart parsing
+- [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — enforce geometry types and CRS contracts at the request boundary before queueing
+- [Bounding Box & Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — query the PostGIS tables populated by this pipeline
+- [K-Nearest Neighbor Routing Algorithms](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) — KNN queries over bulk-inserted geometry datasets
+- [Connection Pooling & pgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — tune database connection pools for high-concurrency bulk ingest
 
-← Back to [Advanced Spatial Endpoints & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/)
+← Back to [Advanced Spatial Endpoints & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/)

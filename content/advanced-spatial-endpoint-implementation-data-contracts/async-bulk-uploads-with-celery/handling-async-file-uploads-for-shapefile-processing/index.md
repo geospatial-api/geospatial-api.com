@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Handling Async File Uploads for Shapefile Processing in FastAPI"
 description: "Stream shapefile .zip archives to disk in FastAPI, return 202 Accepted immediately, and delegate GDAL parsing and PostGIS ingestion to Celery background workers."
 slug: "handling-async-file-uploads-for-shapefile-processing"
-type: "long_tail"
 breadcrumb:
   - label: "Advanced Spatial Endpoints & Data Contracts"
     url: "/advanced-spatial-endpoint-implementation-data-contracts/"
@@ -30,9 +29,9 @@ dateModified: "2026-06-23"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
-        { "@type": "ListItem", "position": 2, "name": "Async Bulk Uploads with Celery", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/" },
-        { "@type": "ListItem", "position": 3, "name": "Handling Async File Uploads for Shapefile Processing", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/" }
+        { "@type": "ListItem", "position": 1, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
+        { "@type": "ListItem", "position": 2, "name": "Async Bulk Uploads with Celery", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/" },
+        { "@type": "ListItem", "position": 3, "name": "Handling Async File Uploads for Shapefile Processing", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/" }
       ]
     },
     {
@@ -56,7 +55,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [Async Bulk Uploads with Celery](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/)
+← Back to [Async Bulk Uploads with Celery](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/)
 
 # Handling async file uploads for shapefile processing
 
@@ -66,9 +65,9 @@ Accept a multipart shapefile archive in FastAPI, return `202 Accepted` instantly
 
 FastAPI's async event loop is designed for I/O concurrency, not CPU-bound work. Extracting a `.zip` archive, validating shapefile components, reprojecting geometries, and running `ogr2ogr` are all blocking operations. Allowing any of these to execute inside an `async def` route blocks every other concurrent request for the duration of the task — often 5–60 seconds for real-world datasets. Nginx and other reverse proxies enforce gateway timeouts (default 60 s) that silently abort in-progress uploads, leaving the client with no useful error.
 
-The solution is strict layer separation: the HTTP handler does pure I/O (stream bytes to disk, enqueue a task ID, return immediately), while a dedicated Celery worker process handles all spatial computation synchronously, free from Python's async scheduler and the GIL's interference on multi-threaded C extensions. This is the same principle that underpins the broader [async bulk upload patterns](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) covered in the parent guide.
+The solution is strict layer separation: the HTTP handler does pure I/O (stream bytes to disk, enqueue a task ID, return immediately), while a dedicated Celery worker process handles all spatial computation synchronously, free from Python's async scheduler and the GIL's interference on multi-threaded C extensions. This is the same principle that underpins the broader [async bulk upload patterns](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) covered in the parent guide.
 
-Use this pattern when uploads are larger than ~5 MB, when GDAL reprojection or validation must run server-side, or when you need reliable retries on transient database failures. For small GeoJSON payloads where inline [strict Pydantic geometry validation](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) is sufficient, synchronous processing is simpler and preferable.
+Use this pattern when uploads are larger than ~5 MB, when GDAL reprojection or validation must run server-side, or when you need reliable retries on transient database failures. For small GeoJSON payloads where inline [strict Pydantic geometry validation](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) is sufficient, synchronous processing is simpler and preferable.
 
 **Preconditions:** GDAL/OGR binaries installed in the worker environment (`ogr2ogr` on `PATH`), Redis reachable from both the FastAPI process and the worker, and a PostGIS database with write permissions. The `.prj` sidecar must be present in the archive unless you supply a fallback CRS explicitly.
 
@@ -353,7 +352,7 @@ def process_shapefile_task(
 
 - **Zip bomb or oversized archive.** `zipfile.ZipFile` does not check the uncompressed size before extraction. Before calling `extractall`, iterate `zf.infolist()` and sum `info.file_size`; reject archives where the total exceeds your configured limit (e.g. 2 GB) or where the compression ratio exceeds 200:1. A 1 MB archive that expands to 2 GB will exhaust the worker's disk and kill the process with no useful error.
 
-- **Missing `.prj` causes silent CRS misassignment.** If you remove `.prj` from `REQUIRED_EXTENSIONS` and accept uploads without it, `ogr2ogr` defaults to no CRS, and PostGIS stores the geometry with `SRID=0`. Subsequent [bounding-box spatial index queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) using `ST_Within` or `ST_Intersects` will silently return empty result sets because the SRID mismatch prevents index usage. Always require `.prj`, or validate and inject a known CRS explicitly.
+- **Missing `.prj` causes silent CRS misassignment.** If you remove `.prj` from `REQUIRED_EXTENSIONS` and accept uploads without it, `ogr2ogr` defaults to no CRS, and PostGIS stores the geometry with `SRID=0`. Subsequent [bounding-box spatial index queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) using `ST_Within` or `ST_Intersects` will silently return empty result sets because the SRID mismatch prevents index usage. Always require `.prj`, or validate and inject a known CRS explicitly.
 
 - **`ogr2ogr` exits 0 even on partial failure.** By default, `ogr2ogr` logs feature-level errors to stderr and exits with code 0. Add `--config OGR_TRUNCATE NO` and check `result.stderr` for lines containing `ERROR` after the subprocess returns. A task marked "completed" in Redis can still have zero rows in PostGIS if geometry parsing failed silently.
 
@@ -398,9 +397,9 @@ A `srid` of `0` means the `.prj` file was absent or unrecognised. A `type` of `G
 
 ## Related
 
-- [Async Bulk Uploads with Celery](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) — task queue architecture, result backend configuration, and queue routing strategy
-- [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — validate GeoJSON and WKT payloads at the API boundary before any database write
-- [Bounding-Box Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — ensure imported geometries have correct SRIDs so GiST index scans work correctly
-- [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — use `EXPLAIN ANALYZE` to confirm the spatial index created by `ogr2ogr` is being used
+- [Async Bulk Uploads with Celery](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) — task queue architecture, result backend configuration, and queue routing strategy
+- [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — validate GeoJSON and WKT payloads at the API boundary before any database write
+- [Bounding-Box Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — ensure imported geometries have correct SRIDs so GiST index scans work correctly
+- [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — use `EXPLAIN ANALYZE` to confirm the spatial index created by `ogr2ogr` is being used
 
-← Back to [Async Bulk Uploads with Celery](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/)
+← Back to [Async Bulk Uploads with Celery](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/)

@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "High-Performance Caching & Query Optimization for Geospatial APIs"
 description: "Production strategies for PostGIS query optimization, Redis spatial caching, PgBouncer connection pooling, vector tile generation, and CDN edge distribution in FastAPI-based geospatial services."
 slug: "high-performance-caching-query-optimization"
-type: "pillar"
 breadcrumb: "Caching & Query Optimization"
 datePublished: "2025-04-01"
 dateModified: "2026-06-23"
@@ -15,17 +14,17 @@ dateModified: "2026-06-23"
   "@graph": [
     {
       "@type": "TechArticle",
-      "@id": "https://geospatial-api.com/high-performance-caching-query-optimization/#article",
+      "@id": "https://www.geospatial-api.com/high-performance-caching-query-optimization/#article",
       "headline": "High-Performance Caching & Query Optimization for Geospatial APIs",
       "description": "Production strategies for PostGIS query optimization, Redis spatial caching, PgBouncer connection pooling, vector tile generation, and CDN edge distribution in FastAPI-based geospatial services.",
       "datePublished": "2025-04-01",
       "dateModified": "2026-06-23",
       "author": { "@type": "Organization", "name": "geospatial-api.com" },
-      "publisher": { "@type": "Organization", "name": "geospatial-api.com", "url": "https://geospatial-api.com" }
+      "publisher": { "@type": "Organization", "name": "geospatial-api.com", "url": "https://www.geospatial-api.com" }
     },
     {
       "@type": "Article",
-      "@id": "https://geospatial-api.com/high-performance-caching-query-optimization/#mainArticle",
+      "@id": "https://www.geospatial-api.com/high-performance-caching-query-optimization/#mainArticle",
       "headline": "High-Performance Caching & Query Optimization for Geospatial APIs",
       "datePublished": "2025-04-01",
       "dateModified": "2026-06-23"
@@ -33,8 +32,8 @@ dateModified: "2026-06-23"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Caching & Query Optimization", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/" }
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Caching & Query Optimization", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/" }
       ]
     },
     {
@@ -180,7 +179,7 @@ WHERE status = 'active';
 
 ### Query Plan Analysis
 
-Blindly adding indexes is not enough — the planner must choose to use them. Table statistics become stale after bulk loads or spatial migrations, causing the planner to underestimate selectivity and fall back to sequential scans. For detailed diagnosis and remediation, the [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) guide walks through systematic use of `EXPLAIN (ANALYZE, BUFFERS)` to identify bitmap heap scans, rows removed by index filter, and work_mem spills.
+Blindly adding indexes is not enough — the planner must choose to use them. Table statistics become stale after bulk loads or spatial migrations, causing the planner to underestimate selectivity and fall back to sequential scans. For detailed diagnosis and remediation, the [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) guide walks through systematic use of `EXPLAIN (ANALYZE, BUFFERS)` to identify bitmap heap scans, rows removed by index filter, and work_mem spills.
 
 Key signals to watch in a plan output:
 
@@ -197,7 +196,7 @@ When `work_mem` is set too low, hash joins and sort operations spill to disk, ad
 
 FastAPI's async architecture multiplies the connection pressure on PostgreSQL. Without pooling, each concurrent Uvicorn worker that awaits a database result holds an open PostgreSQL backend process for the full request duration — and PostgreSQL's default `max_connections = 100` evaporates under moderate load.
 
-[PgBouncer connection pooling setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) covers the complete configuration, but the critical choices are:
+[PgBouncer connection pooling setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) covers the complete configuration, but the critical choices are:
 
 - **Transaction pooling mode** (`pool_mode = transaction`): the connection returns to the pool after each transaction, not each session. This is the right choice for stateless FastAPI routes.
 - **Pool sizing**: set `default_pool_size` to 2–3× the number of PostGIS CPU cores. More connections increase context-switching overhead and degrade spatial query performance.
@@ -309,7 +308,7 @@ async def query_parcels(
 1. **Zoom-adaptive simplification**: apply `ST_SimplifyPreserveTopology(geom, tolerance)` where tolerance scales with the viewport zoom level. At zoom 10, a 100-metre tolerance is invisible to end-users and reduces vertex count by 90%.
 2. **Well-Known Binary (WKB) for internal microservices**: WKB is 3–5× more compact than GeoJSON and eliminates the JSON parse/serialize round-trip. Reserve GeoJSON for client-facing endpoints.
 3. **Streaming large responses**: use FastAPI's `StreamingResponse` with an async generator to avoid buffering full payloads in memory. This is critical for responses exceeding 1 MB.
-4. **FlatGeobuf for bulk transfers**: for the [GeoJSON vs GeoParquet serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision, FlatGeobuf is the fastest binary option for large feature sets that must be streamable without loading into memory.
+4. **FlatGeobuf for bulk transfers**: for the [GeoJSON vs GeoParquet serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision, FlatGeobuf is the fastest binary option for large feature sets that must be streamable without loading into memory.
 
 ```python
 from fastapi.responses import StreamingResponse
@@ -352,7 +351,7 @@ For endpoints that serve both analytics consumers and browser map clients, consi
 
 ### OGC Compliance
 
-If your API must comply with OGC API – Features (formerly WFS 3.0), structure GeoJSON responses to include `links`, `timeStamp`, and `numberMatched` fields at the collection level. The `Content-Type` header must be `application/geo+json`. For [spatial pagination](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) across large feature collections, the OGC spec recommends cursor-based `next` links rather than offset-based page numbers — offset pagination degrades quadratically as the skip value grows.
+If your API must comply with OGC API – Features (formerly WFS 3.0), structure GeoJSON responses to include `links`, `timeStamp`, and `numberMatched` fields at the collection level. The `Content-Type` header must be `application/geo+json`. For [spatial pagination](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) across large feature collections, the OGC spec recommends cursor-based `next` links rather than offset-based page numbers — offset pagination degrades quadratically as the skip value grows.
 
 ## Intelligent Caching Strategies
 
@@ -366,7 +365,7 @@ Normalization strategies, from coarsest to finest:
 - **H3 / S2 cell identifiers**: convert the bounding box to a covering set of H3 cells at a fixed resolution and use the sorted cell IDs as the cache key. Provides consistent spatial granularity regardless of input.
 - **Tile matrix alignment**: snap bounding boxes to the Tile Map Service (TMS) grid at a fixed zoom level. Ensures cache entries align with tile boundaries and avoids fragmentation at tile edges.
 
-[Redis caching for spatial queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) details all three strategies with complete Python implementations, including compression pipelines and eviction policy configuration.
+[Redis caching for spatial queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) details all three strategies with complete Python implementations, including compression pipelines and eviction policy configuration.
 
 ### Cache Invalidation and TTL Policy
 
@@ -412,7 +411,7 @@ Cache-Control: public, max-age=86400, stale-while-revalidate=3600
 Vary: Accept-Encoding
 ```
 
-For dynamic layers, set a shorter max-age (60–300 s) and rely on `stale-while-revalidate` to serve cached tiles while the CDN revalidates in the background. Full tile generation and CDN configuration details are in [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/).
+For dynamic layers, set a shorter max-age (60–300 s) and rely on `stale-while-revalidate` to serve cached tiles while the CDN revalidates in the background. Full tile generation and CDN configuration details are in [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/).
 
 ## Performance and Scalability
 
@@ -428,7 +427,7 @@ Before optimizing, establish baselines with `EXPLAIN (ANALYZE, BUFFERS)` in Post
 | KNN query, 10 neighbors | 5–20 ms | 2–4 ms | N/A |
 | Polygon union, 100 k geoms | 800–2000 ms | 10–20 ms | N/A |
 
-KNN queries deserve special attention: the PostGIS `<->` distance operator enables index-accelerated nearest-neighbor search, as covered in the [K-Nearest Neighbor routing](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) guide.
+KNN queries deserve special attention: the PostGIS `<->` distance operator enables index-accelerated nearest-neighbor search, as covered in the [K-Nearest Neighbor routing](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) guide.
 
 ### Concurrency Limits and Async Trade-offs
 
@@ -455,7 +454,7 @@ async def multi_region_query(pool, regions: list[dict]) -> list[dict]:
 
 ### Versioning and Health Checks
 
-[API versioning for GIS endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) recommends URL-prefixed versioning (`/v1/parcels`, `/v2/parcels`) for spatial APIs because geometry schema changes — adding Z coordinates, switching CRS, or changing property names — are breaking changes that clients cannot detect from HTTP headers alone.
+[API versioning for GIS endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) recommends URL-prefixed versioning (`/v1/parcels`, `/v2/parcels`) for spatial APIs because geometry schema changes — adding Z coordinates, switching CRS, or changing property names — are breaking changes that clients cannot detect from HTTP headers alone.
 
 Every deployment should expose a `/health` endpoint that validates both the PostGIS connection and the Redis connection before reporting healthy:
 
@@ -519,9 +518,9 @@ Export these signals to Prometheus for alerting:
 
 ## Related
 
-- [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — reading `EXPLAIN ANALYZE` output, fixing planner misestimates, and choosing between GiST and BRIN indexes
-- [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — key normalization, H3-based cache tagging, compression pipelines, and eviction policies
-- [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — complete `pgbouncer.ini` configuration, asyncpg compatibility, and pool sizing formulas
-- [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — `ST_AsMVT` pipelines, cache-header strategy, and fallback for uncached zoom levels
-- [Materialized Views for Spatial Aggregations](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/) — precompute `ST_Union` rollups and heatmap grids, index the view, and refresh it concurrently
-- [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choosing the right output format for browser clients, analytics pipelines, and bulk exports
+- [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — reading `EXPLAIN ANALYZE` output, fixing planner misestimates, and choosing between GiST and BRIN indexes
+- [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — key normalization, H3-based cache tagging, compression pipelines, and eviction policies
+- [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — complete `pgbouncer.ini` configuration, asyncpg compatibility, and pool sizing formulas
+- [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — `ST_AsMVT` pipelines, cache-header strategy, and fallback for uncached zoom levels
+- [Materialized Views for Spatial Aggregations](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/) — precompute `ST_Union` rollups and heatmap grids, index the view, and refresh it concurrently
+- [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choosing the right output format for browser clients, analytics pipelines, and bulk exports

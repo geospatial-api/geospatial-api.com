@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Row-Level Security for Multi-Tenant PostGIS"
 description: "Use PostgreSQL row-level security to guarantee tenant isolation of geometry data so an application bug can never leak one tenant's features to another. Policies, FORCE RLS, GiST interaction, and a FastAPI integration."
 slug: "row-level-security-for-multi-tenant-postgis"
-type: "cluster"
 breadcrumb:
   - label: "Securing Geospatial APIs"
     url: "/securing-geospatial-apis-authentication-authorization/"
@@ -35,9 +34,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/"},
-        {"@type": "ListItem", "position": 2, "name": "Securing Geospatial APIs", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
-        {"@type": "ListItem", "position": 3, "name": "Row-Level Security for Multi-Tenant PostGIS", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/"}
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Securing Geospatial APIs", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
+        {"@type": "ListItem", "position": 3, "name": "Row-Level Security for Multi-Tenant PostGIS", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/"}
       ]
     },
     {
@@ -84,13 +83,13 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Securing Geospatial APIs](/securing-geospatial-apis-authentication-authorization/)
+← Back to [Securing Geospatial APIs](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/)
 
 # Row-level security for multi-tenant PostGIS
 
 Multi-tenant spatial platforms share one `features` table across many customers, and a single missing `WHERE tenant_id = ...` clause is enough to serve one tenant's parcels, assets, or geofences to another. Application-layer filtering is fragile precisely because it depends on every developer, every ORM query, and every raw SQL string remembering the filter forever. PostgreSQL row-level security (RLS) moves the tenant boundary into the database engine itself: the policy predicate is compiled into every plan for the table, so even a query that forgets the filter — or a raw `psql` session, or a background job — sees only the current tenant's geometry. This is the strongest structural defence against cross-tenant leakage, and it composes cleanly with GiST spatial indexes and predicates like `ST_DWithin` and `ST_Intersects`.
 
-This guide sits under [Securing Geospatial APIs](/securing-geospatial-apis-authentication-authorization/) alongside [JWT authentication for spatial scopes](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) and [rate limiting for geofence and tile endpoints](/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/). Where JWT scopes answer "which operations may this caller invoke," RLS answers the orthogonal question "which rows may this caller ever touch," and the two are layered, not alternatives.
+This guide sits under [Securing Geospatial APIs](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/) alongside [JWT authentication for spatial scopes](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) and [rate limiting for geofence and tile endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/). Where JWT scopes answer "which operations may this caller invoke," RLS answers the orthogonal question "which rows may this caller ever touch," and the two are layered, not alternatives.
 
 ---
 
@@ -194,7 +193,7 @@ Three isolation strategies dominate multi-tenant PostGIS. They are not mutually 
 | Connection-context need | Must set `app.tenant_id` per txn | None | Per-tenant search_path |
 | Blast radius of bug | Contained by engine | Full table | Contained by schema |
 
-For a spatial SaaS with a large, dynamic tenant list, **RLS on a shared table is the default recommendation**: one GiST index serves everyone, the tenant boundary cannot be forgotten, and adding a tenant is an `INSERT`, not a DDL migration. Schema-per-tenant suits a small number of high-value tenants that demand physical separation for compliance. A pure app-layer filter is acceptable only as a secondary optimisation on top of RLS, never as the sole boundary. The one operational cost RLS adds is that every request must establish its tenant context on the connection — the subject of [setting tenant context in asyncpg connections](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/).
+For a spatial SaaS with a large, dynamic tenant list, **RLS on a shared table is the default recommendation**: one GiST index serves everyone, the tenant boundary cannot be forgotten, and adding a tenant is an `INSERT`, not a DDL migration. Schema-per-tenant suits a small number of high-value tenants that demand physical separation for compliance. A pure app-layer filter is acceptable only as a secondary optimisation on top of RLS, never as the sole boundary. The one operational cost RLS adds is that every request must establish its tenant context on the connection — the subject of [setting tenant context in asyncpg connections](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/).
 
 ---
 
@@ -221,7 +220,7 @@ CREATE INDEX idx_features_geom ON features USING GIST (geom);
 CREATE INDEX idx_features_tenant ON features (tenant_id);
 ```
 
-The two indexes matter for the same query. When the RLS predicate (`tenant_id = ...`) is ANDed with a spatial predicate, the planner can start from either index; on a large multi-tenant table it usually leads with the tenant btree, then confirms geometry against the GiST index. Detailed EXPLAIN reading is covered in [reading EXPLAIN ANALYZE for spatial query optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
+The two indexes matter for the same query. When the RLS predicate (`tenant_id = ...`) is ANDed with a spatial predicate, the planner can start from either index; on a large multi-tenant table it usually leads with the tenant btree, then confirms geometry against the GiST index. Detailed EXPLAIN reading is covered in [reading EXPLAIN ANALYZE for spatial query optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
 
 ### Step 2: ENABLE and FORCE row-level security
 
@@ -242,7 +241,7 @@ RLS policies read the tenant from a session/transaction setting. Referencing an 
 ALTER DATABASE gis_db SET app.tenant_id = '';
 ```
 
-Whether or not you register a default, the policy in Step 4 uses the strict two-argument form so an empty or missing value matches no rows rather than raising mid-query. The trade-offs of strict vs `missing_ok` are examined in [setting tenant context in asyncpg connections](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/).
+Whether or not you register a default, the policy in Step 4 uses the strict two-argument form so an empty or missing value matches no rows rather than raising mid-query. The trade-offs of strict vs `missing_ok` are examined in [setting tenant context in asyncpg connections](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/).
 
 ### Step 4: Create per-command policies with USING and WITH CHECK
 
@@ -271,11 +270,11 @@ CREATE POLICY features_delete ON features
     USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
 ```
 
-`USING` filters which existing rows a command can *see* (SELECT, UPDATE, DELETE). `WITH CHECK` validates the row *after* the write (INSERT, UPDATE) and rejects it if the predicate is false. The `UPDATE` policy needs both: `USING` stops a tenant from touching foreign rows, and `WITH CHECK` stops them from setting `tenant_id` to someone else's value. Omitting the `WITH CHECK` on `UPDATE` is a real leakage path — a tenant could migrate a row out of their own boundary. The full policy set, including how it survives spatial joins, is drilled into in [enforcing tenant geometry isolation with PostGIS RLS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/enforcing-tenant-geometry-isolation-with-postgis-rls/).
+`USING` filters which existing rows a command can *see* (SELECT, UPDATE, DELETE). `WITH CHECK` validates the row *after* the write (INSERT, UPDATE) and rejects it if the predicate is false. The `UPDATE` policy needs both: `USING` stops a tenant from touching foreign rows, and `WITH CHECK` stops them from setting `tenant_id` to someone else's value. Omitting the `WITH CHECK` on `UPDATE` is a real leakage path — a tenant could migrate a row out of their own boundary. The full policy set, including how it survives spatial joins, is drilled into in [enforcing tenant geometry isolation with PostGIS RLS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/enforcing-tenant-geometry-isolation-with-postgis-rls/).
 
 ### Step 5: Establish tenant context on the connection
 
-The policy is inert until `app.tenant_id` is set on the connection running the query. Under PgBouncer transaction pooling you must use `SET LOCAL` (transaction-scoped) — never session `SET`, which would leak the previous client's tenant onto the next borrower of that pooled backend. This is a hard constraint of the pooling mode described in [connection pooling & PgBouncer setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
+The policy is inert until `app.tenant_id` is set on the connection running the query. Under PgBouncer transaction pooling you must use `SET LOCAL` (transaction-scoped) — never session `SET`, which would leak the previous client's tenant onto the next borrower of that pooled backend. This is a hard constraint of the pooling mode described in [connection pooling & PgBouncer setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
 
 ```sql
 BEGIN;
@@ -285,7 +284,7 @@ SELECT set_config('app.tenant_id', $1, true);  -- true = LOCAL to this transacti
 COMMIT;
 ```
 
-`set_config(name, value, is_local => true)` is the function form of `SET LOCAL` and, unlike a literal `SET LOCAL app.tenant_id = '...'`, accepts a bind parameter — so the tenant UUID can come straight from a validated JWT claim without any string concatenation. The asyncpg/SQLAlchemy wiring for this is the subject of [setting tenant context in asyncpg connections](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/).
+`set_config(name, value, is_local => true)` is the function form of `SET LOCAL` and, unlike a literal `SET LOCAL app.tenant_id = '...'`, accepts a bind parameter — so the tenant UUID can come straight from a validated JWT claim without any string concatenation. The asyncpg/SQLAlchemy wiring for this is the subject of [setting tenant context in asyncpg connections](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/).
 
 ---
 
@@ -347,7 +346,7 @@ async def features_nearby(
     }
 ```
 
-The RLS policy predicate is ANDed with the `ST_DWithin` filter by the planner. The `geom::geography` cast gives true metre distances; the `<->` KNN operator orders by distance using the GiST index (see [optimizing KNN queries with the PostGIS operator](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/optimizing-knn-queries-with-postgis-operator/)). Nothing about the tenant boundary is expressed in Python or in the SQL text — that is the entire point.
+The RLS policy predicate is ANDed with the `ST_DWithin` filter by the planner. The `geom::geography` cast gives true metre distances; the `<->` KNN operator orders by distance using the GiST index (see [optimizing KNN queries with the PostGIS operator](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/optimizing-knn-queries-with-postgis-operator/)). Nothing about the tenant boundary is expressed in Python or in the SQL text — that is the entire point.
 
 ---
 
@@ -434,7 +433,7 @@ async def test_tenant_cannot_see_other_tenant_features():
 
 2. **`unrecognized configuration parameter "app.tenant_id"` (SQLSTATE 42704).** The parameter was never set on this connection and the policy used the strict one-argument `current_setting('app.tenant_id')`. Either set it every transaction, or use the two-argument `current_setting('app.tenant_id', true)` so an unset context yields `NULL` (which matches no rows) instead of erroring. Choose deliberately — erroring is often the safer default.
 
-3. **`SET` instead of `SET LOCAL` under transaction pooling.** A session-level `SET app.tenant_id` persists on the pooled backend after your transaction returns to PgBouncer, so the *next* client to borrow that backend inherits your tenant and reads your rows. Always use `SET LOCAL` / `set_config(..., true)`. This is the most dangerous failure in the whole design; see [setting tenant context in asyncpg connections](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/).
+3. **`SET` instead of `SET LOCAL` under transaction pooling.** A session-level `SET app.tenant_id` persists on the pooled backend after your transaction returns to PgBouncer, so the *next* client to borrow that backend inherits your tenant and reads your rows. Always use `SET LOCAL` / `set_config(..., true)`. This is the most dangerous failure in the whole design; see [setting tenant context in asyncpg connections](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/).
 
 4. **`SECURITY DEFINER` function silently bypasses policies.** A helper function marked `SECURITY DEFINER` runs as its owner; if that owner is exempt from RLS, calls through the function see all tenants. Prefer `SECURITY INVOKER` (the default) for anything touching tenant tables, or set `app.tenant_id` inside the definer function explicitly.
 
@@ -452,13 +451,13 @@ async def test_tenant_cannot_see_other_tenant_features():
 
 **Policy predicates are essentially free when indexed.** The RLS predicate compiles into the plan as an extra `Filter` or index condition. Against the btree on `tenant_id`, the added cost is a fraction of a millisecond even on tables with tens of millions of rows across thousands of tenants. The GiST spatial index still drives `ST_DWithin`/`ST_Intersects`; RLS does not force a sequential scan.
 
-**Lead with the more selective predicate.** On a table where one tenant owns most rows, the spatial predicate is more selective and the planner leads with the GiST index, applying `tenant_id` as a filter. Where a tenant owns a tiny slice, the tenant btree is more selective and leads. A composite plan works either way; verify with `EXPLAIN (ANALYZE, BUFFERS)` per your data distribution — the technique is covered in [query plan analysis & index tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/).
+**Lead with the more selective predicate.** On a table where one tenant owns most rows, the spatial predicate is more selective and the planner leads with the GiST index, applying `tenant_id` as a filter. Where a tenant owns a tiny slice, the tenant btree is more selective and leads. A composite plan works either way; verify with `EXPLAIN (ANALYZE, BUFFERS)` per your data distribution — the technique is covered in [query plan analysis & index tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/).
 
 **Context-setting adds one round-trip.** `SELECT set_config(...)` before the real query is a sub-millisecond statement, but under high throughput it doubles statement count. Batch it into the same transaction as the query (which you must do anyway under transaction pooling) so it shares one backend hand-off rather than opening a second.
 
 **`current_setting()` is evaluated per row unless stable.** For very hot loops, cast once: PostgreSQL treats `current_setting('app.tenant_id', true)::uuid` as stable within a statement, so it is evaluated once per query, not per row. Do not wrap it in a `VOLATILE` function.
 
-**Caching interacts with the tenant key.** If you place a [Redis cache for spatial queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) in front of RLS-protected endpoints, the cache key **must** include `tenant_id`. A cache keyed only on the bounding box will serve one tenant's cached geometry to another, re-introducing the exact leak RLS prevents at the database.
+**Caching interacts with the tenant key.** If you place a [Redis cache for spatial queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) in front of RLS-protected endpoints, the cache key **must** include `tenant_id`. A cache keyed only on the bounding box will serve one tenant's cached geometry to another, re-introducing the exact leak RLS prevents at the database.
 
 ---
 
@@ -480,10 +479,10 @@ If the parameter is not registered and you call `current_setting('app.tenant_id'
 
 ## Related
 
-- [Enforcing Tenant Geometry Isolation with PostGIS RLS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/enforcing-tenant-geometry-isolation-with-postgis-rls/) — the full policy set that survives spatial joins and `ST_DWithin` neighbour queries
-- [Setting Tenant Context in asyncpg Connections](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/) — `SET LOCAL` vs session `SET` under PgBouncer, and injection-safe `set_config`
-- [JWT Authentication for Spatial Scopes](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) — where the `tenant_id` claim that feeds the policy originates
-- [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — the transaction-pooling mode that mandates `SET LOCAL` for tenant context
-- [Securing Geospatial APIs](/securing-geospatial-apis-authentication-authorization/) — the broader authentication and authorization reference
+- [Enforcing Tenant Geometry Isolation with PostGIS RLS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/enforcing-tenant-geometry-isolation-with-postgis-rls/) — the full policy set that survives spatial joins and `ST_DWithin` neighbour queries
+- [Setting Tenant Context in asyncpg Connections](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/) — `SET LOCAL` vs session `SET` under PgBouncer, and injection-safe `set_config`
+- [JWT Authentication for Spatial Scopes](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) — where the `tenant_id` claim that feeds the policy originates
+- [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — the transaction-pooling mode that mandates `SET LOCAL` for tenant context
+- [Securing Geospatial APIs](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/) — the broader authentication and authorization reference
 
-← Back to [Securing Geospatial APIs](/securing-geospatial-apis-authentication-authorization/)
+← Back to [Securing Geospatial APIs](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/)

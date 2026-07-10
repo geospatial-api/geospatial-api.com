@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Spatial Resource Modeling Patterns"
 description: "Master spatial resource modeling for FastAPI and PostGIS. Map geometry to endpoints, normalize CRS, optimize spatial queries, and prevent N+1 query traps at scale."
 slug: spatial-resource-modeling-patterns
-type: cluster
 breadcrumb: "Core Geospatial API Architecture > Spatial Resource Modeling Patterns"
 datePublished: "2024-01-15"
 dateModified: "2026-06-23"
@@ -29,13 +28,13 @@ dateModified: "2026-06-23"
           "@type": "ListItem",
           "position": 1,
           "name": "Core Geospatial API Architecture",
-          "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/"
+          "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/"
         },
         {
           "@type": "ListItem",
           "position": 2,
           "name": "Spatial Resource Modeling Patterns",
-          "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/"
+          "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/"
         }
       ]
     },
@@ -83,7 +82,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [Core Geospatial API Architecture](/core-geospatial-api-architecture-with-fastapi-postgis/)
+← Back to [Core Geospatial API Architecture](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/)
 
 # Spatial Resource Modeling Patterns
 
@@ -198,7 +197,7 @@ Document the expected coordinate order (longitude, then latitude, per RFC 7946) 
 
 Geospatial APIs frequently suffer from monolithic route files that mix CRUD, spatial analysis, and administrative operations. Clean modeling requires isolating spatial resources by domain boundary: `/parcels`, `/sensors`, `/routes`. Each router owns its Pydantic response models, query builders, and error handlers.
 
-For the full directory convention and dependency injection patterns, see [FastAPI Routers for PostGIS Tables](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/how-to-structure-fastapi-routers-for-postgis-tables/).
+For the full directory convention and dependency injection patterns, see [FastAPI Routers for PostGIS Tables](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/how-to-structure-fastapi-routers-for-postgis-tables/).
 
 ```python
 # routers/parcels.py
@@ -256,7 +255,7 @@ Avoid synchronous `psycopg2` or blocking ORM calls inside async endpoints — th
 
 ### Step 4: Optimize Payload Serialization
 
-A single complex polygon with thousands of vertices can inflate a JSON response to several megabytes. Modern spatial APIs must support format negotiation and selective serialization. The [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix covers the full trade-off between human-readable interchange and columnar compression for analytical workloads.
+A single complex polygon with thousands of vertices can inflate a JSON response to several megabytes. Modern spatial APIs must support format negotiation and selective serialization. The [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix covers the full trade-off between human-readable interchange and columnar compression for analytical workloads.
 
 ```python
 from fastapi import Request
@@ -292,7 +291,7 @@ Apply coordinate precision trimming (6 decimals for metre-level accuracy, 4 for 
 
 ### Step 5: Design Spatial-Aware Pagination
 
-Traditional offset-based pagination breaks down with spatial datasets. Sorting by `id` or `created_at` ignores geographic proximity and produces inconsistent results across pages when used alongside map-viewport filtering. As detailed in [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/), cursor-based pagination with bounding-box boundaries maintains deterministic ordering and respects spatial indexes.
+Traditional offset-based pagination breaks down with spatial datasets. Sorting by `id` or `created_at` ignores geographic proximity and produces inconsistent results across pages when used alongside map-viewport filtering. As detailed in [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/), cursor-based pagination with bounding-box boundaries maintains deterministic ordering and respects spatial indexes.
 
 ```python
 import base64, json
@@ -474,9 +473,9 @@ RFC 7946 mandates longitude, then latitude (x, y order). Document this explicitl
 
 ## Related
 
-- [FastAPI Routers for PostGIS Tables](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/how-to-structure-fastapi-routers-for-postgis-tables/) — directory layout, dependency injection, and middleware wiring for spatial routers
-- [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — cursor encoding, bounding-box pagination, and index-safe ordering
-- [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — format selection decision matrix and streaming implementation
-- [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — versioning strategies that keep spatial contracts stable across client generations
+- [FastAPI Routers for PostGIS Tables](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/how-to-structure-fastapi-routers-for-postgis-tables/) — directory layout, dependency injection, and middleware wiring for spatial routers
+- [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — cursor encoding, bounding-box pagination, and index-safe ordering
+- [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — format selection decision matrix and streaming implementation
+- [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — versioning strategies that keep spatial contracts stable across client generations
 
-← Back to [Core Geospatial API Architecture](/core-geospatial-api-architecture-with-fastapi-postgis/)
+← Back to [Core Geospatial API Architecture](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/)

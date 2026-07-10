@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Spatial Tile Generation and CDN Distribution"
 description: "Generate and serve vector tiles using PostGIS ST_AsMVT and CDN edge caching. Configure Cache-Control headers for sub-50ms tile delivery at global scale."
 slug: "tile-generation-cdn-distribution"
-type: "cluster"
 breadcrumb: "High-Performance Caching & Query Optimization → Tile Generation & CDN Distribution"
 datePublished: "2024-11-01"
 dateModified: "2026-06-23"
@@ -79,11 +78,11 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/)
+← Back to [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/)
 
 # Tile Generation & CDN Distribution for Geospatial APIs
 
-Delivering interactive maps at scale requires a coordinated pipeline between your spatial database, application server, and edge network. This page covers how to generate Mapbox Vector Tiles directly from PostGIS using `ST_AsMVT`, configure FastAPI to stream binary tile responses, and wire a CDN to absorb the bulk of requests before they ever reach your origin — achieving consistent sub-50ms tile delivery worldwide. This workflow sits at the heart of the broader [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/) stack, where database efficiency, async streaming, and edge caching converge to eliminate redundant computation.
+Delivering interactive maps at scale requires a coordinated pipeline between your spatial database, application server, and edge network. This page covers how to generate Mapbox Vector Tiles directly from PostGIS using `ST_AsMVT`, configure FastAPI to stream binary tile responses, and wire a CDN to absorb the bulk of requests before they ever reach your origin — achieving consistent sub-50ms tile delivery worldwide. This workflow sits at the heart of the broader [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/) stack, where database efficiency, async streaming, and edge caching converge to eliminate redundant computation.
 
 ---
 
@@ -99,7 +98,7 @@ Before deploying a production-ready tile pipeline, verify these infrastructure r
 | asyncpg | 0.29+ | Non-blocking pool, binary protocol for PostGIS types |
 | CDN provider | Any (Cloudflare / CloudFront / Fastly) | Must cache `application/vnd.mapbox-vector-tile` MIME type |
 
-Your geometry column must have a GiST spatial index in place. Without it, the tile bounding box filter degrades into a full table scan — see [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) for how to create and verify those indexes using `EXPLAIN ANALYZE`. Source data should be stored in EPSG:4326 (WGS 84) or EPSG:3857 (Web Mercator); although `ST_Transform` handles on-the-fly reprojection, pre-transformed data reduces CPU overhead under concurrent tile generation.
+Your geometry column must have a GiST spatial index in place. Without it, the tile bounding box filter degrades into a full table scan — see [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) for how to create and verify those indexes using `EXPLAIN ANALYZE`. Source data should be stored in EPSG:4326 (WGS 84) or EPSG:3857 (Web Mercator); although `ST_Transform` handles on-the-fly reprojection, pre-transformed data reduces CPU overhead under concurrent tile generation.
 
 ---
 
@@ -113,7 +112,7 @@ The tile pipeline has three independent caching surfaces. Understanding where ea
 | Redis tile cache | Application server | ~5–30 ms → ~0.3–1 ms | Key-based `DEL`, pattern `SCAN` + `DEL` | Hot tiles (metro areas, zoom 10–14) |
 | PostgreSQL query cache | Database (shared_buffers) | ~50–500 ms → ~2–10 ms | Automatic (LRU) | Repeated identical bounding box queries |
 
-For most production workloads, combine CDN caching for the broad request volume with [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) for the hottest tiles. PostgreSQL's internal caching handles repeated identical queries automatically once buffer hit rates are high.
+For most production workloads, combine CDN caching for the broad request volume with [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) for the hottest tiles. PostgreSQL's internal caching handles repeated identical queries automatically once buffer hit rates are high.
 
 ---
 
@@ -252,7 +251,7 @@ The `256`-unit buffer clips geometries extending slightly beyond the tile bounda
 
 ### 4. Configure the asyncpg connection pool
 
-Use FastAPI's lifespan context to initialise the pool once at startup and close it cleanly on shutdown. Sync database adapters like `psycopg2` block the event loop and exhaust worker threads under concurrent tile load — asyncpg's binary protocol avoids both problems. For managing the connection pool under heavy traffic, review the [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) guide, which covers PgBouncer transaction-mode pooling for spatial workloads.
+Use FastAPI's lifespan context to initialise the pool once at startup and close it cleanly on shutdown. Sync database adapters like `psycopg2` block the event loop and exhaust worker threads under concurrent tile load — asyncpg's binary protocol avoids both problems. For managing the connection pool under heavy traffic, review the [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) guide, which covers PgBouncer transaction-mode pooling for spatial workloads.
 
 ```python
 from contextlib import asynccontextmanager
@@ -510,7 +509,7 @@ async def test_tile_invalid_coordinates():
 
 4. **`ST_AsMVT` returns `NULL` instead of empty bytes.** Accessing `row["tile"]` on a row where all features were clipped out of bounds can return `None` rather than an empty bytes value. Always guard with `if row and row["tile"]` before calling `bytes()`.
 
-5. **asyncpg pool exhaustion under burst load.** If `max_size` is set too low relative to concurrent tile requests, `asyncpg` raises `asyncpg.exceptions.TooManyConnectionsError`. Increase `max_size` or, for workloads exceeding 500 concurrent requests, front the database with PgBouncer in transaction mode as described in [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
+5. **asyncpg pool exhaustion under burst load.** If `max_size` is set too low relative to concurrent tile requests, `asyncpg` raises `asyncpg.exceptions.TooManyConnectionsError`. Increase `max_size` or, for workloads exceeding 500 concurrent requests, front the database with PgBouncer in transaction mode as described in [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
 
 6. **Empty tile 404 causing client error loops.** Map clients like MapLibre GL and OpenLayers interpret 404 responses for tile URLs as hard errors and may disable the layer or log continuously. Return `200` with empty content (`b""`) and a valid `Cache-Control` header so the CDN caches the empty result and the client renders a blank (not broken) tile.
 
@@ -522,7 +521,7 @@ async def test_tile_invalid_coordinates():
 
 **Latency by layer.** Cold requests hitting PostGIS typically return in 20–200 ms depending on geometry complexity and zoom level. Redis hits reduce this to 0.3–1 ms; CDN hits to 5–15 ms including network round-trip to the nearest PoP.
 
-**Index impact.** A GiST index on `geom` reduces bounding box query time from full table scans (hundreds of milliseconds on tables > 1 M rows) to 1–5 ms index scans. On the [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) page, use `EXPLAIN (ANALYZE, BUFFERS)` to measure buffer hit rates and confirm the index is engaged at each zoom level.
+**Index impact.** A GiST index on `geom` reduces bounding box query time from full table scans (hundreds of milliseconds on tables > 1 M rows) to 1–5 ms index scans. On the [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) page, use `EXPLAIN (ANALYZE, BUFFERS)` to measure buffer hit rates and confirm the index is engaged at each zoom level.
 
 **Zoom level selectivity.** Low zoom levels (z ≤ 8) cover enormous bounding boxes and may return millions of features. Apply zoom-dependent simplification using `ST_Simplify` before `ST_AsMVTGeom`, or use pre-generated tile layers stored in a tile cache like Martin or pg_tileserv to avoid real-time aggregation at coarse zoom levels.
 
@@ -573,10 +572,10 @@ Use Cloudflare's Cache-Tag purge API. Include the `Cache-Tag: layer-{name}` resp
 
 ## Related
 
-- [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/) — parent section covering the full caching stack
-- [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — binary tile caching, TTL strategies, and cache invalidation patterns
-- [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — decoupling application concurrency from database connection limits
-- [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — verifying GiST index usage with `EXPLAIN ANALYZE` for spatial queries
-- [Bounding Box Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — `ST_Within` and `ST_Intersects` patterns that underpin the tile bounding box filter
+- [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/) — parent section covering the full caching stack
+- [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — binary tile caching, TTL strategies, and cache invalidation patterns
+- [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — decoupling application concurrency from database connection limits
+- [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — verifying GiST index usage with `EXPLAIN ANALYZE` for spatial queries
+- [Bounding Box Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — `ST_Within` and `ST_Intersects` patterns that underpin the tile bounding box filter
 
-← Back to [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/)
+← Back to [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/)

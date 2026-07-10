@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Bounding Box & Spatial Index Queries"
 description: "Build fast PostGIS bounding box endpoints in FastAPI using the two-step operator pattern to exploit GiST indexes for sub-100ms spatial query performance."
 slug: "bounding-box-spatial-index-queries"
-type: "cluster"
 breadcrumb: "Advanced Spatial Endpoints → Bounding Box & Spatial Index Queries"
 datePublished: "2024-01-15"
 dateModified: "2026-06-23"
@@ -80,7 +79,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [Advanced Spatial Endpoint Implementation & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/)
+← Back to [Advanced Spatial Endpoint Implementation & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/)
 
 # Bounding Box & Spatial Index Queries
 
@@ -100,7 +99,7 @@ Before writing any code, understand which operator to apply at which stage. Pick
 | `ST_Intersects(a, b)` | Partially (calls `&&` internally) | Yes | Exact intersection check after `&&` |
 | `ST_Within(a, b)` | Partially | Yes — strict containment | Point-in-polygon, feature containment |
 | `ST_Contains(a, b)` | Partially | Yes — inverse of `ST_Within` | Polygon contains geometry |
-| `ST_DWithin(a, b, d)` | Yes (GiST with distance) | Yes — within distance `d` | Proximity searches; see [K-Nearest Neighbor Routing](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) |
+| `ST_DWithin(a, b, d)` | Yes (GiST with distance) | Yes — within distance `d` | Proximity searches; see [K-Nearest Neighbor Routing](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) |
 | `ST_MakeEnvelope(x1,y1,x2,y2,srid)` | N/A — constructs geometry | N/A | Build the query rectangle server-side |
 
 The standard two-step pattern is: `WHERE geom && ST_MakeEnvelope(...) AND ST_Intersects(geom, ST_MakeEnvelope(...))`. PostGIS is smart enough not to recompute the envelope twice if you bind it as a CTE or subexpression, but for simple queries the inline form is fine — the planner recognises the pattern.
@@ -164,7 +163,7 @@ Confirm these baselines before implementing any spatial endpoint:
 - **PostgreSQL 14+** — parallel query plans for GiST scans are more reliable from PostgreSQL 14 onward.
 - **FastAPI 0.100+** with `asyncpg 0.29+` or **SQLAlchemy 2.0** async engine. Synchronous drivers (`psycopg2`) block the event loop; under concurrent spatial load they serialise requests and degrade throughput to single-digit QPS.
 - **Pydantic v2** — the `model_validator(mode="after")` API used below is Pydantic v2-specific and is not compatible with Pydantic v1's `@validator`.
-- **CRS alignment** across client payloads, the database column, and the GiST index. A mismatch at any layer triggers an implicit `ST_Transform` that removes the index benefit. This alignment requirement is covered in depth in [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/).
+- **CRS alignment** across client payloads, the database column, and the GiST index. A mismatch at any layer triggers an implicit `ST_Transform` that removes the index benefit. This alignment requirement is covered in depth in [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/).
 
 Verify PostGIS is installed and check the version:
 
@@ -238,7 +237,7 @@ class BoundingBoxRequest(BaseModel):
         return self
 ```
 
-The area cap is the most important guard for production systems. Without it, a client can send a global envelope (`-180,-90,180,90`) and force a full table scan that returns millions of rows — bypassing any index benefit and exhausting database memory. For datasets where global queries are legitimate, combine the area cap with a mandatory `LIMIT` and implement [cursor-based pagination](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) for subsequent pages.
+The area cap is the most important guard for production systems. Without it, a client can send a global envelope (`-180,-90,180,90`) and force a full table scan that returns millions of rows — bypassing any index benefit and exhausting database memory. For datasets where global queries are legitimate, combine the area cap with a mandatory `LIMIT` and implement [cursor-based pagination](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) for subsequent pages.
 
 ### Step 3: Async Query Construction with the && Operator
 
@@ -282,7 +281,7 @@ async def fetch_features_in_bbox(
 
 When you only need approximate results (for example, initial map tile rendering where a few extra features at the boundary are acceptable), omit the `ST_Intersects` clause and rely on `&&` alone. The performance difference is significant on large datasets: `&&`-only scans run purely on the index; adding `ST_Intersects` triggers geometry deserialization for each candidate row.
 
-For precise spatial containment (features *inside* the envelope, not just overlapping), replace `ST_Intersects` with [ST_Within or ST_Contains](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/) depending on whether you need the geometry fully contained or allow boundary touching.
+For precise spatial containment (features *inside* the envelope, not just overlapping), replace `ST_Intersects` with [ST_Within or ST_Contains](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/) depending on whether you need the geometry fully contained or allow boundary touching.
 
 ### Step 4: Complete FastAPI Route
 
@@ -366,7 +365,7 @@ async def query_bounding_box(
     return FeatureCollection(features=features, count=len(features))
 ```
 
-For the [serialization format](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision — whether to return GeoJSON, GeoParquet, or FlatGeobuf — the above route returns GeoJSON, which is the right default for browser map clients. Switch to GeoParquet streaming for data pipeline consumers that process large feature sets analytically.
+For the [serialization format](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision — whether to return GeoJSON, GeoParquet, or FlatGeobuf — the above route returns GeoJSON, which is the right default for browser map clients. Switch to GeoParquet streaming for data pipeline consumers that process large feature sets analytically.
 
 ---
 
@@ -391,7 +390,7 @@ Expected output indicators:
 
 If you see `Seq Scan` with `rows=<large number>`, run `ANALYZE spatial_features;` to refresh table statistics, then re-explain.
 
-For more detail on reading these plans, see [Reading EXPLAIN ANALYZE for Spatial Query Optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
+For more detail on reading these plans, see [Reading EXPLAIN ANALYZE for Spatial Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
 
 ### Integration Test with curl
 
@@ -453,13 +452,13 @@ async def test_bbox_rejects_inverted_envelope():
 
 1. **CRS mismatch strips the index.** If the client sends EPSG:4326 coordinates but the column stores EPSG:3857 (Web Mercator), PostGIS silently wraps every candidate in `ST_Transform`, which forces a sequential scan. Symptom: `EXPLAIN` shows `Seq Scan` despite an existing GiST index; query time jumps from ~5ms to >2s on large tables. Fix: always match the `:srid` bind parameter to the column's storage CRS, or transform the envelope explicitly: `ST_MakeEnvelope(..., 4326)::geography`.
 
-2. **GiST index bloat under write-heavy workloads.** Frequent `INSERT`/`UPDATE`/`DELETE` operations fragment the GiST tree. Index pages fill with dead tuples that must be visited during scans. Symptom: `pg_stat_user_indexes.idx_scan` stays high but query time drifts upward over days. Fix: run `REINDEX CONCURRENTLY idx_spatial_features_geom_gist` during a maintenance window — it rebuilds without taking an exclusive lock. For tables that receive continuous bulk writes, consider decoupling ingestion with [async bulk uploads via Celery](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) to batch-write and reindex outside peak query hours.
+2. **GiST index bloat under write-heavy workloads.** Frequent `INSERT`/`UPDATE`/`DELETE` operations fragment the GiST tree. Index pages fill with dead tuples that must be visited during scans. Symptom: `pg_stat_user_indexes.idx_scan` stays high but query time drifts upward over days. Fix: run `REINDEX CONCURRENTLY idx_spatial_features_geom_gist` during a maintenance window — it rebuilds without taking an exclusive lock. For tables that receive continuous bulk writes, consider decoupling ingestion with [async bulk uploads via Celery](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) to batch-write and reindex outside peak query hours.
 
 3. **`&&` returns geometries outside the visible envelope.** This is expected: `&&` checks bounding-box overlap, not exact intersection. A long diagonal line whose bounding box overlaps the query rectangle but whose actual geometry does not is a classic false positive. Symptom: client map renders features that appear outside the viewport. Fix: always chain `ST_Intersects` for the exact refinement step.
 
 4. **Anti-meridian envelopes fail silently.** Envelopes that cross the 180°/-180° boundary (e.g. `minx=170, maxx=-170`) cannot be expressed as a simple `ST_MakeEnvelope` call because `maxx < minx`. PostGIS does not raise an error — it returns an empty or incorrect result set. Fix: split the query into two envelopes: one for `[170, maxx_east]` and one for `[-180, -170]`, then union the results in the application layer.
 
-5. **OFFSET pagination causes full re-scans.** `LIMIT 500 OFFSET 500` forces PostGIS to evaluate the first 1000 candidates just to discard the first 500. On a dataset with 10 million features and a large bounding box, this compounds with every subsequent page. Fix: use keyset pagination on `id` (add `WHERE id > :last_id` to the query) or implement the full [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) pattern.
+5. **OFFSET pagination causes full re-scans.** `LIMIT 500 OFFSET 500` forces PostGIS to evaluate the first 1000 candidates just to discard the first 500. On a dataset with 10 million features and a large bounding box, this compounds with every subsequent page. Fix: use keyset pagination on `id` (add `WHERE id > :last_id` to the query) or implement the full [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) pattern.
 
 6. **`VACUUM` neglect causes bloat-triggered planner fallback.** If table bloat crosses a planner cost threshold, PostgreSQL may decide a sequential scan is cheaper than the index. Symptom: `EXPLAIN` shows `Seq Scan (cost=...` even though the index exists and statistics are fresh. Fix: run `VACUUM ANALYZE spatial_features;` and increase `autovacuum_vacuum_scale_factor` for the table.
 
@@ -476,9 +475,9 @@ async def test_bbox_rejects_inverted_envelope():
 
 **Async vs sync driver impact:** With `asyncpg` under 50 concurrent requests, bounding box queries sustain ~400 QPS. With `psycopg2` (synchronous, blocking the event loop), the same hardware reaches ~40 QPS before timeouts appear. Always use an async driver for spatial endpoints exposed to concurrent clients.
 
-**Connection pool sizing:** Each bounding box query holds a database connection for the full query duration. Under concurrent load, small pool sizes (< 10 connections) create a queue behind the pool, adding latency that appears as slow API responses rather than slow queries. For PostGIS workloads, configure the pool at 10–20 connections per API worker and set the overflow limit conservatively. See [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) for production pool tuning guidance.
+**Connection pool sizing:** Each bounding box query holds a database connection for the full query duration. Under concurrent load, small pool sizes (< 10 connections) create a queue behind the pool, adding latency that appears as slow API responses rather than slow queries. For PostGIS workloads, configure the pool at 10–20 connections per API worker and set the overflow limit conservatively. See [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) for production pool tuning guidance.
 
-**Result set size:** Returning 5000 GeoJSON features in a single response with complex polygon geometries can generate payloads over 10 MB. For map tile rendering, consider [tile generation and CDN distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) patterns that pre-rasterize at each zoom level and serve static tiles, eliminating per-request spatial queries entirely at high traffic volumes.
+**Result set size:** Returning 5000 GeoJSON features in a single response with complex polygon geometries can generate payloads over 10 MB. For map tile rendering, consider [tile generation and CDN distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) patterns that pre-rasterize at each zoom level and serve static tiles, eliminating per-request spatial queries entirely at high traffic volumes.
 
 ---
 
@@ -509,10 +508,10 @@ Enforce a maximum envelope area in your Pydantic validator before the query reac
 
 ## Related
 
-- [Implementing ST_Within and ST_Intersects in FastAPI](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/) — exact topological predicates as a refinement step over bounding box candidates
-- [K-Nearest Neighbor Routing Algorithms](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) — proximity search with `<->` KNN-GiST operator when viewport-based retrieval is insufficient
-- [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — WKT and GeoJSON validation patterns that complement the envelope validators above
-- [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — keyset pagination for large spatial result sets
-- [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — reading `EXPLAIN ANALYZE` output to diagnose index bypass
+- [Implementing ST_Within and ST_Intersects in FastAPI](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/) — exact topological predicates as a refinement step over bounding box candidates
+- [K-Nearest Neighbor Routing Algorithms](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) — proximity search with `<->` KNN-GiST operator when viewport-based retrieval is insufficient
+- [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — WKT and GeoJSON validation patterns that complement the envelope validators above
+- [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — keyset pagination for large spatial result sets
+- [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — reading `EXPLAIN ANALYZE` output to diagnose index bypass
 
-← Back to [Advanced Spatial Endpoint Implementation & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/)
+← Back to [Advanced Spatial Endpoint Implementation & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/)

@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Containerizing PostGIS & FastAPI"
 description: "Build reliable container images and a local-to-production topology for a spatial API: PostGIS and python:3.12-slim base images, GDAL/GEOS/PROJ system dependencies, a docker-compose stack with pgbouncer and Redis, PostGIS-aware healthchecks, and non-root hardening."
 slug: "containerizing-postgis-and-fastapi"
-type: "cluster"
 breadcrumb:
   - label: "Deploying & Operating Geospatial APIs"
     url: "/deploying-and-operating-geospatial-apis/"
@@ -24,8 +23,8 @@ dateModified: "2026-07-10"
       "datePublished": "2025-09-08",
       "dateModified": "2026-07-10",
       "author": {"@type": "Organization", "name": "geospatial-api.com"},
-      "publisher": {"@type": "Organization", "name": "geospatial-api.com", "url": "https://geospatial-api.com"},
-      "mainEntityOfPage": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/"
+      "publisher": {"@type": "Organization", "name": "geospatial-api.com", "url": "https://www.geospatial-api.com"},
+      "mainEntityOfPage": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/"
     },
     {
       "@type": "Article",
@@ -36,9 +35,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/"},
-        {"@type": "ListItem", "position": 2, "name": "Deploying & Operating Geospatial APIs", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/"},
-        {"@type": "ListItem", "position": 3, "name": "Containerizing PostGIS & FastAPI", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/"}
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Deploying & Operating Geospatial APIs", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/"},
+        {"@type": "ListItem", "position": 3, "name": "Containerizing PostGIS & FastAPI", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/"}
       ]
     },
     {
@@ -85,19 +84,19 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/)
+← Back to [Deploying & Operating Geospatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/)
 
 # Containerizing PostGIS & FastAPI
 
 A spatial API has a harder containerization problem than a plain CRUD service. The application layer depends on compiled C libraries — GDAL, GEOS, and PROJ — that must be present and version-aligned at runtime, and the database layer is not stock PostgreSQL but a PostGIS build whose exact tag determines the behaviour of every `ST_` function you call. Get either wrong and the failure is not a clean startup error: it is an `ImportError` deep in a request handler, or a `could not open extension control file` the first time a migration runs, or a subtly different `ST_SimplifyPreserveTopology` output after an unpinned image rebuild. This guide builds a reproducible image and a local-to-production topology that eliminate those failure classes.
 
-This work sits at the base of the delivery stack described in the [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/) overview — everything downstream, from CI integration tests to edge tile delivery, assumes the image built here is deterministic.
+This work sits at the base of the delivery stack described in the [Deploying & Operating Geospatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/) overview — everything downstream, from CI integration tests to edge tile delivery, assumes the image built here is deterministic.
 
 ---
 
 ## Topology Overview
 
-The local and production stack is four services: a PostGIS database with a persistent volume, a PgBouncer pooler, a Redis cache, and the stateless FastAPI container. The API never connects to PostgreSQL directly; it goes through the pooler, exactly as described in [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
+The local and production stack is four services: a PostGIS database with a persistent volume, a PgBouncer pooler, a Redis cache, and the stateless FastAPI container. The API never connects to PostgreSQL directly; it goes through the pooler, exactly as described in [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
 
 <svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Container topology for a spatial API: FastAPI app container talks to Redis and to PgBouncer, which fronts a PostGIS database container backed by a persistent volume" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;">
   <title>Containerized spatial API topology</title>
@@ -143,7 +142,7 @@ The two boxes that carry hard version constraints are outlined in the accent col
 
 ## Prerequisites & Environment
 
-Confirm the toolchain and pin the exact image tags before writing a line of Dockerfile. Floating tags are the root cause of the reproducibility failures covered later; the discipline of pinning is expanded in [Pinning PostGIS Versions in Production Images](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/).
+Confirm the toolchain and pin the exact image tags before writing a line of Dockerfile. Floating tags are the root cause of the reproducibility failures covered later; the discipline of pinning is expanded in [Pinning PostGIS Versions in Production Images](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/).
 
 | Component | Pinned choice | Why this exact value |
 |---|---|---|
@@ -184,7 +183,7 @@ The single most consequential choice is the app base image. This matrix is the a
 | `osgeo/gdal:ubuntu-small` | glibc | System GDAL matched to bindings out of the box | ~500 MB | Fast | Good when you need bleeding-edge GDAL from the OS |
 | `ghcr.io/…/uv:python3.12` | glibc | Fast resolver; still needs runtime `.so` libs | ~380 MB | Fast | Fine if you already use uv |
 
-Alpine looks attractive because the empty image is ~50 MB, but the moment `pip install shapely` runs it must compile against musl. The manylinux wheels on PyPI target glibc, so pip discards them and builds from the sdist, which requires `gdal-dev`, `geos-dev`, `proj-dev`, and a full `build-base`. The result is slower to build, larger than expected, and prone to the runtime `ImportError` failures below. `python:3.12-slim` is the correct default; if you need a GDAL newer than Debian ships, base on `osgeo/gdal` instead. The size gap between `slim` and full is pure runtime dead weight, and a [multi-stage build](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/multi-stage-docker-builds-for-postgis-fastapi/) closes it further by leaving the compiler toolchain out of the final image entirely.
+Alpine looks attractive because the empty image is ~50 MB, but the moment `pip install shapely` runs it must compile against musl. The manylinux wheels on PyPI target glibc, so pip discards them and builds from the sdist, which requires `gdal-dev`, `geos-dev`, `proj-dev`, and a full `build-base`. The result is slower to build, larger than expected, and prone to the runtime `ImportError` failures below. `python:3.12-slim` is the correct default; if you need a GDAL newer than Debian ships, base on `osgeo/gdal` instead. The size gap between `slim` and full is pure runtime dead weight, and a [multi-stage build](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/multi-stage-docker-builds-for-postgis-fastapi/) closes it further by leaving the compiler toolchain out of the final image entirely.
 
 ---
 
@@ -341,13 +340,13 @@ async def health(db: AsyncSession = Depends(get_db)):
 `spatial_ref_sys` — the table holding every SRID definition PROJ uses — is created by `CREATE EXTENSION postgis` and lives inside the data directory, so it is persisted by the `pgdata` named volume automatically. Two rules keep it correct:
 
 1. **Never bind-mount over `/var/lib/postgresql/data` with an empty host directory.** That shadows the initialised cluster; the entrypoint then reinitialises an empty database and your `spatial_ref_sys` (and everything else) is gone. Use a *named* volume as above.
-2. **Do not seed `spatial_ref_sys` from a script.** The extension owns it. If you need custom projections, insert additional rows with a versioned migration, not by editing the table the extension manages. Keeping the client-side PROJ data aligned with the database is covered in [Pinning PostGIS Versions in Production Images](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/).
+2. **Do not seed `spatial_ref_sys` from a script.** The extension owns it. If you need custom projections, insert additional rows with a versioned migration, not by editing the table the extension manages. Keeping the client-side PROJ data aligned with the database is covered in [Pinning PostGIS Versions in Production Images](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/).
 
 ---
 
 ## Production Code Example
 
-A production-grade multi-stage Dockerfile that keeps the compiler toolchain out of the shipped image while guaranteeing the runtime `.so` libraries are present. This is the condensed form; the fully annotated build, including wheel caching and `ldd` verification, is in [Multi-Stage Docker Builds for PostGIS & FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/multi-stage-docker-builds-for-postgis-fastapi/).
+A production-grade multi-stage Dockerfile that keeps the compiler toolchain out of the shipped image while guaranteeing the runtime `.so` libraries are present. This is the condensed form; the fully annotated build, including wheel caching and `ldd` verification, is in [Multi-Stage Docker Builds for PostGIS & FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/multi-stage-docker-builds-for-postgis-fastapi/).
 
 ```dockerfile
 # syntax=docker/dockerfile:1.7
@@ -429,13 +428,13 @@ If step 4 prints three version strings, the runtime libraries and the Python bin
 
 2. **`could not open extension control file "/usr/share/postgresql/16/extension/postgis.control": No such file or directory`** — you ran `CREATE EXTENSION postgis` against a plain `postgres:16` image instead of `postgis/postgis:16-3.4`. Stock PostgreSQL does not ship the PostGIS control files. Fix: use the `postgis/postgis` image; never expect `CREATE EXTENSION postgis` to work on vanilla `postgres`.
 
-3. **`ERROR: could not access file "$libdir/postgis-3": No such file or directory` after an image bump** — the data directory was created by one PostGIS minor and the container binary is now a different one. The extension's SQL objects reference a `.so` that no longer exists. Fix: pin the tag, and when you do upgrade, run `ALTER EXTENSION postgis UPDATE;` — the safe path is detailed in [Pinning PostGIS Versions in Production Images](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/).
+3. **`ERROR: could not access file "$libdir/postgis-3": No such file or directory` after an image bump** — the data directory was created by one PostGIS minor and the container binary is now a different one. The extension's SQL objects reference a `.so` that no longer exists. Fix: pin the tag, and when you do upgrade, run `ALTER EXTENSION postgis UPDATE;` — the safe path is detailed in [Pinning PostGIS Versions in Production Images](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/).
 
 4. **Empty database on every `docker compose up`** — a bind mount (`- ./data:/var/lib/postgresql/data`) pointed at an empty or wrong-permission host directory shadows the initialised cluster, so the entrypoint reinitialises. Fix: use a named volume; if you must bind-mount, ensure the directory is owned appropriately and is the same one across restarts.
 
 5. **`FATAL: role "gis" does not exist` from PgBouncer but the db is healthy** — the `initdb` scripts only run on a *fresh* volume, so changing `POSTGRES_USER` after the volume exists has no effect. Fix: `docker compose down -v` to drop the stale volume in development, or `ALTER ROLE` / `CREATE ROLE` explicitly in a migration for existing data.
 
-6. **`prepared statement "__asyncpg_..." does not exist` under load** — asyncpg's client-side statement cache collides with PgBouncer transaction pooling. Fix: set `statement_cache_size=0` in the asyncpg `connect_args`, exactly as in [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
+6. **`prepared statement "__asyncpg_..." does not exist` under load** — asyncpg's client-side statement cache collides with PgBouncer transaction pooling. Fix: set `statement_cache_size=0` in the asyncpg `connect_args`, exactly as in [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
 
 7. **Healthcheck passes but geometry queries 500** — the healthcheck used `pg_isready` alone, so it reported ready before (or without) the extension existing. Fix: put `SELECT PostGIS_Version()` in the healthcheck and probe an `ST_` function in `/health`.
 
@@ -449,7 +448,7 @@ If step 4 prints three version strings, the runtime libraries and the Python bin
 
 **Runtime footprint.** The `libgdal32` runtime library is ~30 MB on disk but shared across every process in the container. The dominant memory cost of a spatial API is not the libraries but the geometry buffers each `ST_` result set materialises; keep response sizes bounded with the streaming and pagination patterns in the architecture reference rather than by trimming the image.
 
-**PgBouncer placement.** Fronting PostGIS with PgBouncer in transaction mode lets a 20-connection backend pool serve hundreds of concurrent async coroutines from the API container; the ratios and tuning are in [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
+**PgBouncer placement.** Fronting PostGIS with PgBouncer in transaction mode lets a 20-connection backend pool serve hundreds of concurrent async coroutines from the API container; the ratios and tuning are in [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
 
 ---
 
@@ -471,9 +470,9 @@ No. Keep the database and the application in separate containers with separate l
 
 ## Related
 
-- [Multi-Stage Docker Builds for PostGIS & FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/multi-stage-docker-builds-for-postgis-fastapi/) — a builder stage that compiles the geospatial wheels and a slim final stage that ships only the venv and runtime libraries
-- [Pinning PostGIS Versions in Production Images](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/) — pin by tag and digest, keep client GDAL aligned, and follow the safe `ALTER EXTENSION postgis UPDATE` upgrade path
-- [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — transaction pooling for the async FastAPI workload behind PostGIS
-- [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/) — the full delivery guide this container image sits at the base of, covering CI, migrations, and edge tile delivery
+- [Multi-Stage Docker Builds for PostGIS & FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/multi-stage-docker-builds-for-postgis-fastapi/) — a builder stage that compiles the geospatial wheels and a slim final stage that ships only the venv and runtime libraries
+- [Pinning PostGIS Versions in Production Images](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/) — pin by tag and digest, keep client GDAL aligned, and follow the safe `ALTER EXTENSION postgis UPDATE` upgrade path
+- [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — transaction pooling for the async FastAPI workload behind PostGIS
+- [Deploying & Operating Geospatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/) — the full delivery guide this container image sits at the base of, covering CI, migrations, and edge tile delivery
 
-← Back to [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/)
+← Back to [Deploying & Operating Geospatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/)

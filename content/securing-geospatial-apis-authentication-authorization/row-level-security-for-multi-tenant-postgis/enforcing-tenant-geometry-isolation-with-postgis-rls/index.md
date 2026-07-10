@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Enforcing Tenant Geometry Isolation with PostGIS RLS"
 description: "The concrete row-level-security policy set for a spatial features table that prevents cross-tenant leakage even through spatial joins and ST_DWithin neighbour queries, with WITH CHECK write barriers and verification."
 slug: "enforcing-tenant-geometry-isolation-with-postgis-rls"
-type: "long_tail"
 breadcrumb:
   - label: "Securing Geospatial APIs"
     url: "/securing-geospatial-apis-authentication-authorization/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Securing Geospatial APIs", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
-        {"@type": "ListItem", "position": 2, "name": "Row-Level Security for Multi-Tenant PostGIS", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/"},
-        {"@type": "ListItem", "position": 3, "name": "Enforcing Tenant Geometry Isolation with PostGIS RLS", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/enforcing-tenant-geometry-isolation-with-postgis-rls/"}
+        {"@type": "ListItem", "position": 1, "name": "Securing Geospatial APIs", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
+        {"@type": "ListItem", "position": 2, "name": "Row-Level Security for Multi-Tenant PostGIS", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/"},
+        {"@type": "ListItem", "position": 3, "name": "Enforcing Tenant Geometry Isolation with PostGIS RLS", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/enforcing-tenant-geometry-isolation-with-postgis-rls/"}
       ]
     },
     {
@@ -54,7 +53,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Row-Level Security for Multi-Tenant PostGIS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/)
+← Back to [Row-Level Security for Multi-Tenant PostGIS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/)
 
 # Enforcing tenant geometry isolation with PostGIS RLS
 
@@ -64,7 +63,7 @@ Write the concrete policy set for a spatial `features` table so that no query �
 
 Reach for this the moment more than one customer's geometry lives in the same physical table. The danger with spatial data specifically is that leakage often hides inside *relationships*: a nearest-neighbour query, a `ST_Intersects` join between `features` and a `zones` table, or a distance sort can each pull rows the caller was never entitled to, even when the top-level `SELECT` looks tenant-scoped. Row-level security closes this because the policy predicate is attached to **every** reference to the table in a plan — including both sides of a self-join and every subquery — so there is no query shape that escapes it.
 
-Use these policies as the primary boundary rather than an application `WHERE tenant_id = ...` filter, which a single forgotten clause defeats. This page assumes you have already enabled and forced RLS as described in the parent guide, [row-level security for multi-tenant PostGIS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/); here the focus is the exact policy SQL and the join/neighbour cases. The companion piece, [setting tenant context in asyncpg connections](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/), covers how `app.tenant_id` gets onto the connection safely under connection pooling.
+Use these policies as the primary boundary rather than an application `WHERE tenant_id = ...` filter, which a single forgotten clause defeats. This page assumes you have already enabled and forced RLS as described in the parent guide, [row-level security for multi-tenant PostGIS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/); here the focus is the exact policy SQL and the join/neighbour cases. The companion piece, [setting tenant context in asyncpg connections](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/), covers how `app.tenant_id` gets onto the connection safely under connection pooling.
 
 **Preconditions:** a `tenant_id uuid NOT NULL` column on every isolated table, a GiST index on each `geom` column, an application role that is neither owner (or the table is `FORCE`d), superuser, nor `BYPASSRLS`, and `app.tenant_id` set per transaction before any query runs.
 
@@ -213,9 +212,9 @@ Because the same policy guards both sides, even a self-join for neighbour cluste
 
 - **`new row violates row-level security policy for table "features"`.** An `INSERT`/`UPDATE` produced a `tenant_id` that differs from the active context (or the context was unset, making the predicate `NULL`). This is the `WITH CHECK` barrier working. Derive `tenant_id` from the same claim used for the context, or rely on the `SET DEFAULT` above and omit the column.
 
-- **Index not used under RLS.** If `EXPLAIN` shows a `Seq Scan`, the tenant predicate is likely unindexed or statistics are stale. Add the btree on `tenant_id`, run `ANALYZE features;`, and re-check. The spatial GiST index is unaffected by the policy — the tenant filter composes with it. Reading these plans is covered in [reading EXPLAIN ANALYZE for spatial query optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
+- **Index not used under RLS.** If `EXPLAIN` shows a `Seq Scan`, the tenant predicate is likely unindexed or statistics are stale. Add the btree on `tenant_id`, run `ANALYZE features;`, and re-check. The spatial GiST index is unaffected by the policy — the tenant filter composes with it. Reading these plans is covered in [reading EXPLAIN ANALYZE for spatial query optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
 
-- **`ST_Intersects` returning empty because of an SRID mismatch, mistaken for RLS.** If `features.geom` is SRID 4326 and `zones.geom` is SRID 3857, the join returns nothing and it looks like RLS over-filtered. Confirm SRIDs match before blaming the policy — RLS never changes geometry results, only which rows are eligible. See [implementing ST_Within and ST_Intersects in FastAPI](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/).
+- **`ST_Intersects` returning empty because of an SRID mismatch, mistaken for RLS.** If `features.geom` is SRID 4326 and `zones.geom` is SRID 3857, the join returns nothing and it looks like RLS over-filtered. Confirm SRIDs match before blaming the policy — RLS never changes geometry results, only which rows are eligible. See [implementing ST_Within and ST_Intersects in FastAPI](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/).
 
 ---
 
@@ -264,8 +263,8 @@ Seeing `A-pt | A-zone` alone from the join, and the GiST `Index Scan` with the t
 
 ## Related
 
-- [Row-Level Security for Multi-Tenant PostGIS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/) — the full setup, decision matrix, and FastAPI integration this page's policies plug into
-- [Setting Tenant Context in asyncpg Connections](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/) — how `app.tenant_id` reaches the connection safely under transaction pooling
-- [Implementing ST_Within and ST_Intersects in FastAPI](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/) — the spatial predicates these policies wrap, and their SRID pitfalls
+- [Row-Level Security for Multi-Tenant PostGIS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/) — the full setup, decision matrix, and FastAPI integration this page's policies plug into
+- [Setting Tenant Context in asyncpg Connections](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/) — how `app.tenant_id` reaches the connection safely under transaction pooling
+- [Implementing ST_Within and ST_Intersects in FastAPI](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/) — the spatial predicates these policies wrap, and their SRID pitfalls
 
-← Back to [Row-Level Security for Multi-Tenant PostGIS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/)
+← Back to [Row-Level Security for Multi-Tenant PostGIS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/)

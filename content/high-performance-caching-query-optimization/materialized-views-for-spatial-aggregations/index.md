@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Materialized Views for Spatial Aggregations in PostGIS"
 description: "Precompute expensive spatial aggregations — heatmap grids, boundary rollups, ST_Union dissolves, per-cell counts — as PostGIS materialized views so FastAPI read endpoints stay fast. Covers GiST + UNIQUE indexing, concurrent refresh, and when a view beats query-time caching."
 slug: "materialized-views-for-spatial-aggregations"
-type: "cluster"
 breadcrumb:
   - label: "High-Performance Caching & Query Optimization"
     url: "/high-performance-caching-query-optimization/"
@@ -35,9 +34,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/"},
-        {"@type": "ListItem", "position": 2, "name": "High-Performance Caching & Query Optimization", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/"},
-        {"@type": "ListItem", "position": 3, "name": "Materialized Views for Spatial Aggregations", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/"}
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/"},
+        {"@type": "ListItem", "position": 2, "name": "High-Performance Caching & Query Optimization", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/"},
+        {"@type": "ListItem", "position": 3, "name": "Materialized Views for Spatial Aggregations", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/"}
       ]
     },
     {
@@ -84,13 +83,13 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/)
+← Back to [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/)
 
 # Materialized views for spatial aggregations in PostGIS
 
 Some spatial reads are cheap: a point lookup, a bounding-box scan against a GiST index. Others are ruinously expensive to run per request: dissolving thousands of parcels into a single administrative boundary with `ST_Union`, binning millions of GPS pings into a heatmap grid and counting per cell, or rolling attribute sums up to a country polygon. Running these at query time turns a 5 ms endpoint into a 4-second one, holds a backend connection for the whole aggregation, and collapses under concurrent load. A PostGIS **materialized view** solves this by computing the aggregate once, storing the result as a physical table on disk, and letting read endpoints scan it — with their own spatial index — in single-digit milliseconds.
 
-This guide shows how to build spatial materialized views correctly: writing the aggregation, indexing the view (both a GiST index for spatial predicates and a UNIQUE index that unlocks concurrent refresh), serving it from FastAPI, and deciding when a view is the right tool versus an on-the-fly query or a [Redis cache in front of the database](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/). It sits alongside [query plan analysis and index tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) in the broader [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/) picture — a materialized view is only fast if the query planner actually uses its indexes.
+This guide shows how to build spatial materialized views correctly: writing the aggregation, indexing the view (both a GiST index for spatial predicates and a UNIQUE index that unlocks concurrent refresh), serving it from FastAPI, and deciding when a view is the right tool versus an on-the-fly query or a [Redis cache in front of the database](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/). It sits alongside [query plan analysis and index tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) in the broader [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/) picture — a materialized view is only fast if the query planner actually uses its indexes.
 
 ---
 
@@ -171,7 +170,7 @@ WHERE proname IN ('st_union', 'st_snaptogrid', 'st_hexagongrid', 'st_asmvtgeom')
 ORDER BY proname;
 ```
 
-If `st_hexagongrid` is missing you are on PostGIS < 3.1; fall back to `ST_SnapToGrid` for square binning. Install `pg_cron` by adding it to `shared_preload_libraries` and running `CREATE EXTENSION pg_cron;` in the target database — covered in depth in [scheduling concurrent refresh of spatial materialized views](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/scheduling-concurrent-refresh-of-spatial-materialized-views/).
+If `st_hexagongrid` is missing you are on PostGIS < 3.1; fall back to `ST_SnapToGrid` for square binning. Install `pg_cron` by adding it to `shared_preload_libraries` and running `CREATE EXTENSION pg_cron;` in the target database — covered in depth in [scheduling concurrent refresh of spatial materialized views](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/scheduling-concurrent-refresh-of-spatial-materialized-views/).
 
 ---
 
@@ -189,7 +188,7 @@ Before writing a `CREATE MATERIALIZED VIEW`, decide it is actually the right lay
 | Best for | Reusable heavy aggregates queried many ways | Live data, low query volume | Hot identical responses, tight TTL |
 | Cold start | None (persisted) | N/A | Empty until first miss |
 
-The heuristic: **materialize when one expensive aggregation is reused by many query shapes**; **cache in Redis when the same exact response is requested repeatedly**; **query on the fly when data must be live and volume is low**. These are not mutually exclusive — a common production stack materializes a heatmap grid, then puts a short Redis TTL in front of the most popular bounding boxes. The head-to-head trade-offs are worked through in [PostGIS materialized views vs Redis query caching](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/postgis-materialized-views-vs-redis-query-caching/).
+The heuristic: **materialize when one expensive aggregation is reused by many query shapes**; **cache in Redis when the same exact response is requested repeatedly**; **query on the fly when data must be live and volume is low**. These are not mutually exclusive — a common production stack materializes a heatmap grid, then puts a short Redis TTL in front of the most popular bounding boxes. The head-to-head trade-offs are worked through in [PostGIS materialized views vs Redis query caching](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/postgis-materialized-views-vs-redis-query-caching/).
 
 ---
 
@@ -262,7 +261,7 @@ CREATE UNIQUE INDEX uq_mv_ping_heatmap_cell
 ANALYZE mv_ping_heatmap;
 ```
 
-If your natural key already uniquely identifies every row — `admin_id` in the boundary rollup, for example — index that directly instead of a synthetic `row_number()`. The concurrent-refresh mechanics and scheduling are detailed in [scheduling concurrent refresh of spatial materialized views](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/scheduling-concurrent-refresh-of-spatial-materialized-views/).
+If your natural key already uniquely identifies every row — `admin_id` in the boundary rollup, for example — index that directly instead of a synthetic `row_number()`. The concurrent-refresh mechanics and scheduling are detailed in [scheduling concurrent refresh of spatial materialized views](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/scheduling-concurrent-refresh-of-spatial-materialized-views/).
 
 ### Step 4: Choose a refresh strategy
 
@@ -274,7 +273,7 @@ Three strategies, chosen by freshness need and view size:
 
 ### Step 5: Serve the view from FastAPI
 
-Read routes treat the view exactly like a table — the win is that the expensive work already happened. Cross-link the read path to [query plan analysis](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) so you can confirm the GiST index is used.
+Read routes treat the view exactly like a table — the win is that the expensive work already happened. Cross-link the read path to [query plan analysis](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) so you can confirm the GiST index is used.
 
 The full route is in the next section.
 
@@ -364,7 +363,7 @@ async def heatmap_cells(
     }
 ```
 
-The route never issues an `ST_Union` or a `GROUP BY`; those ran once during refresh. It is a pure indexed scan over a physical table, so it behaves like any other bounding-box endpoint — the same double-predicate GiST pattern used across the [caching and query optimization](/high-performance-caching-query-optimization/) work applies unchanged.
+The route never issues an `ST_Union` or a `GROUP BY`; those ran once during refresh. It is a pure indexed scan over a physical table, so it behaves like any other bounding-box endpoint — the same double-predicate GiST pattern used across the [caching and query optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/) work applies unchanged.
 
 ---
 
@@ -438,7 +437,7 @@ async def test_heatmap_returns_feature_collection():
 
 4. **Concurrent refresh is slower than a full rebuild and pins disk.** `CONCURRENTLY` builds a fresh temp copy, diffs it against the live view via the unique index, and applies the delta — that is more total I/O than a plain refresh. On a large heatmap grid a concurrent refresh can take 2–4× the wall-clock of a plain one. If reads can tolerate a brief lock during an off-peak window, plain refresh is cheaper.
 
-5. **Refresh window overrun / overlapping refreshes.** If a refresh takes longer than its schedule interval, a second refresh can start before the first finishes, doubling load. Serialize refreshes with an advisory lock or a job-level mutex — covered in [scheduling concurrent refresh](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/scheduling-concurrent-refresh-of-spatial-materialized-views/).
+5. **Refresh window overrun / overlapping refreshes.** If a refresh takes longer than its schedule interval, a second refresh can start before the first finishes, doubling load. Serialize refreshes with an advisory lock or a job-level mutex — covered in [scheduling concurrent refresh](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/scheduling-concurrent-refresh-of-spatial-materialized-views/).
 
 6. **`Seq Scan` on the view despite a GiST index.** The planner has no statistics until you `ANALYZE` the view — creation does not populate `pg_statistic`. Always `ANALYZE mv_name;` immediately after `CREATE` and after each refresh if row counts shift dramatically. A refresh does update statistics for `CONCURRENTLY`, but the first plan after creation needs an explicit `ANALYZE`.
 
@@ -454,7 +453,7 @@ async def test_heatmap_returns_feature_collection():
 
 **Storage.** The heatmap view is tiny relative to its base table (tens of thousands of cell rows versus tens of millions of pings), so the disk cost is negligible. Boundary dissolves can be larger if the unioned polygons are vertex-dense; apply `ST_Simplify` or `ST_SnapToGrid` inside the view definition to cap vertex counts at the client's rendering resolution.
 
-**vs Redis.** A view and a [Redis cache](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) are complementary, not competing. The view removes the aggregation cost for *every* query shape; Redis removes the network-plus-scan cost for the *hottest identical* responses. Stacking a short Redis TTL over the most-requested bounding boxes of a materialized view gives sub-millisecond hot reads while the view keeps cold reads cheap. The full comparison, including invalidation drift, is in [PostGIS materialized views vs Redis query caching](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/postgis-materialized-views-vs-redis-query-caching/).
+**vs Redis.** A view and a [Redis cache](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) are complementary, not competing. The view removes the aggregation cost for *every* query shape; Redis removes the network-plus-scan cost for the *hottest identical* responses. Stacking a short Redis TTL over the most-requested bounding boxes of a materialized view gives sub-millisecond hot reads while the view keeps cold reads cheap. The full comparison, including invalidation drift, is in [PostGIS materialized views vs Redis query caching](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/postgis-materialized-views-vs-redis-query-caching/).
 
 **Concurrency.** Because the read route holds a connection only for a fast index scan, it multiplexes cleanly through a transaction-mode connection pool. Refreshes, by contrast, hold a backend for seconds — run them on a dedicated maintenance connection, never on the request path.
 
@@ -478,10 +477,10 @@ A materialized view is a snapshot: it never reflects writes to the base tables u
 
 ## Related
 
-- [PostGIS Materialized Views vs Redis Query Caching](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/postgis-materialized-views-vs-redis-query-caching/) — pick the right caching layer for spatial aggregation results
-- [Scheduling Concurrent Refresh of Spatial Materialized Views](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/scheduling-concurrent-refresh-of-spatial-materialized-views/) — pg_cron schedules, monitoring, and avoiding overlapping refreshes
-- [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — TTL-bounded response caching that complements a materialized view
-- [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — confirm the view's GiST index is actually used with EXPLAIN ANALYZE
-- [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/) — the broader caching and optimization picture
+- [PostGIS Materialized Views vs Redis Query Caching](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/postgis-materialized-views-vs-redis-query-caching/) — pick the right caching layer for spatial aggregation results
+- [Scheduling Concurrent Refresh of Spatial Materialized Views](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/scheduling-concurrent-refresh-of-spatial-materialized-views/) — pg_cron schedules, monitoring, and avoiding overlapping refreshes
+- [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — TTL-bounded response caching that complements a materialized view
+- [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — confirm the view's GiST index is actually used with EXPLAIN ANALYZE
+- [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/) — the broader caching and optimization picture
 
-← Back to [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/)
+← Back to [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/)

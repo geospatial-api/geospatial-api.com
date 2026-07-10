@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "GitHub Actions Integration Tests with a PostGIS Service Container"
 description: "A complete GitHub Actions test.yml using a postgis/postgis:16-3.4 service container with a health check, enabling the extension, seeding real geometries, and running async pytest with asyncpg and SQLAlchemy."
 slug: "github-actions-integration-tests-with-a-postgis-service-container"
-type: "long_tail"
 breadcrumb:
   - label: "Deploying & Operating Geospatial APIs"
     url: "/deploying-and-operating-geospatial-apis/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Deploying & Operating Geospatial APIs", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/"},
-        {"@type": "ListItem", "position": 2, "name": "CI/CD Pipelines for Spatial APIs", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/"},
-        {"@type": "ListItem", "position": 3, "name": "GitHub Actions Integration Tests with a PostGIS Service Container", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/github-actions-integration-tests-with-a-postgis-service-container/"}
+        {"@type": "ListItem", "position": 1, "name": "Deploying & Operating Geospatial APIs", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/"},
+        {"@type": "ListItem", "position": 2, "name": "CI/CD Pipelines for Spatial APIs", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/"},
+        {"@type": "ListItem", "position": 3, "name": "GitHub Actions Integration Tests with a PostGIS Service Container", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/github-actions-integration-tests-with-a-postgis-service-container/"}
       ]
     },
     {
@@ -55,7 +54,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [CI/CD Pipelines for Spatial APIs](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/)
+← Back to [CI/CD Pipelines for Spatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/)
 
 # GitHub Actions integration tests with a PostGIS service container
 
@@ -63,7 +62,7 @@ Stand up a real `postgis/postgis:16-3.4` inside a GitHub Actions job, wait for i
 
 ## Context & when to use
 
-A GitHub Actions *service container* is the lightest way to give a job a real database. You declare an image under `services:`, the runner starts it before your steps, and your steps reach it over the network. For a FastAPI + PostGIS service this is almost always the right first choice: it is a few lines of YAML, it starts once per job, and it maps cleanly onto the health-check plumbing GitHub already provides. This is the path the [CI/CD pipeline overview](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/) recommends for the integration stage.
+A GitHub Actions *service container* is the lightest way to give a job a real database. You declare an image under `services:`, the runner starts it before your steps, and your steps reach it over the network. For a FastAPI + PostGIS service this is almost always the right first choice: it is a few lines of YAML, it starts once per job, and it maps cleanly onto the health-check plumbing GitHub already provides. This is the path the [CI/CD pipeline overview](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/) recommends for the integration stage.
 
 Prefer a service container when every test can share one database version and one schema, and when your steps run directly on the runner (the default). Reach for Testcontainers instead when tests must spin databases up and down in code or need a fresh database per case; reach for docker-compose when you are testing the whole system, not the query. For a single spatial test suite that asserts on `ST_Intersects`, `ST_DWithin`, and GiST index selection, the service container wins on simplicity and speed.
 
@@ -233,7 +232,7 @@ async def test_point_within_zone(session):
     assert result.scalar() == "unit-square"
 ```
 
-This same bounding-box-and-predicate shape is the workload described in [implementing ST_Within and ST_Intersects in FastAPI](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/) — the integration test verifies that endpoint's query against the real engine.
+This same bounding-box-and-predicate shape is the workload described in [implementing ST_Within and ST_Intersects in FastAPI](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/) — the integration test verifies that endpoint's query against the real engine.
 
 ---
 
@@ -294,8 +293,8 @@ An `st_srid` of `0` means a fixture forgot to set the SRID — fix it before tru
 
 ## Related
 
-- [CI/CD Pipelines for Spatial APIs](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/) — the full pipeline this test job plugs into
-- [Automating Spatial Database Migrations in CI](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/automating-spatial-database-migrations-in-ci/) — the `alembic upgrade head` step, done safely with GeoAlchemy2
-- [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/) — where the tested image is built, shipped, and run
+- [CI/CD Pipelines for Spatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/) — the full pipeline this test job plugs into
+- [Automating Spatial Database Migrations in CI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/automating-spatial-database-migrations-in-ci/) — the `alembic upgrade head` step, done safely with GeoAlchemy2
+- [Deploying & Operating Geospatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/) — where the tested image is built, shipped, and run
 
-← Back to [CI/CD Pipelines for Spatial APIs](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/)
+← Back to [CI/CD Pipelines for Spatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/)

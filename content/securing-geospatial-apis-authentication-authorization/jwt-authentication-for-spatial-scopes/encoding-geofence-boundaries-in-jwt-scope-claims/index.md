@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Encoding Geofence Boundaries in JWT Scope Claims"
 description: "Represent geofence boundaries compactly inside a JWT — H3 cell IDs, geohash prefixes, bbox arrays, or a hash referencing a server-side polygon — without blowing the token size limit."
 slug: "encoding-geofence-boundaries-in-jwt-scope-claims"
-type: "long_tail"
 breadcrumb:
   - label: "Securing Geospatial APIs"
     url: "/securing-geospatial-apis-authentication-authorization/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Securing Geospatial APIs", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
-        {"@type": "ListItem", "position": 2, "name": "JWT Authentication for Spatial Scopes", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/"},
-        {"@type": "ListItem", "position": 3, "name": "Encoding Geofence Boundaries in JWT Scope Claims", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/encoding-geofence-boundaries-in-jwt-scope-claims/"}
+        {"@type": "ListItem", "position": 1, "name": "Securing Geospatial APIs", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
+        {"@type": "ListItem", "position": 2, "name": "JWT Authentication for Spatial Scopes", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/"},
+        {"@type": "ListItem", "position": 3, "name": "Encoding Geofence Boundaries in JWT Scope Claims", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/encoding-geofence-boundaries-in-jwt-scope-claims/"}
       ]
     },
     {
@@ -55,7 +54,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [JWT Authentication for Spatial Scopes](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/)
+← Back to [JWT Authentication for Spatial Scopes](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/)
 
 # Encoding geofence boundaries in JWT scope claims
 
@@ -65,7 +64,7 @@ Fit a geofence boundary inside a `geo_scope` claim so the token stays well under
 
 A JWT rides in the `Authorization` header on every request, and every reverse proxy and application server caps that header. Nginx defaults to an 8 KB `large_client_header_buffers`; Node's HTTP parser and many CDNs draw the line near the same place. A base64url-encoded token triples quickly once you start embedding geometry, so the naive move — pasting a `POLYGON((...))` with a few thousand vertices into the claim — produces a token that a proxy silently truncates or rejects with `431 Request Header Fields Too Large`. The whole point of putting the fence in the token is lost if the token no longer fits.
 
-You need a compact encoding when the geofence is anything more than a rectangle. Reach for this when a subject's territory is an irregular shape (a delivery zone, a national boundary, a franchise polygon), when you scope many regions into one token, or when several services re-verify the same token per request and every byte is amplified. If the fence genuinely is an axis-aligned rectangle, a `bbox` array is already optimal and you can stop reading; this page is about everything more complex than a box. The encoding you pick here is what the [validating spatial scope claims dependency](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/validating-spatial-scope-claims-in-fastapi-dependencies/) will parse, and it is one row of the decision matrix in the parent guide on [JWT authentication for spatial scopes](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/).
+You need a compact encoding when the geofence is anything more than a rectangle. Reach for this when a subject's territory is an irregular shape (a delivery zone, a national boundary, a franchise polygon), when you scope many regions into one token, or when several services re-verify the same token per request and every byte is amplified. If the fence genuinely is an axis-aligned rectangle, a `bbox` array is already optimal and you can stop reading; this page is about everything more complex than a box. The encoding you pick here is what the [validating spatial scope claims dependency](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/validating-spatial-scope-claims-in-fastapi-dependencies/) will parse, and it is one row of the decision matrix in the parent guide on [JWT authentication for spatial scopes](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/).
 
 ---
 
@@ -209,7 +208,7 @@ if __name__ == "__main__":
 | `ref` + `hash` | Token size vs a lookup | Fixed ~50 B; requires a server-side fetch and a hash re-check on read |
 | `srid` | Coordinate reference of the scope | Fix to 4326 unless the fence is authored in a projected CRS |
 
-Choosing among these is a size-versus-precision decision; the [parent decision matrix](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) tabulates the same encodings against query mapping and use case. The encoded region describes *permission*, not feature data, so keep it minimal — it is an access-control artefact, not a payload.
+Choosing among these is a size-versus-precision decision; the [parent decision matrix](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) tabulates the same encodings against query mapping and use case. The encoded region describes *permission*, not feature data, so keep it minimal — it is an access-control artefact, not a payload.
 
 ---
 
@@ -251,8 +250,8 @@ print(f"token bytes = {len(token)}")
 
 ## Related
 
-- [JWT Authentication for Spatial Scopes](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) — the parent guide with the full encoding decision matrix and the signing/verification pipeline
-- [Validating Spatial Scope Claims in FastAPI Dependencies](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/validating-spatial-scope-claims-in-fastapi-dependencies/) — parse and enforce whichever encoding you chose here inside a reusable dependency
-- [Bounding-Box Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — the `ST_Within` / `ST_Intersects` predicates used when a `ref`-encoded polygon is resolved against PostGIS
+- [JWT Authentication for Spatial Scopes](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) — the parent guide with the full encoding decision matrix and the signing/verification pipeline
+- [Validating Spatial Scope Claims in FastAPI Dependencies](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/validating-spatial-scope-claims-in-fastapi-dependencies/) — parse and enforce whichever encoding you chose here inside a reusable dependency
+- [Bounding-Box Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — the `ST_Within` / `ST_Intersects` predicates used when a `ref`-encoded polygon is resolved against PostGIS
 
-← Back to [JWT Authentication for Spatial Scopes](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/)
+← Back to [JWT Authentication for Spatial Scopes](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/)

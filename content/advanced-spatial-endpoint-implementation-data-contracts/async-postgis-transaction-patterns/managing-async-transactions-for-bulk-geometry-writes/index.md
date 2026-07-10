@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Managing Async Transactions for Bulk Geometry Writes"
 description: "Write thousands of geometries efficiently with asyncpg copy_records_to_table and executemany, chunked commits, ST_GeomFromWKB, deferred GiST index rebuilds, and ANALYZE — without bloating WAL or holding locks."
 slug: "managing-async-transactions-for-bulk-geometry-writes"
-type: "long_tail"
 breadcrumb:
   - label: "Advanced Spatial Endpoints & Data Contracts"
     url: "/advanced-spatial-endpoint-implementation-data-contracts/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
-        { "@type": "ListItem", "position": 2, "name": "Async PostGIS Transaction Patterns", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/" },
-        { "@type": "ListItem", "position": 3, "name": "Managing Async Transactions for Bulk Geometry Writes", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/" }
+        { "@type": "ListItem", "position": 1, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
+        { "@type": "ListItem", "position": 2, "name": "Async PostGIS Transaction Patterns", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/" },
+        { "@type": "ListItem", "position": 3, "name": "Managing Async Transactions for Bulk Geometry Writes", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/" }
       ]
     },
     {
@@ -56,7 +55,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Async PostGIS Transaction Patterns](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/)
+← Back to [Async PostGIS Transaction Patterns](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/)
 
 # Managing async transactions for bulk geometry writes
 
@@ -64,9 +63,9 @@ Load tens of thousands of geometries into PostGIS from an async service without 
 
 ## Context & when to use
 
-A row-at-a-time `INSERT` loop is the wrong tool the moment a load exceeds a few hundred geometries: every statement is its own round-trip, and if you wrap the whole thing in one transaction to make it atomic you now hold locks and generate unflushed WAL for the entire load. The general transaction discipline — short scopes, explicit boundaries — is covered in the parent [async PostGIS transaction patterns](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/) guide; this page is the bulk-specific corollary: how to move thousands of rows fast while keeping each transaction small.
+A row-at-a-time `INSERT` loop is the wrong tool the moment a load exceeds a few hundred geometries: every statement is its own round-trip, and if you wrap the whole thing in one transaction to make it atomic you now hold locks and generate unflushed WAL for the entire load. The general transaction discipline — short scopes, explicit boundaries — is covered in the parent [async PostGIS transaction patterns](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/) guide; this page is the bulk-specific corollary: how to move thousands of rows fast while keeping each transaction small.
 
-Use this pattern for scheduled imports, backfills, and derived-geometry rebuilds that run inside your own async process. If the data arrives as an uploaded file over HTTP, do not run it on the request path at all — hand it to a worker as described in [async bulk uploads with Celery](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/). The two techniques compose: the worker uses exactly the chunked-copy approach below.
+Use this pattern for scheduled imports, backfills, and derived-geometry rebuilds that run inside your own async process. If the data arrives as an uploaded file over HTTP, do not run it on the request path at all — hand it to a worker as described in [async bulk uploads with Celery](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/). The two techniques compose: the worker uses exactly the chunked-copy approach below.
 
 The core idea is `asyncpg`'s binary `COPY` protocol (`copy_records_to_table`), which streams rows into PostgreSQL far faster than parameterised `INSERT`s, combined with **chunked commits** so no single transaction grows unbounded. For very large loads, you also defer the GiST index and rebuild it once at the end — maintaining a spatial index while inserting is dramatically slower than building it in one pass.
 
@@ -212,15 +211,15 @@ For datasets small enough that a single `INSERT ... VALUES` with `executemany` i
 
 ## Gotchas & failure modes
 
-- **One giant transaction bloats WAL and holds locks.** Wrapping the entire load in a single `async with pg.transaction()` means nothing commits until the end: WAL grows unbounded, autovacuum cannot reclaim anything the load touched, and every lock is held for the full duration. Symptom: `pg_stat_activity` shows one backend with a multi-minute `xact_start` and `pg_wal` growing fast. Fix: commit per chunk, as above. This is the same "keep transactions short" rule from the [parent guide](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/), applied to loads.
+- **One giant transaction bloats WAL and holds locks.** Wrapping the entire load in a single `async with pg.transaction()` means nothing commits until the end: WAL grows unbounded, autovacuum cannot reclaim anything the load touched, and every lock is held for the full duration. Symptom: `pg_stat_activity` shows one backend with a multi-minute `xact_start` and `pg_wal` growing fast. Fix: commit per chunk, as above. This is the same "keep transactions short" rule from the [parent guide](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/), applied to loads.
 
 - **Parameter limit on `executemany`.** PostgreSQL's wire protocol caps a single statement at 65,535 bound parameters. A multi-row `INSERT` with 3 columns overflows at ~21,845 rows and fails with `asyncpg.exceptions.ProtocolViolationError` or a silently truncated batch. Fix: use `copy_records_to_table` (no per-value parameters) or chunk `executemany` well under the limit.
 
-- **SRID mismatch produces unindexable geometry.** WKB does not encode an SRID, so `ST_GeomFromWKB(geom_wkb)` yields `SRID=0`. If the target column is declared `geometry(Point, 4326)`, the insert raises `Geometry SRID (0) does not match column SRID (4326)`; if the column is untyped, the rows land with `SRID=0` and later [bounding-box index queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) using `ST_Intersects` silently return nothing. Fix: always wrap with `ST_SetSRID(..., 4326)` during promotion.
+- **SRID mismatch produces unindexable geometry.** WKB does not encode an SRID, so `ST_GeomFromWKB(geom_wkb)` yields `SRID=0`. If the target column is declared `geometry(Point, 4326)`, the insert raises `Geometry SRID (0) does not match column SRID (4326)`; if the column is untyped, the rows land with `SRID=0` and later [bounding-box index queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) using `ST_Intersects` silently return nothing. Fix: always wrap with `ST_SetSRID(..., 4326)` during promotion.
 
 - **Invalid geometries abort the whole promotion.** A single self-intersecting polygon can make a downstream constraint or `ST_MakeValid`-free insert fail, rolling back the entire promotion `INSERT`. Fix: filter or repair during promotion — `WHERE ST_IsValid(ST_GeomFromWKB(geom_wkb))` or wrap the geometry in `ST_MakeValid(...)`.
 
-- **Forgetting `ANALYZE` leaves the planner blind.** Right after a bulk load the table's statistics still say it is empty, so the planner picks sequential scans over the new GiST index. Symptom: the first queries after a load are inexplicably slow. Fix: run `ANALYZE` before serving reads. Confirm plans with [reading EXPLAIN ANALYZE for spatial query optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
+- **Forgetting `ANALYZE` leaves the planner blind.** Right after a bulk load the table's statistics still say it is empty, so the planner picks sequential scans over the new GiST index. Symptom: the first queries after a load are inexplicably slow. Fix: run `ANALYZE` before serving reads. Confirm plans with [reading EXPLAIN ANALYZE for spatial query optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
 
 ## Verification
 
@@ -250,8 +249,8 @@ WHERE query ILIKE '%parcels_staging%';
 
 ## Related
 
-- [Async PostGIS Transaction Patterns](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/) — the transaction-boundary rules this bulk pattern specialises
-- [Handling Deadlocks in Concurrent Spatial Updates](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/handling-deadlocks-in-concurrent-spatial-updates/) — what to do when bulk writers contend with live updates
-- [Async Bulk Uploads with Celery](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) — run large imports off the request path in a worker
+- [Async PostGIS Transaction Patterns](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/) — the transaction-boundary rules this bulk pattern specialises
+- [Handling Deadlocks in Concurrent Spatial Updates](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/handling-deadlocks-in-concurrent-spatial-updates/) — what to do when bulk writers contend with live updates
+- [Async Bulk Uploads with Celery](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) — run large imports off the request path in a worker
 
-← Back to [Async PostGIS Transaction Patterns](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/)
+← Back to [Async PostGIS Transaction Patterns](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/)

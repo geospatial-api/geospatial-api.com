@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Versioning Geospatial APIs Without Breaking Clients"
 description: "How to use URL path versioning and Pydantic v2 adapters to evolve FastAPI + PostGIS endpoints safely — handling axis-order shifts, CRS URNs, and geometry format changes without breaking existing map clients."
 slug: "versioning-geospatial-apis-without-breaking-clients"
-type: "long_tail"
 breadcrumb:
   - label: "Core Geospatial API Architecture"
     url: "/core-geospatial-api-architecture-with-fastapi-postgis/"
@@ -31,9 +30,9 @@ dateModified: "2026-06-23"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Core Geospatial API Architecture", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/" },
-        { "@type": "ListItem", "position": 2, "name": "API Versioning for GIS Endpoints", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/" },
-        { "@type": "ListItem", "position": 3, "name": "Versioning Geospatial APIs Without Breaking Clients", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/versioning-geospatial-apis-without-breaking-clients/" }
+        { "@type": "ListItem", "position": 1, "name": "Core Geospatial API Architecture", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/" },
+        { "@type": "ListItem", "position": 2, "name": "API Versioning for GIS Endpoints", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/" },
+        { "@type": "ListItem", "position": 3, "name": "Versioning Geospatial APIs Without Breaking Clients", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/versioning-geospatial-apis-without-breaking-clients/" }
       ]
     },
     {
@@ -57,7 +56,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) · [Core Geospatial API Architecture](/core-geospatial-api-architecture-with-fastapi-postgis/)
+← Back to [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) · [Core Geospatial API Architecture](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/)
 
 # Versioning Geospatial APIs Without Breaking Clients
 
@@ -69,7 +68,7 @@ Spatial endpoints carry implicit contracts that ordinary CRUD APIs rarely face. 
 
 This pattern applies whenever two or more distinct consumer groups depend on the same PostGIS data source but need different response shapes. Typical triggers include: a legacy WMS/WMTS front-end that assumes `lat, lon` order; a new RFC 7946–compliant mobile SDK that requires `lon, lat`; or a migration from a flat `properties` map to a typed `attributes` object. If only one consumer exists and you can update client and server atomically, path versioning adds unnecessary complexity — a feature-flag on the response model is sufficient.
 
-The preconditions are: FastAPI ≥ 0.111, Pydantic v2 (`pydantic>=2.0`), and asyncpg or SQLAlchemy + GeoAlchemy2 for async PostGIS access. Review the foundational routing conventions in [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) before proceeding — that page establishes the header vs. path trade-off analysis and the deprecation timeline model this page builds on.
+The preconditions are: FastAPI ≥ 0.111, Pydantic v2 (`pydantic>=2.0`), and asyncpg or SQLAlchemy + GeoAlchemy2 for async PostGIS access. Review the foundational routing conventions in [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) before proceeding — that page establishes the header vs. path trade-off analysis and the deprecation timeline model this page builds on.
 
 ### Why spatial versioning is harder than standard REST versioning
 
@@ -276,7 +275,7 @@ app.include_router(router_v2)
 
 The key architectural decision is that `fetch_features_postgis` owns all PostGIS logic. Both routers call the same function; breaking changes in presentation (field names, coordinate order, response envelope) stay isolated in the router and Pydantic model layers. When you add `/v3/`, you extend that layer without touching the query path.
 
-For context on how `ST_MakeEnvelope` and bounding-box query patterns interact with spatial indexing, see the [Bounding Box Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) guide. If any endpoint serves paginated feature collections, wire its cursor tokens to [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — token format is a version-sensitive contract and must be treated the same way as field names.
+For context on how `ST_MakeEnvelope` and bounding-box query patterns interact with spatial indexing, see the [Bounding Box Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) guide. If any endpoint serves paginated feature collections, wire its cursor tokens to [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — token format is a version-sensitive contract and must be treated the same way as field names.
 
 ## Key Parameters & Options
 
@@ -291,7 +290,7 @@ For context on how `ST_MakeEnvelope` and bounding-box query patterns interact wi
 | `Content-CRS` header | v2 | OGC URN string | Eliminates implicit axis-order assumptions |
 | `Link: rel=successor-version` | v1 | `/v2/features` | Guides clients to the current endpoint |
 
-CDN cache keys must be prefixed with the version string (`v1:features:bbox=…`, `v2:features:bbox=…`). Without this isolation a stale v1 response can be served to a v2 client after a cache miss — coordinate-order differences make this a silent data corruption scenario. See the [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) patterns for version-aware key construction.
+CDN cache keys must be prefixed with the version string (`v1:features:bbox=…`, `v2:features:bbox=…`). Without this isolation a stale v1 response can be served to a v2 client after a cache miss — coordinate-order differences make this a silent data corruption scenario. See the [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) patterns for version-aware key construction.
 
 ## Gotchas & Failure Modes
 
@@ -327,15 +326,15 @@ curl -s "http://localhost:8000/v2/features?limit=1" \
   | python3 -c "import sys,json; f=json.load(sys.stdin)[0]; lon=f['geometry']['coordinates'][0]; assert lon < 0, f'Expected negative longitude, got {lon}'; print('lon/lat order correct')"
 ```
 
-For a deeper look at how `EXPLAIN ANALYZE` surfaces index usage in bounding-box queries, the [Reading EXPLAIN ANALYZE for Spatial Query Optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/) walkthrough shows the exact plan difference between a sequential scan and a GiST index hit.
+For a deeper look at how `EXPLAIN ANALYZE` surfaces index usage in bounding-box queries, the [Reading EXPLAIN ANALYZE for Spatial Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/) walkthrough shows the exact plan difference between a sequential scan and a GiST index hit.
 
 ---
 
 ## Related
 
-- [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — strategy overview: path vs. header versioning, deprecation lifecycle, and OpenAPI multi-version generation
-- [Bounding Box Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — `ST_MakeEnvelope`, `ST_Within`, `ST_Intersects` patterns and GiST index configuration
-- [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — version-safe cursor token design for paginated feature collections
-- [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — Pydantic v2 validators for GeoJSON and WKT at the request boundary
+- [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — strategy overview: path vs. header versioning, deprecation lifecycle, and OpenAPI multi-version generation
+- [Bounding Box Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — `ST_MakeEnvelope`, `ST_Within`, `ST_Intersects` patterns and GiST index configuration
+- [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — version-safe cursor token design for paginated feature collections
+- [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — Pydantic v2 validators for GeoJSON and WKT at the request boundary
 
-← Back to [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/)
+← Back to [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/)

@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "CI/CD Pipelines for Spatial APIs"
 description: "Build a full CI/CD pipeline for a FastAPI + PostGIS service: lint, type-check, spatial integration tests against a real PostGIS, image build, migrations, and deploy — with the spatial-specific failure modes solved."
 slug: "ci-cd-pipelines-for-spatial-apis"
-type: "cluster"
 breadcrumb:
   - label: "Deploying & Operating Geospatial APIs"
     url: "/deploying-and-operating-geospatial-apis/"
@@ -24,8 +23,8 @@ dateModified: "2026-07-10"
       "datePublished": "2025-09-18",
       "dateModified": "2026-07-10",
       "author": {"@type": "Organization", "name": "geospatial-api.com"},
-      "publisher": {"@type": "Organization", "name": "geospatial-api.com", "url": "https://geospatial-api.com"},
-      "mainEntityOfPage": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/"
+      "publisher": {"@type": "Organization", "name": "geospatial-api.com", "url": "https://www.geospatial-api.com"},
+      "mainEntityOfPage": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/"
     },
     {
       "@type": "Article",
@@ -36,8 +35,8 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Deploying & Operating Geospatial APIs", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/"},
-        {"@type": "ListItem", "position": 2, "name": "CI/CD Pipelines for Spatial APIs", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/"}
+        {"@type": "ListItem", "position": 1, "name": "Deploying & Operating Geospatial APIs", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/"},
+        {"@type": "ListItem", "position": 2, "name": "CI/CD Pipelines for Spatial APIs", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/"}
       ]
     },
     {
@@ -84,13 +83,13 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/)
+← Back to [Deploying & Operating Geospatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/)
 
 # CI/CD pipelines for spatial APIs
 
 Continuous integration for an ordinary CRUD service is a solved problem: lint, run tests against an in-memory database or a mock, build an image, deploy. A FastAPI service backed by PostGIS breaks that recipe in exactly one place — the tests — and that single difference cascades through the entire pipeline. Spatial correctness does not live in your Python code; it lives inside PostGIS's C library. `ST_Intersects`, `ST_DWithin`, GiST index selection, and SRID transforms cannot be mocked without mocking away the very thing you need to verify. This guide builds a complete pipeline for a spatial API — lint and type-check, unit tests, spatial integration tests against a real PostGIS, image build and push, migrations, and deploy — and treats the "you need a real PostGIS in CI" constraint as the central design problem rather than an afterthought.
 
-The rest of the deployment story — how the image is built and pinned — lives in the [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/) overview and its [containerizing PostGIS and FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/) guide. This page assumes that image exists and focuses on the pipeline that tests and ships it.
+The rest of the deployment story — how the image is built and pinned — lives in the [Deploying & Operating Geospatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/) overview and its [containerizing PostGIS and FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/) guide. This page assumes that image exists and focuses on the pipeline that tests and ships it.
 
 ---
 
@@ -101,7 +100,7 @@ The core problem is that a spatial query has two answers: the one your ORM emits
 - **You cannot mock the spatial engine.** A mock repository that returns a hand-picked list of features tests your Python plumbing and nothing else. Whether `WHERE ST_DWithin(geom, :point, 500)` actually returns the right rows depends on the geometry column's SRID, whether the GiST index is used, and the exact semantics of the PostGIS version installed. Substituting SQLite + SpatiaLite is worse than useless: it has different function coverage, no `&&` planner behaviour, different SRID handling, and will pass tests that production fails.
 - **Fixtures must be real geometries.** A spatial test fixture is not `{"lat": 1, "lon": 2}` — it is a `MULTIPOLYGON` with a declared SRID, inserted with `ST_GeomFromText(..., 4326)` or `ST_SetSRID`, that exercises the actual predicate under test. The realism of the geometry (winding order, self-intersections, antimeridian crossing) is part of the test.
 - **The extension is not the database.** `postgis/postgis:16-3.4` ships the PostGIS binaries, but `CREATE EXTENSION postgis` still has to run against each database before `ST_` functions resolve. Forgetting this is the single most common CI failure, producing `function st_intersects(...) does not exist`.
-- **Migrations carry spatial baggage.** Running Alembic in CI with GeoAlchemy2 surfaces problems a plain schema never sees — spurious `DROP COLUMN geom`, and `CREATE INDEX CONCURRENTLY` that cannot run inside a migration's transaction. That whole class of problem has its own guide: [automating spatial database migrations in CI](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/automating-spatial-database-migrations-in-ci/).
+- **Migrations carry spatial baggage.** Running Alembic in CI with GeoAlchemy2 surfaces problems a plain schema never sees — spurious `DROP COLUMN geom`, and `CREATE INDEX CONCURRENTLY` that cannot run inside a migration's transaction. That whole class of problem has its own guide: [automating spatial database migrations in CI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/automating-spatial-database-migrations-in-ci/).
 
 <svg viewBox="0 0 780 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CI/CD pipeline stages for a FastAPI and PostGIS service" style="width:100%;max-width:780px;display:block;margin:1.5rem auto;">
   <title>Spatial API CI/CD pipeline stages</title>
@@ -170,7 +169,7 @@ The pipeline pins every tool. Floating versions are how a green pipeline turns r
 | pytest / pytest-asyncio | 8.x / 0.23+ | Async test execution |
 | ruff / mypy | 0.5+ / 1.10+ | Lint and static type gates |
 
-Two rules govern the whole pipeline. First, the PostGIS tag in CI is the tag you deploy — pinning it is covered in [pinning PostGIS versions in production images](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/), and the same discipline applies to CI. A minor PostGIS bump can change `ST_SimplifyPreserveTopology` output or GiST cost estimates; if CI runs 3.4 and prod runs 3.5, your tests are lying. Second, the database that runs your tests must have the PostGIS extension created before any test touches an `ST_` function.
+Two rules govern the whole pipeline. First, the PostGIS tag in CI is the tag you deploy — pinning it is covered in [pinning PostGIS versions in production images](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/), and the same discipline applies to CI. A minor PostGIS bump can change `ST_SimplifyPreserveTopology` output or GiST cost estimates; if CI runs 3.4 and prod runs 3.5, your tests are lying. Second, the database that runs your tests must have the PostGIS extension created before any test touches an `ST_` function.
 
 ---
 
@@ -184,7 +183,7 @@ There are three defensible ways to get a real PostGIS into a CI job. They are no
 | **Testcontainers** (`testcontainers[postgres]`) | Your test code | Per test module or per session, in code | Medium — container per fixture scope | You need programmatic control, several isolated DBs, or laptop/CI parity |
 | **docker-compose in CI** | A compose file | Whole system (API + worker + Redis + DB) | Highest — full stack boot | End-to-end tests that need the API and dependencies wired together |
 
-For the pipeline in this guide the integration job uses a **service container**: it is the least code, starts once, and maps cleanly onto GitHub Actions' health-check plumbing. The complete `test.yml` for that path — health check, extension creation, seeded geometries, and async pytest — is built end to end in [GitHub Actions integration tests with a PostGIS service container](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/github-actions-integration-tests-with-a-postgis-service-container/). Reach for Testcontainers when a single shared database is not enough — for example, tests that verify tenant isolation need a fresh database per case, and the same container config then runs unchanged on a developer laptop. Reach for docker-compose only when the thing under test is the system, not the query.
+For the pipeline in this guide the integration job uses a **service container**: it is the least code, starts once, and maps cleanly onto GitHub Actions' health-check plumbing. The complete `test.yml` for that path — health check, extension creation, seeded geometries, and async pytest — is built end to end in [GitHub Actions integration tests with a PostGIS service container](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/github-actions-integration-tests-with-a-postgis-service-container/). Reach for Testcontainers when a single shared database is not enough — for example, tests that verify tenant isolation need a fresh database per case, and the same container config then runs unchanged on a developer laptop. Reach for docker-compose only when the thing under test is the system, not the query.
 
 ---
 
@@ -206,7 +205,7 @@ Type-checking a spatial API earns its keep: GeoAlchemy2's `Geometry` columns and
 
 ### Step 2 — Unit tests that need no database
 
-Keep a genuine unit tier that runs without PostGIS: Pydantic geometry validators, coordinate-bounds checks, cursor encoders, and pure serialisation. These verify the logic that surrounds the database. Validation modelling itself follows the [spatial resource modelling patterns](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) used across the API, so the unit tier maps directly onto those model classes.
+Keep a genuine unit tier that runs without PostGIS: Pydantic geometry validators, coordinate-bounds checks, cursor encoders, and pure serialisation. These verify the logic that surrounds the database. Validation modelling itself follows the [spatial resource modelling patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) used across the API, so the unit tier maps directly onto those model classes.
 
 ```python
 # tests/unit/test_validators.py
@@ -287,15 +286,15 @@ async def test_gist_index_is_used(session):
     assert any("idx_parcels_geom" in r[0] for r in plan)
 ```
 
-The second test asserts the GiST index is actually chosen — a class of regression that unit tests are structurally incapable of catching, and one that also validates the reasoning in [reading EXPLAIN ANALYZE for spatial query optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
+The second test asserts the GiST index is actually chosen — a class of regression that unit tests are structurally incapable of catching, and one that also validates the reasoning in [reading EXPLAIN ANALYZE for spatial query optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
 
 ### Step 4 — Build and push the image
 
-Only after tests pass do you build the deployable image. Use the registry cache so unchanged layers are not rebuilt, and tag with the immutable commit SHA. The multi-stage build itself is covered in [multi-stage Docker builds for PostGIS FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/multi-stage-docker-builds-for-postgis-fastapi/); the pipeline's job is to build it reproducibly and push it.
+Only after tests pass do you build the deployable image. Use the registry cache so unchanged layers are not rebuilt, and tag with the immutable commit SHA. The multi-stage build itself is covered in [multi-stage Docker builds for PostGIS FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/multi-stage-docker-builds-for-postgis-fastapi/); the pipeline's job is to build it reproducibly and push it.
 
 ### Step 5 — Migrate, then deploy
 
-Migrations run as a discrete step against the target database before the new image serves traffic. Running Alembic with GeoAlchemy2 has spatial-specific hazards — spurious geometry-column drops in autogenerate, and `CREATE INDEX CONCURRENTLY` that cannot execute inside Alembic's transaction — all handled in [automating spatial database migrations in CI](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/automating-spatial-database-migrations-in-ci/). Deploy only after `alembic upgrade head` exits zero.
+Migrations run as a discrete step against the target database before the new image serves traffic. Running Alembic with GeoAlchemy2 has spatial-specific hazards — spurious geometry-column drops in autogenerate, and `CREATE INDEX CONCURRENTLY` that cannot execute inside Alembic's transaction — all handled in [automating spatial database migrations in CI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/automating-spatial-database-migrations-in-ci/). Deploy only after `alembic upgrade head` exits zero.
 
 ---
 
@@ -436,11 +435,11 @@ docker run --rm -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgis/postgis:16-3.
 
 1. **`function st_intersects(geometry, geometry) does not exist`** — the PostGIS extension was never created in the database the tests connect to. Add `CREATE EXTENSION IF NOT EXISTS postgis` as an explicit step, and verify it targets the *test* database, not `postgres`. This is the number-one spatial CI failure.
 
-2. **`could not connect to server: Connection refused` at the first query** — the job started querying before PostGIS finished booting. A fixed `sleep 10` is unreliable; the container reports "started" before the server accepts connections. Gate on `--health-cmd "pg_isready"` with `--health-retries`, so the job waits on genuine readiness. Details in the [service-container guide](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/github-actions-integration-tests-with-a-postgis-service-container/).
+2. **`could not connect to server: Connection refused` at the first query** — the job started querying before PostGIS finished booting. A fixed `sleep 10` is unreliable; the container reports "started" before the server accepts connections. Gate on `--health-cmd "pg_isready"` with `--health-retries`, so the job waits on genuine readiness. Details in the [service-container guide](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/github-actions-integration-tests-with-a-postgis-service-container/).
 
 3. **`getaddrinfo failed: Name or service not known` for host `postgis`** — you used the service *name* as the host. When steps run directly on the runner (not inside a container job), the service is reached at `localhost` with the mapped port, not the service name. The service name only resolves for container-based jobs on the same network.
 
-4. **`relation "spatial_ref_sys" already exists` during migration** — an Alembic migration tried to create objects PostGIS already provides, usually because autogenerate captured `spatial_ref_sys` or `geometry_columns`. Exclude PostGIS-managed objects from autogenerate; see [automating spatial database migrations in CI](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/automating-spatial-database-migrations-in-ci/).
+4. **`relation "spatial_ref_sys" already exists` during migration** — an Alembic migration tried to create objects PostGIS already provides, usually because autogenerate captured `spatial_ref_sys` or `geometry_columns`. Exclude PostGIS-managed objects from autogenerate; see [automating spatial database migrations in CI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/automating-spatial-database-migrations-in-ci/).
 
 5. **`CREATE INDEX CONCURRENTLY cannot run inside a transaction block`** — a migration built a GiST index concurrently while Alembic held its wrapping transaction open. Use `op.get_context().autocommit_block()` (or `op.execute` outside the transaction). Fully worked through in the migrations guide.
 
@@ -482,10 +481,10 @@ Cache pip wheels and Docker build layers keyed on the lock file, gate on a real 
 
 ## Related
 
-- [GitHub Actions Integration Tests with a PostGIS Service Container](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/github-actions-integration-tests-with-a-postgis-service-container/) — the complete `test.yml` with health check, extension creation, and async pytest
-- [Automating Spatial Database Migrations in CI](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/automating-spatial-database-migrations-in-ci/) — Alembic with GeoAlchemy2, autogenerate hazards, and concurrent index creation
-- [Containerizing PostGIS and FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/) — the multi-stage image the pipeline builds and ships
-- [Async PostGIS Transaction Patterns](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/) — the transaction semantics your integration tests exercise
-- [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/) — the operational context around building, shipping, and running spatial services
+- [GitHub Actions Integration Tests with a PostGIS Service Container](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/github-actions-integration-tests-with-a-postgis-service-container/) — the complete `test.yml` with health check, extension creation, and async pytest
+- [Automating Spatial Database Migrations in CI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/automating-spatial-database-migrations-in-ci/) — Alembic with GeoAlchemy2, autogenerate hazards, and concurrent index creation
+- [Containerizing PostGIS and FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/) — the multi-stage image the pipeline builds and ships
+- [Async PostGIS Transaction Patterns](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/) — the transaction semantics your integration tests exercise
+- [Deploying & Operating Geospatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/) — the operational context around building, shipping, and running spatial services
 
-← Back to [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/)
+← Back to [Deploying & Operating Geospatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/)

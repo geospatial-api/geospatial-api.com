@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Best Practices for Serializing Large GeoJSON Responses in FastAPI"
 description: "Stream large GeoJSON responses from PostGIS using ST_AsGeoJSON, FastAPI StreamingResponse, and gzip compression. Reduce peak RAM by up to 90% and cut TTFB from seconds to milliseconds."
 slug: best-practices-for-serializing-large-geojson-responses
-type: long_tail
 breadcrumb:
   - label: "Core Geospatial API Architecture"
     url: "/core-geospatial-api-architecture-with-fastapi-postgis/"
@@ -26,14 +25,14 @@ dateModified: "2026-06-23"
       "datePublished": "2025-01-15",
       "dateModified": "2026-06-23",
       "author": { "@type": "Organization", "name": "geospatial-api.com" },
-      "url": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/best-practices-for-serializing-large-geojson-responses/"
+      "url": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/best-practices-for-serializing-large-geojson-responses/"
     },
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Core Geospatial API Architecture", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/" },
-        { "@type": "ListItem", "position": 2, "name": "GeoJSON vs GeoParquet Serialization", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/" },
-        { "@type": "ListItem", "position": 3, "name": "Best Practices for Serializing Large GeoJSON Responses", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/best-practices-for-serializing-large-geojson-responses/" }
+        { "@type": "ListItem", "position": 1, "name": "Core Geospatial API Architecture", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/" },
+        { "@type": "ListItem", "position": 2, "name": "GeoJSON vs GeoParquet Serialization", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/" },
+        { "@type": "ListItem", "position": 3, "name": "Best Practices for Serializing Large GeoJSON Responses", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/best-practices-for-serializing-large-geojson-responses/" }
       ]
     },
     {
@@ -80,7 +79,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/)
+← Back to [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/)
 
 # Best practices for serializing large GeoJSON responses
 
@@ -94,7 +93,7 @@ The approach works well when:
 
 - Clients consume the response incrementally (progressive rendering, fetch-and-parse pipelines, or stream-aware loaders like `oboe.js`).
 - The dataset is spatially filtered per request — a bounding box, radius, or polygon intersection narrows rows before any bytes leave the database.
-- Response time matters more than columnar analytics. When clients need aggregations, joins, or arrow-native reads on datasets consistently larger than 100 MB, the [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix explains when to pivot to a binary columnar format instead.
+- Response time matters more than columnar analytics. When clients need aggregations, joins, or arrow-native reads on datasets consistently larger than 100 MB, the [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) decision matrix explains when to pivot to a binary columnar format instead.
 
 Two preconditions must be in place before implementing the streaming pattern. First, PostGIS must be installed and the target table must have a geometry column indexed with `GIST`. Second, the FastAPI application must use an async database driver (`asyncpg` or `psycopg3`) — synchronous drivers block the event loop and negate the benefits of streaming.
 
@@ -236,9 +235,9 @@ async def get_features(
     )
 ```
 
-For large result sets that need page-by-page traversal without `OFFSET` degradation, pair this endpoint with the [cursor-based pagination for spatial queries](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/) pattern — replace `ORDER BY id` with a keyset predicate (`WHERE id > $5`) and return the last seen ID in a `Link: <next>` header.
+For large result sets that need page-by-page traversal without `OFFSET` degradation, pair this endpoint with the [cursor-based pagination for spatial queries](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/) pattern — replace `ORDER BY id` with a keyset predicate (`WHERE id > $5`) and return the last seen ID in a `Link: <next>` header.
 
-For validating that incoming bounding-box or geometry parameters are well-formed before the query runs, the [strict Pydantic validation for geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) cluster covers model-level coercion of WKT, WKB, and GeoJSON geometry inputs.
+For validating that incoming bounding-box or geometry parameters are well-formed before the query runs, the [strict Pydantic validation for geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) cluster covers model-level coercion of WKT, WKB, and GeoJSON geometry inputs.
 
 ## Key parameters and options
 
@@ -291,16 +290,16 @@ psql $DATABASE_URL -c "
   WHERE ST_Intersects(geom, ST_MakeEnvelope(-0.5,51.3,0.3,51.6,4326));"
 ```
 
-For a deeper look at reading `EXPLAIN ANALYZE` output for spatial queries — including how to spot sequential scans replaced by bitmap index scans — see [reading EXPLAIN ANALYZE for spatial query optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
+For a deeper look at reading `EXPLAIN ANALYZE` output for spatial queries — including how to spot sequential scans replaced by bitmap index scans — see [reading EXPLAIN ANALYZE for spatial query optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
 
 ---
 
 **Related**
 
-- [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — decision matrix for choosing between text and binary columnar formats
-- [Cursor-based pagination for spatial queries](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/) — keyset pagination that pairs with streaming for paginated GeoJSON endpoints
-- [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — the full cursor strategy reference including PostGIS-specific ordering considerations
-- [Strict Pydantic validation for geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — validate bbox and geometry inputs before they reach the streaming query
-- [Reading EXPLAIN ANALYZE for spatial query optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/) — verify that ST_Intersects uses your GIST index
+- [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — decision matrix for choosing between text and binary columnar formats
+- [Cursor-based pagination for spatial queries](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/implementing-cursor-based-pagination-for-spatial-queries/) — keyset pagination that pairs with streaming for paginated GeoJSON endpoints
+- [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — the full cursor strategy reference including PostGIS-specific ordering considerations
+- [Strict Pydantic validation for geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — validate bbox and geometry inputs before they reach the streaming query
+- [Reading EXPLAIN ANALYZE for spatial query optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/) — verify that ST_Intersects uses your GIST index
 
-← Back to [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/)
+← Back to [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/)

@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Strict Pydantic Validation for Geometry"
 description: "Validate geometry at the API boundary with Pydantic v2. Enforce ring orientation, topology checks, and CRS alignment before any PostGIS round-trip."
 slug: strict-pydantic-validation-for-geometry
-type: cluster
 breadcrumb: "Advanced Spatial Endpoints > Strict Pydantic Validation for Geometry"
 datePublished: "2024-01-15"
 dateModified: "2026-06-23"
@@ -24,9 +23,9 @@ dateModified: "2026-06-23"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Advanced Spatial Endpoint Implementation & Data Contracts", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
-        { "@type": "ListItem", "position": 3, "name": "Strict Pydantic Validation for Geometry", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/" }
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Advanced Spatial Endpoint Implementation & Data Contracts", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
+        { "@type": "ListItem", "position": 3, "name": "Strict Pydantic Validation for Geometry", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/" }
       ]
     },
     {
@@ -64,7 +63,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [Advanced Spatial Endpoint Implementation & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/)
+← Back to [Advanced Spatial Endpoint Implementation & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/)
 
 # Strict Pydantic Validation for Geometry
 
@@ -180,7 +179,7 @@ def normalize_geometry(raw: Any) -> dict[str, Any]:
 GeometryInput = Annotated[dict[str, Any], BeforeValidator(normalize_geometry)]
 ```
 
-This type alias can be reused across all your request models, keeping normalization logic in one place as detailed in [Validating WKT and GeoJSON with Pydantic v2](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/).
+This type alias can be reused across all your request models, keeping normalization logic in one place as detailed in [Validating WKT and GeoJSON with Pydantic v2](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/).
 
 ### Step 2 — Structural & Topological Enforcement
 
@@ -332,7 +331,7 @@ ValidatedPolygonInput = Annotated[
 
 ### Step 5 — Error Serialization
 
-Pydantic's raw `ValidationError` output is detailed but unsuitable for direct API responses. Map failures to RFC 7807 problem details so all spatial endpoints return consistent error structures. These same errors appear in [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) endpoints, making uniform error taxonomy essential across the API.
+Pydantic's raw `ValidationError` output is detailed but unsuitable for direct API responses. Map failures to RFC 7807 problem details so all spatial endpoints return consistent error structures. These same errors appear in [Bounding Box & Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) endpoints, making uniform error taxonomy essential across the API.
 
 ```python
 from fastapi import FastAPI, Request
@@ -366,7 +365,7 @@ async def spatial_validation_handler(
 
 ## Production Code Example
 
-A complete, copy-runnable FastAPI route that accepts a GeoJSON geometry payload, runs the full validation pipeline, and returns a PostGIS-ready WKB hex string. Pre-validated bounding boxes fed into `ST_Within` or `ST_Intersects` via this route eliminate redundant `ST_MakeValid` calls in [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/).
+A complete, copy-runnable FastAPI route that accepts a GeoJSON geometry payload, runs the full validation pipeline, and returns a PostGIS-ready WKB hex string. Pre-validated bounding boxes fed into `ST_Within` or `ST_Intersects` via this route eliminate redundant `ST_MakeValid` calls in [Bounding Box & Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/).
 
 ```python
 from typing import Any, Annotated, Literal
@@ -550,7 +549,7 @@ def test_precision_clamped():
 - **Shapely topology check** — `from_geojson` + `is_valid` adds 0.5–2 ms for complex polygons with holes. Gate it behind a feature flag or apply it only to `Polygon` / `MultiPolygon` types, not `Point` or `LineString`.
 - **Pydantic model instantiation** — Constructing `StrictGeometryWithBounds` inside a FastAPI dependency (rather than directly in the route body) enables caching of the model schema via `model_validate` and avoids repeated `__init__` overhead at high request rates.
 - **Async compatibility** — All validators shown here are synchronous. `@field_validator` and `BeforeValidator` must remain sync; async validation logic (e.g., checking geometry existence in the database) belongs in a FastAPI dependency, not a Pydantic validator.
-- **`ST_IsValid` in PostGIS** — If you skip the Shapely check, a `SELECT ST_IsValid(ST_GeomFromGeoJSON($1))` query adds one extra database round-trip per request. Reserve this for high-risk ingestion pipelines (e.g., [Async Bulk Uploads with Celery](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/)) rather than per-request endpoints.
+- **`ST_IsValid` in PostGIS** — If you skip the Shapely check, a `SELECT ST_IsValid(ST_GeomFromGeoJSON($1))` query adds one extra database round-trip per request. Reserve this for high-risk ingestion pipelines (e.g., [Async Bulk Uploads with Celery](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/)) rather than per-request endpoints.
 
 ---
 
@@ -572,10 +571,10 @@ For common cases — ring closure, coordinate bounds, nesting depth — yes. Ful
 
 ## Related
 
-- [Validating WKT and GeoJSON with Pydantic v2](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/) — format-specific coercion patterns that plug into the pipeline above
-- [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — how pre-validated geometries accelerate `ST_Within` and `ST_Intersects` queries
-- [K-Nearest Neighbor Routing Algorithms](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) — routing endpoints that benefit from guaranteed coordinate precision
-- [Async Bulk Uploads with Celery](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) — batch ingestion pipelines where topology checks run as background tasks
-- [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choosing the right serialization format for validated geometry responses
+- [Validating WKT and GeoJSON with Pydantic v2](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/) — format-specific coercion patterns that plug into the pipeline above
+- [Bounding Box & Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — how pre-validated geometries accelerate `ST_Within` and `ST_Intersects` queries
+- [K-Nearest Neighbor Routing Algorithms](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) — routing endpoints that benefit from guaranteed coordinate precision
+- [Async Bulk Uploads with Celery](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) — batch ingestion pipelines where topology checks run as background tasks
+- [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choosing the right serialization format for validated geometry responses
 
-← Back to [Advanced Spatial Endpoint Implementation & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/)
+← Back to [Advanced Spatial Endpoint Implementation & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/)

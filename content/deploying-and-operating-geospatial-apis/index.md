@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Deploying & Operating Geospatial APIs"
 description: "A production operations reference for FastAPI + PostGIS spatial APIs: containerising PostGIS and FastAPI, CI/CD with real spatial integration tests, edge routing for vector tiles, and observability for spatial workloads."
 slug: deploying-and-operating-geospatial-apis
-type: pillar
 breadcrumb: Deploying & Operating Geospatial APIs
 datePublished: "2025-09-18"
 dateModified: "2026-07-10"
@@ -20,8 +19,8 @@ dateModified: "2026-07-10"
       "datePublished": "2025-09-18",
       "dateModified": "2026-07-10",
       "author": { "@type": "Organization", "name": "geospatial-api.com" },
-      "publisher": { "@type": "Organization", "name": "geospatial-api.com", "url": "https://geospatial-api.com" },
-      "mainEntityOfPage": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/"
+      "publisher": { "@type": "Organization", "name": "geospatial-api.com", "url": "https://www.geospatial-api.com" },
+      "mainEntityOfPage": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/"
     },
     {
       "@type": "Article",
@@ -32,8 +31,8 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Deploying & Operating Geospatial APIs", "item": "https://geospatial-api.com/deploying-and-operating-geospatial-apis/" }
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Deploying & Operating Geospatial APIs", "item": "https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/" }
       ]
     },
     {
@@ -145,7 +144,7 @@ A spatial API has two distinct flows that must be reasoned about separately: the
   </defs>
 </svg>
 
-The delivery pipeline (top) guarantees that the exact PostGIS and GDAL versions your integration tests ran against are the versions that reach production. The request path (bottom) keeps the origin cluster small by absorbing repeated tile requests at the edge. Everything downstream of the registry — replica count, pool sizing, cache TTLs — is a tuning exercise; the two structural rules are *pin what you ship* and *cache tiles before they reach the database*. The three areas that carry the most operational weight each have a dedicated guide: [containerising PostGIS and FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/), [CI/CD pipelines for spatial APIs](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/), and [edge routing and tile delivery at scale](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/).
+The delivery pipeline (top) guarantees that the exact PostGIS and GDAL versions your integration tests ran against are the versions that reach production. The request path (bottom) keeps the origin cluster small by absorbing repeated tile requests at the edge. Everything downstream of the registry — replica count, pool sizing, cache TTLs — is a tuning exercise; the two structural rules are *pin what you ship* and *cache tiles before they reach the database*. The three areas that carry the most operational weight each have a dedicated guide: [containerising PostGIS and FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/), [CI/CD pipelines for spatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/), and [edge routing and tile delivery at scale](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/).
 
 ## Infrastructure Layer: Reproducible Spatial Images
 
@@ -182,7 +181,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 ```
 
-The image size penalty for `libgdal-dev` is real (200 MB+), so a production build should use a multi-stage pattern that compiles wheels in a builder stage and copies only the runtime shared libraries into the final image. That trade-off — and how to pin PostGIS deterministically — is worked through in [containerising PostGIS and FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/).
+The image size penalty for `libgdal-dev` is real (200 MB+), so a production build should use a multi-stage pattern that compiles wheels in a builder stage and copies only the runtime shared libraries into the final image. That trade-off — and how to pin PostGIS deterministically — is worked through in [containerising PostGIS and FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/).
 
 ### Compose topology and healthchecks
 
@@ -237,7 +236,7 @@ volumes:
   pgdata:
 ```
 
-PgBouncer sits between the API and PostGIS in transaction-pooling mode; the full parameter set for spatial workloads is covered in [connection pooling and PgBouncer setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/). The `depends_on: condition: service_healthy` gate is not optional — without the PostGIS-aware healthcheck, the API and PgBouncer start against a database whose extension has not finished initialising, and the first spatial query fails with `function st_asmvt does not exist`.
+PgBouncer sits between the API and PostGIS in transaction-pooling mode; the full parameter set for spatial workloads is covered in [connection pooling and PgBouncer setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/). The `depends_on: condition: service_healthy` gate is not optional — without the PostGIS-aware healthcheck, the API and PgBouncer start against a database whose extension has not finished initialising, and the first spatial query fails with `function st_asmvt does not exist`.
 
 ## Application Layer: Workers, Migrations, and Config
 
@@ -310,7 +309,7 @@ def upgrade():
         )
 ```
 
-Automating this safely inside a pipeline — including how to gate the deploy on migration success — is the subject of [CI/CD pipelines for spatial APIs](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/).
+Automating this safely inside a pipeline — including how to gate the deploy on migration success — is the subject of [CI/CD pipelines for spatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/).
 
 ### Configuration and secrets
 
@@ -377,11 +376,11 @@ async def parcel_tile(ver: int, z: int, x: int, y: int, db=Depends(get_db)):
     )
 ```
 
-The `&&` bounding-box operator uses the GIST index to select only candidate geometries before `ST_AsMVTGeom` clips them to the tile — the same index-first pattern that governs every spatial read. The version segment (`v{ver}`) is what makes an aggressive `max-age` safe: bumping `data_version` changes the URL, so stale tiles are never served after a data change. Edge configuration, surrogate-key purging, and worker-based routing are detailed in [edge routing and tile delivery at scale](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/), and the origin-side tile generation strategy is covered in [tile generation and CDN distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/).
+The `&&` bounding-box operator uses the GIST index to select only candidate geometries before `ST_AsMVTGeom` clips them to the tile — the same index-first pattern that governs every spatial read. The version segment (`v{ver}`) is what makes an aggressive `max-age` safe: bumping `data_version` changes the URL, so stale tiles are never served after a data change. Edge configuration, surrogate-key purging, and worker-based routing are detailed in [edge routing and tile delivery at scale](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/), and the origin-side tile generation strategy is covered in [tile generation and CDN distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/).
 
 ### Content negotiation
 
-Not every consumer wants MVT. The origin negotiates the serialization format by `Accept` header or path suffix, and each format carries different cacheability. Choosing between GeoJSON and a binary format is a decision matrix in its own right, laid out in [GeoJSON vs GeoParquet serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/); the operational summary for the edge is:
+Not every consumer wants MVT. The origin negotiates the serialization format by `Accept` header or path suffix, and each format carries different cacheability. Choosing between GeoJSON and a binary format is a decision matrix in its own right, laid out in [GeoJSON vs GeoParquet serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/); the operational summary for the edge is:
 
 | Client / `Accept` | Media type | PostGIS producer | Typical `Cache-Control` | Edge cacheable |
 |---|---|---|---|---|
@@ -404,7 +403,7 @@ FastAPI replicas scale horizontally, but every replica draws from a **fixed** Po
 replicas × workers_per_replica × sqlalchemy_pool_size  ≤  pgbouncer default_pool_size × (backend budget)
 ```
 
-Because PostGIS spatial operations are CPU-bound, the effective backend budget is roughly `2 × vCPU` on the database host — beyond that, extra backends queue at the OS scheduler instead of running in parallel. So horizontal replica scaling buys request concurrency and failure isolation, not raw query throughput; that ceiling is set by database vCPUs and by how much traffic the edge absorbs. Sizing the pool against replica count is exactly the calculation in [connection pooling and PgBouncer setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
+Because PostGIS spatial operations are CPU-bound, the effective backend budget is roughly `2 × vCPU` on the database host — beyond that, extra backends queue at the OS scheduler instead of running in parallel. So horizontal replica scaling buys request concurrency and failure isolation, not raw query throughput; that ceiling is set by database vCPUs and by how much traffic the edge absorbs. Sizing the pool against replica count is exactly the calculation in [connection pooling and PgBouncer setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
 
 ### Edge offload benchmarks
 
@@ -420,7 +419,7 @@ The database query latency never changes — what changes is how few requests re
 
 ### Caching layers and cursoring
 
-Behind the edge, Redis caches serialized responses for endpoints that are dynamic but repetitive (bbox feature lists, precomputed boundaries), invalidated on write. And for large non-tile result sets, keyset paging keeps the database from doing offset scans — the [spatial pagination and cursor strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) guide covers the Z-order and tile-aligned cursors that keep page latency flat as offsets grow. A cache hit at any of these layers is a database connection you did not spend.
+Behind the edge, Redis caches serialized responses for endpoints that are dynamic but repetitive (bbox feature lists, precomputed boundaries), invalidated on write. And for large non-tile result sets, keyset paging keeps the database from doing offset scans — the [spatial pagination and cursor strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) guide covers the Z-order and tile-aligned cursors that keep page latency flat as offsets grow. A cache hit at any of these layers is a database connection you did not spend.
 
 ## Production Readiness
 
@@ -450,7 +449,7 @@ jobs:
       - run: pytest -q tests/spatial     # real ST_Intersects / ST_AsMVT assertions
 ```
 
-Deploys should be **rolling or blue/green** so a bad image never takes down every replica at once. Roll one replica, wait for its `/health/spatial` probe to pass, then continue; keep the previous image tag one command away from a rollback. Building this pipeline end to end — including migration ordering against a live schema — is the focus of [CI/CD pipelines for spatial APIs](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/).
+Deploys should be **rolling or blue/green** so a bad image never takes down every replica at once. Roll one replica, wait for its `/health/spatial` probe to pass, then continue; keep the previous image tag one command away from a rollback. Building this pipeline end to end — including migration ordering against a live schema — is the focus of [CI/CD pipelines for spatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/).
 
 ### Observability signals for spatial operations
 
@@ -518,9 +517,9 @@ Never rely on TTL expiry alone. Put a data version in the tile path or query str
 
 ## Related
 
-- [Containerizing PostGIS & FastAPI](/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/) — multi-stage builds, GDAL/GEOS/PROJ runtime deps, and deterministic PostGIS version pinning
-- [CI/CD Pipelines for Spatial APIs](/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/) — GitHub Actions with a PostGIS service container, spatial integration tests, and automated migrations
-- [Edge Routing & Tile Delivery at Scale](/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/) — worker-based edge routing, surrogate-key purging, and `Cache-Control` for vector tiles
-- [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — origin-side `ST_AsMVT` pipelines and CDN offload for high-traffic tile routes
-- [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — transaction-mode pooling that lets FastAPI replicas share a fixed PostGIS connection budget
-- [Securing Geospatial APIs](/securing-geospatial-apis-authentication-authorization/) — authentication, tenant isolation, and rate limiting for the endpoints you deploy
+- [Containerizing PostGIS & FastAPI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/) — multi-stage builds, GDAL/GEOS/PROJ runtime deps, and deterministic PostGIS version pinning
+- [CI/CD Pipelines for Spatial APIs](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/) — GitHub Actions with a PostGIS service container, spatial integration tests, and automated migrations
+- [Edge Routing & Tile Delivery at Scale](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/) — worker-based edge routing, surrogate-key purging, and `Cache-Control` for vector tiles
+- [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — origin-side `ST_AsMVT` pipelines and CDN offload for high-traffic tile routes
+- [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — transaction-mode pooling that lets FastAPI replicas share a fixed PostGIS connection budget
+- [Securing Geospatial APIs](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/) — authentication, tenant isolation, and rate limiting for the endpoints you deploy

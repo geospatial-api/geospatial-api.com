@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "GeoJSON vs GeoParquet Serialization"
 description: "Compare GeoJSON and GeoParquet serialization for FastAPI geospatial endpoints: decision matrix, streaming pipelines, content negotiation, error handling, and performance benchmarks."
 slug: geojson-vs-geoparquet-serialization
-type: cluster
 breadcrumb:
   - label: "Core Geospatial API Architecture"
     url: "/core-geospatial-api-architecture-with-fastapi-postgis/"
@@ -33,13 +32,13 @@ dateModified: "2026-06-23"
           "@type": "ListItem",
           "position": 1,
           "name": "Core Geospatial API Architecture",
-          "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/"
+          "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/"
         },
         {
           "@type": "ListItem",
           "position": 2,
           "name": "GeoJSON vs GeoParquet Serialization",
-          "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/"
+          "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/"
         }
       ]
     },
@@ -87,11 +86,11 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [Core Geospatial API Architecture](/core-geospatial-api-architecture-with-fastapi-postgis/)
+← Back to [Core Geospatial API Architecture](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/)
 
 # GeoJSON vs GeoParquet Serialization
 
-Choosing the wrong serialization format for a geospatial endpoint is one of the most common sources of avoidable latency and client incompatibility. Within the broader [Core Geospatial API Architecture with FastAPI & PostGIS](/core-geospatial-api-architecture-with-fastapi-postgis/), the decision between text-based GeoJSON and binary-columnar GeoParquet drives payload size, server memory consumption, and which downstream consumers can read the data. This page walks through the decision matrix, two complete streaming pipelines, `Accept`-header content negotiation, verification steps, and the failure modes that appear in production.
+Choosing the wrong serialization format for a geospatial endpoint is one of the most common sources of avoidable latency and client incompatibility. Within the broader [Core Geospatial API Architecture with FastAPI & PostGIS](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/), the decision between text-based GeoJSON and binary-columnar GeoParquet drives payload size, server memory consumption, and which downstream consumers can read the data. This page walks through the decision matrix, two complete streaming pipelines, `Accept`-header content negotiation, verification steps, and the failure modes that appear in production.
 
 ## Prerequisites & Environment
 
@@ -125,7 +124,7 @@ The table below is the analytical starting point. Read it column-by-column to ma
 | **Streaming** | Chunk-level via `StreamingResponse` | Parquet row groups; stream with `pyarrow.parquet.ParquetWriter` |
 | **Best for** | Browser maps, real-time dashboards, lightweight integrations | Bulk exports, ETL pipelines, analytical workloads |
 
-When modelling spatial resources as detailed in [Spatial Resource Modeling Patterns](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/), treat GeoJSON as the default for interactive rendering and GeoParquet as the standard for bulk and analytical endpoints.
+When modelling spatial resources as detailed in [Spatial Resource Modeling Patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/), treat GeoJSON as the default for interactive rendering and GeoParquet as the standard for bulk and analytical endpoints.
 
 ---
 
@@ -204,7 +203,7 @@ LIMIT :limit;
 
 Explicitly call `ST_Transform` before `ST_AsGeoJSON` and `ST_AsBinary`. Leaving projection to the client is a correctness hazard — PostGIS stores geometries in their native SRID and the column default is not always 4326.
 
-For datasets exceeding 100,000 features, combine this query with keyset pagination to prevent memory exhaustion and query-planner degradation, as described in [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/).
+For datasets exceeding 100,000 features, combine this query with keyset pagination to prevent memory exhaustion and query-planner degradation, as described in [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/).
 
 ### 2. GeoJSON Streaming Pipeline
 
@@ -250,7 +249,7 @@ async def get_geojson_stream():
     )
 ```
 
-`orjson.dumps` is 3–5× faster than the stdlib `json.dumps` for geometry-heavy payloads because it natively handles `bytes` and avoids the Unicode escaping step. For additional memory-optimisation techniques for very large exports, see [Best Practices for Serializing Large GeoJSON Responses](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/best-practices-for-serializing-large-geojson-responses/).
+`orjson.dumps` is 3–5× faster than the stdlib `json.dumps` for geometry-heavy payloads because it natively handles `bytes` and avoids the Unicode escaping step. For additional memory-optimisation techniques for very large exports, see [Best Practices for Serializing Large GeoJSON Responses](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/best-practices-for-serializing-large-geojson-responses/).
 
 ### 3. GeoParquet Binary Pipeline
 
@@ -322,7 +321,7 @@ The `use_dictionary=True` flag enables Parquet dictionary encoding for string co
 
 ### 4. Content Negotiation — One Endpoint, Both Formats
 
-Serving both formats from a single URL via `Accept`-header negotiation avoids endpoint proliferation and lets API clients self-select without changing base URLs. This matters especially for [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/), where format support may change between versions.
+Serving both formats from a single URL via `Accept`-header negotiation avoids endpoint proliferation and lets API clients self-select without changing base URLs. This matters especially for [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/), where format support may change between versions.
 
 ```python
 from fastapi import Request, HTTPException
@@ -571,18 +570,18 @@ async def test_geoparquet_content_type():
 Key trade-offs:
 
 - **Async vs sync**: GeoJSON benefits from async cursor streaming because the generator yields while I/O waits. GeoParquet's `pq.write_table` is CPU-bound and blocks the event loop — offload to a thread pool with `asyncio.get_event_loop().run_in_executor(None, _build_geoparquet, rows)` for large payloads.
-- **Index impact**: Both formats benefit equally from a GiST index on the geometry column for the bounding-box filter (`&&` operator). Without it, the extraction query degrades to a sequential scan regardless of serialization format. See [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) for indexing guidance.
+- **Index impact**: Both formats benefit equally from a GiST index on the geometry column for the bounding-box filter (`&&` operator). Without it, the extraction query degrades to a sequential scan regardless of serialization format. See [Bounding Box & Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) for indexing guidance.
 - **NGINX compression**: Enable `gzip` or `brotli` at the proxy for GeoJSON responses — they compress 4–7× due to repetitive JSON key names. GeoParquet's internal ZSTD compression makes transport-level compression largely redundant and adds CPU overhead for minimal gain.
-- **Query plan caching**: For the [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) layer, cache serialized GeoParquet bytes keyed by bounding box and `limit` — the binary is stable and deterministic. Avoid caching GeoJSON streams because the chunked generator cannot be replayed from a Redis string without buffering the whole response first.
+- **Query plan caching**: For the [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) layer, cache serialized GeoParquet bytes keyed by bounding box and `limit` — the binary is stable and deterministic. Avoid caching GeoJSON streams because the chunked generator cannot be replayed from a Redis string without buffering the whole response first.
 
 ---
 
 ## Related
 
-- [Best Practices for Serializing Large GeoJSON Responses](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/best-practices-for-serializing-large-geojson-responses/) — streaming architecture, coordinate rounding, and memory profiling for high-volume exports
-- [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — keyset pagination patterns that pair with both serialization formats
-- [Spatial Resource Modeling Patterns](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) — how to structure FastAPI routers and PostGIS table models before adding serialization
-- [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — managing format support changes across API versions
-- [Bounding Box & Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — GiST indexing and `&&` operator optimisation that reduces extraction query cost for both formats
+- [Best Practices for Serializing Large GeoJSON Responses](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/best-practices-for-serializing-large-geojson-responses/) — streaming architecture, coordinate rounding, and memory profiling for high-volume exports
+- [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — keyset pagination patterns that pair with both serialization formats
+- [Spatial Resource Modeling Patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) — how to structure FastAPI routers and PostGIS table models before adding serialization
+- [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — managing format support changes across API versions
+- [Bounding Box & Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — GiST indexing and `&&` operator optimisation that reduces extraction query cost for both formats
 
-← Back to [Core Geospatial API Architecture](/core-geospatial-api-architecture-with-fastapi-postgis/)
+← Back to [Core Geospatial API Architecture](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/)

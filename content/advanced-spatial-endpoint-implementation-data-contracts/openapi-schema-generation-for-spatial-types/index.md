@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "OpenAPI Schema Generation for Spatial Types"
 description: "Make FastAPI emit correct OpenAPI 3.1 / JSON Schema for GeoJSON geometry types. Pydantic v2 models for RFC 7946, discriminated unions on the type field, json_schema_extra examples, and schema customisation so docs and generated clients are accurate."
 slug: "openapi-schema-generation-for-spatial-types"
-type: "cluster"
 breadcrumb:
   - label: "Advanced Spatial Endpoints & Data Contracts"
     url: "/advanced-spatial-endpoint-implementation-data-contracts/"
@@ -24,8 +23,8 @@ dateModified: "2026-07-10"
       "datePublished": "2025-09-02",
       "dateModified": "2026-07-10",
       "author": { "@type": "Organization", "name": "geospatial-api.com" },
-      "publisher": { "@type": "Organization", "name": "geospatial-api.com", "url": "https://geospatial-api.com" },
-      "mainEntityOfPage": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/"
+      "publisher": { "@type": "Organization", "name": "geospatial-api.com", "url": "https://www.geospatial-api.com" },
+      "mainEntityOfPage": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/"
     },
     {
       "@type": "Article",
@@ -36,9 +35,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
-        { "@type": "ListItem", "position": 3, "name": "OpenAPI Schema Generation for Spatial Types", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/" }
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/" },
+        { "@type": "ListItem", "position": 3, "name": "OpenAPI Schema Generation for Spatial Types", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/" }
       ]
     },
     {
@@ -85,13 +84,13 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Advanced Spatial Endpoints & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/)
+← Back to [Advanced Spatial Endpoints & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/)
 
 # OpenAPI schema generation for spatial types
 
 The moment a geospatial API grows past a single consumer, its OpenAPI document stops being documentation and becomes a contract: Swagger UI renders it, `openapi-python-client` and `openapi-generator` compile it into typed SDKs, and QA suites diff it for breaking changes. When that document describes a GeoJSON `geometry` field as an anonymous `{}`, every downstream artefact inherits the ambiguity — the docs show no example, the generated client types the field as `Any`, and validation that should happen client-side silently moves to runtime. This guide makes FastAPI emit correct, useful OpenAPI 3.1 (JSON Schema 2020-12) for [RFC 7946](https://www.rfc-editor.org/rfc/rfc7946) geometry types so the contract is precise enough to generate clients from.
 
-FastAPI derives its schema entirely from Pydantic v2. That is the leverage point: if the Pydantic models are shaped correctly, the OpenAPI output is correct for free. The work is almost never in FastAPI — it is in modelling `Point`, `LineString`, `Polygon`, `Feature`, and `FeatureCollection` so Pydantic's core schema, and the JSON Schema it derives, describe real GeoJSON. This page fits inside the broader [Advanced Spatial Endpoints & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/) area and builds directly on [strict Pydantic validation for geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/); validation shapes *what is accepted*, schema generation shapes *what is documented*.
+FastAPI derives its schema entirely from Pydantic v2. That is the leverage point: if the Pydantic models are shaped correctly, the OpenAPI output is correct for free. The work is almost never in FastAPI — it is in modelling `Point`, `LineString`, `Polygon`, `Feature`, and `FeatureCollection` so Pydantic's core schema, and the JSON Schema it derives, describe real GeoJSON. This page fits inside the broader [Advanced Spatial Endpoints & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/) area and builds directly on [strict Pydantic validation for geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/); validation shapes *what is accepted*, schema generation shapes *what is documented*.
 
 ---
 
@@ -181,7 +180,7 @@ Three approaches dominate, and the right one depends on how much you trust the p
 | Typed GeoJSON Pydantic models | `oneOf` of `Point`/`LineString`/… with `discriminator` | Tagged union / sum type, real classes | Full structural + coordinate checks | Public APIs, generated SDKs, map frontends |
 | Custom `Annotated` type (`WithJsonSchema`) | Exactly the schema you hand-write | Whatever you declared | Your validator, decoupled from schema | Wrapping Shapely/`geoalchemy2`, legacy shapes |
 
-The middle row is the default recommendation for any endpoint whose clients you do not control. The loose `dict` is defensible only where the geometry is genuinely opaque to your service, and even then you pay for it the first time someone generates a client. The custom `Annotated` route matters when the runtime object is not a Pydantic model at all — a Shapely geometry or a `geoalchemy2` element — and you need to bolt a JSON Schema onto it so the contract stays honest. These trade-offs echo the format decision covered in [GeoJSON vs GeoParquet serialisation](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/); the serialisation format you choose determines which of these response schemas you actually emit.
+The middle row is the default recommendation for any endpoint whose clients you do not control. The loose `dict` is defensible only where the geometry is genuinely opaque to your service, and even then you pay for it the first time someone generates a client. The custom `Annotated` route matters when the runtime object is not a Pydantic model at all — a Shapely geometry or a `geoalchemy2` element — and you need to bolt a JSON Schema onto it so the contract stays honest. These trade-offs echo the format decision covered in [GeoJSON vs GeoParquet serialisation](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/); the serialisation format you choose determines which of these response schemas you actually emit.
 
 ---
 
@@ -236,7 +235,7 @@ class Polygon(BaseModel):
     }
 ```
 
-The `Field(min_length=2, max_length=3)` on `Position` is what makes Pydantic emit a bounded array. RFC 7946 requires longitude before latitude; that convention is not expressible in JSON Schema structurally, so it belongs in the field description and the examples — never assume a consumer knows the axis order. Coordinate-range and closed-ring enforcement is validation, not schema, and is covered in [validating WKT and GeoJSON with Pydantic v2](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/).
+The `Field(min_length=2, max_length=3)` on `Position` is what makes Pydantic emit a bounded array. RFC 7946 requires longitude before latitude; that convention is not expressible in JSON Schema structurally, so it belongs in the field description and the examples — never assume a consumer knows the axis order. Coordinate-range and closed-ring enforcement is validation, not schema, and is covered in [validating WKT and GeoJSON with Pydantic v2](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/).
 
 ### Step 2: Combine geometries into a discriminated union
 
@@ -397,7 +396,7 @@ async def list_features() -> FeatureCollection:
     return FeatureCollection(type="FeatureCollection", features=[])
 ```
 
-Because the request body is a typed `Feature` and the geometry is an `Annotated` discriminated union, `/openapi.json` now carries a `oneOf` with a `discriminator.mapping`, per-variant `examples`, and two request-level `openapi_examples`. Attaching rich, valid request-body examples is worth a page of its own — see [documenting GeoJSON request bodies in OpenAPI](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/documenting-geojson-request-bodies-in-openapi/) for `Body(..., examples=...)`, `openapi_examples`, and the round-trip gotchas.
+Because the request body is a typed `Feature` and the geometry is an `Annotated` discriminated union, `/openapi.json` now carries a `oneOf` with a `discriminator.mapping`, per-variant `examples`, and two request-level `openapi_examples`. Attaching rich, valid request-body examples is worth a page of its own — see [documenting GeoJSON request bodies in OpenAPI](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/documenting-geojson-request-bodies-in-openapi/) for `Body(..., examples=...)`, `openapi_examples`, and the round-trip gotchas.
 
 ---
 
@@ -488,9 +487,9 @@ def test_point_coordinates_are_bounded():
 
 **Validation cost, not schema cost, is where geometry hurts.** The schema is emitted once; validation runs per request. A discriminated union is *faster* to validate than an untagged one: pydantic-core reads the `type` discriminator and dispatches to a single branch instead of attempting each member. For large `FeatureCollection` payloads the win compounds — an untagged `Union[Point, LineString, Polygon]` tries up to three validators per feature, a discriminated union tries exactly one.
 
-**Keep the model tree shallow.** Deeply nested `Annotated` chains (position → ring → polygon → multipolygon) are fine for schema output but each layer adds a validator frame. If you accept multi-thousand-vertex `Polygon` bodies, validate structure with Pydantic and defer heavy geometric checks (`ST_IsValid`, ring orientation) to PostGIS, consistent with the two-layer approach in [strict Pydantic validation for geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/).
+**Keep the model tree shallow.** Deeply nested `Annotated` chains (position → ring → polygon → multipolygon) are fine for schema output but each layer adds a validator frame. If you accept multi-thousand-vertex `Polygon` bodies, validate structure with Pydantic and defer heavy geometric checks (`ST_IsValid`, ring orientation) to PostGIS, consistent with the two-layer approach in [strict Pydantic validation for geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/).
 
-**Generated clients inherit your model count.** Every named schema becomes a class in the SDK. Five clean geometry models generate five tidy classes; fifty inline variants generate a sprawl. Consolidating on the shared `Geometry` alias keeps both `/openapi.json` and the generated client small — the concern picked up in [generating typed clients from spatial OpenAPI schemas](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/generating-typed-clients-from-spatial-openapi-schemas/).
+**Generated clients inherit your model count.** Every named schema becomes a class in the SDK. Five clean geometry models generate five tidy classes; fifty inline variants generate a sprawl. Consolidating on the shared `Geometry` alias keeps both `/openapi.json` and the generated client small — the concern picked up in [generating typed clients from spatial OpenAPI schemas](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/generating-typed-clients-from-spatial-openapi-schemas/).
 
 ---
 
@@ -512,10 +511,10 @@ FastAPI emits OpenAPI 3.1 by default since 0.99, which aligns the schema dialect
 
 ## Related
 
-- [Documenting GeoJSON Request Bodies in OpenAPI](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/documenting-geojson-request-bodies-in-openapi/) — attach valid Polygon examples with `openapi_examples` and `Body(..., examples=...)`
-- [Generating Typed Clients from Spatial OpenAPI Schemas](/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/generating-typed-clients-from-spatial-openapi-schemas/) — compile the spatial `openapi.json` into typed Python and TypeScript SDKs
-- [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — enforce coordinate bounds and geometry validity behind the schema
-- [GeoJSON vs GeoParquet Serialisation](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choose the response format the schema documents
-- [Advanced Spatial Endpoints & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/) — the broader data-contract patterns this schema work sits within
+- [Documenting GeoJSON Request Bodies in OpenAPI](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/documenting-geojson-request-bodies-in-openapi/) — attach valid Polygon examples with `openapi_examples` and `Body(..., examples=...)`
+- [Generating Typed Clients from Spatial OpenAPI Schemas](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/generating-typed-clients-from-spatial-openapi-schemas/) — compile the spatial `openapi.json` into typed Python and TypeScript SDKs
+- [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — enforce coordinate bounds and geometry validity behind the schema
+- [GeoJSON vs GeoParquet Serialisation](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choose the response format the schema documents
+- [Advanced Spatial Endpoints & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/) — the broader data-contract patterns this schema work sits within
 
-← Back to [Advanced Spatial Endpoints & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/)
+← Back to [Advanced Spatial Endpoints & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/)

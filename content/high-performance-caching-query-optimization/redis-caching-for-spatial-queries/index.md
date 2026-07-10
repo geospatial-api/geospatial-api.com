@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Redis Caching for Spatial Queries"
 description: "Cache PostGIS spatial queries with Redis in FastAPI. Normalize bbox keys to fixed grid cells, serialize GeoJSON with orjson, implement async cache middleware, and harden against failure."
 slug: "redis-caching-for-spatial-queries"
-type: "cluster"
 breadcrumb: "High-Performance Caching & Query Optimization › Redis Caching for Spatial Queries"
 datePublished: "2025-11-15"
 dateModified: "2026-06-23"
@@ -25,9 +24,9 @@ dateModified: "2026-06-23"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/" },
-        { "@type": "ListItem", "position": 2, "name": "High-Performance Caching & Query Optimization", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/" },
-        { "@type": "ListItem", "position": 3, "name": "Redis Caching for Spatial Queries", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/" }
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/" },
+        { "@type": "ListItem", "position": 2, "name": "High-Performance Caching & Query Optimization", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/" },
+        { "@type": "ListItem", "position": 3, "name": "Redis Caching for Spatial Queries", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/" }
       ]
     },
     {
@@ -72,7 +71,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/)
+← Back to [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/)
 
 # Redis Caching for Spatial Queries
 
@@ -133,7 +132,7 @@ The pattern below sits entirely inside your FastAPI process. No sidecar proxy, n
   <text x="606" y="152" font-size="10" fill="currentColor">cache miss</text>
 </svg>
 
-This cache-aside pattern sits alongside [connection pooling with PgBouncer](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/): Redis absorbs the read-heavy spatial lookups while PgBouncer multiplexes the write and analytical queries that bypass the cache.
+This cache-aside pattern sits alongside [connection pooling with PgBouncer](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/): Redis absorbs the read-heavy spatial lookups while PgBouncer multiplexes the write and analytical queries that bypass the cache.
 
 ---
 
@@ -145,7 +144,7 @@ This cache-aside pattern sits alongside [connection pooling with PgBouncer](/hig
 | `redis[asyncio]` | 4.6 | `redis.asyncio` client; `hiredis` parser recommended |
 | `orjson` | 3.9 | 2–4× faster than stdlib `json`; handles `bytes` natively |
 | `shapely` | 2.0 | geometry manipulation and WKT parsing |
-| `pydantic` | 2.x | request validation; see [strict Pydantic validation for geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) |
+| `pydantic` | 2.x | request validation; see [strict Pydantic validation for geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) |
 | PostGIS | 3.3+ | `ST_AsGeoJSON`, `ST_Within`, `ST_Intersects` available |
 | Redis | 6.2+ | `OBJECT ENCODING`, `OBJECT FREQ`, `LMPOP` support |
 
@@ -171,7 +170,7 @@ lazyfree-lazy-eviction yes
 | Materialized GeoJSON | Static or rarely-changing layers | Layer name + version | Manual or event-driven | Medium |
 | Edge tile CDN | Public map tile traffic | URL path | CDN purge API | High |
 
-For most FastAPI GIS APIs serving dynamic filters, **request-level hashing** (covered in detail below) delivers the best hit rate without requiring tile-aligned request parameters. When your consumers are mapping libraries requesting `{z}/{x}/{y}` slippy tiles, switch to grid-cell partitioning and consider [tile generation with CDN distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) to push caching to the network edge.
+For most FastAPI GIS APIs serving dynamic filters, **request-level hashing** (covered in detail below) delivers the best hit rate without requiring tile-aligned request parameters. When your consumers are mapping libraries requesting `{z}/{x}/{y}` slippy tiles, switch to grid-cell partitioning and consider [tile generation with CDN distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) to push caching to the network edge.
 
 ---
 
@@ -268,7 +267,7 @@ def ttl_for_layer(layer_id: str) -> int:
 
 ### 5. Wire the Cache Into a FastAPI Route
 
-For [bounding box spatial index queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) the following route covers the full cache-aside cycle — normalize, check, query, store, return:
+For [bounding box spatial index queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) the following route covers the full cache-aside cycle — normalize, check, query, store, return:
 
 ```python
 from fastapi import FastAPI, Depends
@@ -318,7 +317,7 @@ async def spatial_search(
     return geojson
 ```
 
-The GeoJSON output must conform to RFC 7946 — longitude before latitude, right-hand rule for polygon rings — to ensure compatibility with the [GeoJSON vs GeoParquet serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) choices made elsewhere in your stack.
+The GeoJSON output must conform to RFC 7946 — longitude before latitude, right-hand rule for polygon rings — to ensure compatibility with the [GeoJSON vs GeoParquet serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) choices made elsewhere in your stack.
 
 ---
 
@@ -438,7 +437,7 @@ Keying only on request parameters means a geometry update in PostGIS leaves stal
 2. When caching a response, record which grid cells the bounding box overlaps in a Redis Set: `SADD tag:{layer}:{cell_id} {cache_key}`.
 3. When a feature is written or deleted, compute the affected cells and call `SUNIONSTORE` to collect all cache keys for those cells, then `UNLINK` them.
 
-The companion page on [configuring Redis cache tags for bounding box queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/configuring-redis-cache-tags-for-bounding-box-queries/) walks through the full grid-cell tagging implementation with code.
+The companion page on [configuring Redis cache tags for bounding box queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/configuring-redis-cache-tags-for-bounding-box-queries/) walks through the full grid-cell tagging implementation with code.
 
 ---
 
@@ -480,7 +479,7 @@ async def test_cache_hit_skips_db(client, mock_db):
     mock_db.execute.assert_not_called()   # DB must not be hit on a cache hit
 ```
 
-Check your PostGIS query plans independently with `EXPLAIN ANALYZE` to ensure `ST_Intersects` uses the GiST index. See [query plan analysis and index tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) for a full walkthrough of reading spatial query plans.
+Check your PostGIS query plans independently with `EXPLAIN ANALYZE` to ensure `ST_Intersects` uses the GiST index. See [query plan analysis and index tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) for a full walkthrough of reading spatial query plans.
 
 ---
 
@@ -511,7 +510,7 @@ Check your PostGIS query plans independently with `EXPLAIN ANALYZE` to ensure `S
 
 **Key takeaway:** a warm Redis cache reduces p95 latency by ~98% for repeated spatial queries. The gains are most pronounced on complex `ST_Intersects` queries with large result sets, where PostGIS must traverse deep GiST index nodes and serialize hundreds of geometry rows.
 
-For queries returning large FeatureCollections (>500 features), consider pre-compressing the payload before storage with Python's `lz4.frame.compress`. Decompression on read adds ~0.2 ms but can cut Redis memory usage by 60–80% for geometry-dense responses. When payload size itself is the bottleneck rather than query latency, see the [GeoJSON vs GeoParquet serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) comparison for binary format alternatives that are smaller to cache and faster to deserialize.
+For queries returning large FeatureCollections (>500 features), consider pre-compressing the payload before storage with Python's `lz4.frame.compress`. Decompression on read adds ~0.2 ms but can cut Redis memory usage by 60–80% for geometry-dense responses. When payload size itself is the bottleneck rather than query latency, see the [GeoJSON vs GeoParquet serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) comparison for binary format alternatives that are smaller to cache and faster to deserialize.
 
 ---
 
@@ -541,7 +540,7 @@ Tag cache keys with the grid cell identifiers they intersect. When a geometry re
 <details class="faq-item">
 <summary>Can I cache KNN queries the same way?</summary>
 
-Yes, but include the origin point and the value of `k` in the cache key payload. KNN result sets are sensitive to the exact query point — even a 1-metre shift can change the ranked order of results. Use a coarser normalization precision (3–4 decimal places, ~100 m) to increase cache reuse for nearby origin points. See [K-nearest-neighbor routing algorithms](/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) for the underlying PostGIS query patterns.
+Yes, but include the origin point and the value of `k` in the cache key payload. KNN result sets are sensitive to the exact query point — even a 1-metre shift can change the ranked order of results. Use a coarser normalization precision (3–4 decimal places, ~100 m) to increase cache reuse for nearby origin points. See [K-nearest-neighbor routing algorithms](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/) for the underlying PostGIS query patterns.
 
 </details>
 
@@ -549,10 +548,10 @@ Yes, but include the origin point and the value of `k` in the cache key payload.
 
 ## Related
 
-- [Configuring Redis Cache Tags for Bounding Box Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/configuring-redis-cache-tags-for-bounding-box-queries/) — grid-cell invalidation implementation
-- [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — prevent PostGIS connection saturation on cache misses
-- [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — verify GiST indexes are used on the miss path
-- [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — push caching to the network edge for public tile traffic
-- [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choose the right serialization format for cached payloads
+- [Configuring Redis Cache Tags for Bounding Box Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/configuring-redis-cache-tags-for-bounding-box-queries/) — grid-cell invalidation implementation
+- [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — prevent PostGIS connection saturation on cache misses
+- [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — verify GiST indexes are used on the miss path
+- [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — push caching to the network edge for public tile traffic
+- [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choose the right serialization format for cached payloads
 
-← Back to [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/)
+← Back to [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/)

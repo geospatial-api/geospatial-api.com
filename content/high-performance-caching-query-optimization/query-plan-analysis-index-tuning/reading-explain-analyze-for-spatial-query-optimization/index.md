@@ -8,7 +8,7 @@ description: "Read EXPLAIN ANALYZE for PostGIS: verify GiST indexes hit on && pr
 
 Reading `EXPLAIN ANALYZE` for spatial query optimization means verifying that PostGIS bounding-box pre-filters (`&&`) are hitting GiST indexes, that exact geometry predicates (`ST_DWithin`, `ST_Intersects`) run as efficient post-filters, and that `actual time` aligns with your API latency SLAs. Spatial queries routinely mislead developers because the PostgreSQL planner inflates costs for `VOLATILE` geometry functions. The truth lives in the execution node tree, `Rows Removed by Filter`, and buffer hit ratios. If your plan shows a `Seq Scan` on large geometry columns, missing `Index Cond`, or high `shared read` counts, your spatial index is either unused, poorly clustered, or bypassed by implicit type casts.
 
-This workflow extends standard [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) practices, but PostGIS requires explicit attention to operator selectivity, index-only scan limitations, and the mandatory two-phase evaluation pattern.
+This workflow extends standard [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) practices, but PostGIS requires explicit attention to operator selectivity, index-only scan limitations, and the mandatory two-phase evaluation pattern.
 
 ### Core Metrics That Matter for Spatial Plans
 
@@ -104,7 +104,7 @@ GiST indexes store bounding boxes, but heap pages remain physically scattered. O
 Unlike B-tree indexes, GiST indexes cannot satisfy `Index Only Scans` for geometry columns because the index stores compressed bounding boxes, not full geometries. The heap must be visited for exact evaluation. Focus on minimizing `Rows Removed by Filter` rather than chasing index-only optimizations.
 
 **Buffer Exhaustion Under Load**
-Spatial indexes easily exceed default `shared_buffers`. When `shared read` dominates `shared hit`, your API latency will spike during concurrent requests. Monitor `pg_stat_user_indexes` and scale memory allocation or implement application-level caching for static spatial boundaries. For broader strategies on reducing database round-trips and caching hot query paths, review [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/).
+Spatial indexes easily exceed default `shared_buffers`. When `shared read` dominates `shared hit`, your API latency will spike during concurrent requests. Monitor `pg_stat_user_indexes` and scale memory allocation or implement application-level caching for static spatial boundaries. For broader strategies on reducing database round-trips and caching hot query paths, review [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/).
 
 ### Validation Checklist
 

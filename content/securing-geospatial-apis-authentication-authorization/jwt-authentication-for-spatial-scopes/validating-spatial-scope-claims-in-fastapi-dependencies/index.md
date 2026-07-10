@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Validating Spatial Scope Claims in FastAPI Dependencies"
 description: "A reusable FastAPI dependency that validates the requested geometry falls within a JWT's spatial scope, returns 403 otherwise, caches decoded claims per request, and composes with the auth dependency."
 slug: "validating-spatial-scope-claims-in-fastapi-dependencies"
-type: "long_tail"
 breadcrumb:
   - label: "Securing Geospatial APIs"
     url: "/securing-geospatial-apis-authentication-authorization/"
@@ -30,9 +29,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Securing Geospatial APIs", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
-        {"@type": "ListItem", "position": 2, "name": "JWT Authentication for Spatial Scopes", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/"},
-        {"@type": "ListItem", "position": 3, "name": "Validating Spatial Scope Claims in FastAPI Dependencies", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/validating-spatial-scope-claims-in-fastapi-dependencies/"}
+        {"@type": "ListItem", "position": 1, "name": "Securing Geospatial APIs", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
+        {"@type": "ListItem", "position": 2, "name": "JWT Authentication for Spatial Scopes", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/"},
+        {"@type": "ListItem", "position": 3, "name": "Validating Spatial Scope Claims in FastAPI Dependencies", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/validating-spatial-scope-claims-in-fastapi-dependencies/"}
       ]
     },
     {
@@ -55,7 +54,7 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [JWT Authentication for Spatial Scopes](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/)
+← Back to [JWT Authentication for Spatial Scopes](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/)
 
 # Validating spatial scope claims in FastAPI dependencies
 
@@ -63,9 +62,9 @@ Build one reusable dependency that confirms a requested geometry or bounding box
 
 ## Context & when to use
 
-The scope check belongs in a FastAPI dependency, not in each route handler, for one blunt reason: a check that lives in the handler is a check a future handler will forget. A dependency attaches to every route that declares it, runs *before* the handler body, and short-circuits the request with `403` if the requested area is out of bounds — so the expensive PostGIS read never runs for an unauthorised caller. This is the enforcement half of the pattern whose token design is covered in [JWT authentication for spatial scopes](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/); here we focus purely on the FastAPI wiring: decode once, cache, compare, fail closed.
+The scope check belongs in a FastAPI dependency, not in each route handler, for one blunt reason: a check that lives in the handler is a check a future handler will forget. A dependency attaches to every route that declares it, runs *before* the handler body, and short-circuits the request with `403` if the requested area is out of bounds — so the expensive PostGIS read never runs for an unauthorised caller. This is the enforcement half of the pattern whose token design is covered in [JWT authentication for spatial scopes](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/); here we focus purely on the FastAPI wiring: decode once, cache, compare, fail closed.
 
-Use a dedicated scope dependency whenever more than one endpoint reads geometry, when the requested area arrives in different shapes (a bbox query, an uploaded polygon, a single point), or when the scope encoding might change — bbox today, [H3 cell set](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/encoding-geofence-boundaries-in-jwt-scope-claims/) tomorrow — and you want that swap to touch one function. Prefer a plain inline check only for a throwaway single-route service where reuse and composition buy you nothing.
+Use a dedicated scope dependency whenever more than one endpoint reads geometry, when the requested area arrives in different shapes (a bbox query, an uploaded polygon, a single point), or when the scope encoding might change — bbox today, [H3 cell set](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/encoding-geofence-boundaries-in-jwt-scope-claims/) tomorrow — and you want that swap to touch one function. Prefer a plain inline check only for a throwaway single-route service where reuse and composition buy you nothing.
 
 ---
 
@@ -225,7 +224,7 @@ async def features_in_bbox(
                          for r in result.mappings().all()]}
 ```
 
-The gate uses the same GiST-friendly [bounding-box query mechanics](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) as the data route — `ST_Within` for full containment. Swap it for `ST_Intersects` if a partly-overlapping request should be allowed.
+The gate uses the same GiST-friendly [bounding-box query mechanics](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) as the data route — `ST_Within` for full containment. Swap it for `ST_Intersects` if a partly-overlapping request should be allowed.
 
 ---
 
@@ -286,8 +285,8 @@ async def test_null_scope_is_forbidden(token_without_geo_scope):
 
 ## Related
 
-- [JWT Authentication for Spatial Scopes](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) — the parent guide covering token signing, RS256 verification, and the scope-encoding decision matrix
-- [Encoding Geofence Boundaries in JWT Scope Claims](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/encoding-geofence-boundaries-in-jwt-scope-claims/) — how the `geo_scope` regions this dependency parses are built compactly
-- [Bounding-Box Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — the `ST_Within` / `ST_Intersects` index pattern the scope gate reuses
+- [JWT Authentication for Spatial Scopes](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) — the parent guide covering token signing, RS256 verification, and the scope-encoding decision matrix
+- [Encoding Geofence Boundaries in JWT Scope Claims](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/encoding-geofence-boundaries-in-jwt-scope-claims/) — how the `geo_scope` regions this dependency parses are built compactly
+- [Bounding-Box Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — the `ST_Within` / `ST_Intersects` index pattern the scope gate reuses
 
-← Back to [JWT Authentication for Spatial Scopes](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/)
+← Back to [JWT Authentication for Spatial Scopes](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/)

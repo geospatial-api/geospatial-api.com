@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Validating WKT and GeoJSON with Pydantic v2"
 description: "Parse and validate WKT and GeoJSON in FastAPI with Pydantic v2. Use BeforeValidator with Shapely to enforce coordinate bounds before any PostGIS database write."
 slug: validating-wkt-and-geojson-with-pydantic-v2
-type: long_tail
 breadcrumb:
   - label: "Advanced Spatial Endpoints"
     url: "/advanced-spatial-endpoint-implementation-data-contracts/"
@@ -26,14 +25,14 @@ dateModified: "2026-06-23"
       "datePublished": "2024-11-01",
       "dateModified": "2026-06-23",
       "author": {"@type": "Organization", "name": "geospatial-api.com"},
-      "url": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/"
+      "url": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/"
     },
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Advanced Spatial Endpoints", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/"},
-        {"@type": "ListItem", "position": 2, "name": "Strict Pydantic Validation for Geometry", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/"},
-        {"@type": "ListItem", "position": 3, "name": "Validating WKT and GeoJSON with Pydantic v2", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/"}
+        {"@type": "ListItem", "position": 1, "name": "Advanced Spatial Endpoints", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/"},
+        {"@type": "ListItem", "position": 2, "name": "Strict Pydantic Validation for Geometry", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/"},
+        {"@type": "ListItem", "position": 3, "name": "Validating WKT and GeoJSON with Pydantic v2", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/validating-wkt-and-geojson-with-pydantic-v2/"}
       ]
     },
     {
@@ -77,7 +76,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/)
+← Back to [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/)
 
 # Validating WKT and GeoJSON with Pydantic v2
 
@@ -87,7 +86,7 @@ Use Pydantic v2's `BeforeValidator` with Shapely to parse, repair, and bounds-ch
 
 FastAPI routes that accept geometry payloads face two formats in practice: Well-Known Text (WKT), which GIS desktop tools and GDAL pipelines export natively, and GeoJSON, the format web clients and mapping SDKs send. Both formats carry identical topology risks — self-intersecting rings, flipped coordinate order, coordinates outside valid geographic bounds — that PostGIS will silently accept or raise cryptic errors for depending on the operation.
 
-Placing validation in a Pydantic `BeforeValidator` is the right approach when you need to catch these errors at the HTTP boundary and surface them as structured `422 Unprocessable Entity` responses, rather than letting malformed geometry reach the database layer and cause partial writes or confusing `ST_IsValid` failures. This pattern complements the broader [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) strategy documented in the parent guide.
+Placing validation in a Pydantic `BeforeValidator` is the right approach when you need to catch these errors at the HTTP boundary and surface them as structured `422 Unprocessable Entity` responses, rather than letting malformed geometry reach the database layer and cause partial writes or confusing `ST_IsValid` failures. This pattern complements the broader [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) strategy documented in the parent guide.
 
 Prefer this technique over a plain `@field_validator` when you need to normalize the input (e.g., re-serialize WKT with consistent rounding) before Pydantic's strict type checking evaluates it. The `BeforeValidator` runs first; strict mode runs after. If you instead used `mode="after"`, Pydantic would attempt type coercion on the raw string before your logic runs, and `strict=True` would reject most inputs before you could parse them.
 
@@ -290,7 +289,7 @@ async def validate_geometry(payload: SpatialPayload) -> dict:
     }
 ```
 
-For endpoints that accept bulk uploads — multiple geometries in one request — see the [Handling Async File Uploads for Shapefile Processing](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/) guide, which builds on this same validator pattern for Celery-backed ingestion pipelines.
+For endpoints that accept bulk uploads — multiple geometries in one request — see the [Handling Async File Uploads for Shapefile Processing](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/) guide, which builds on this same validator pattern for Celery-backed ingestion pipelines.
 
 ## Key Parameters & Options
 
@@ -402,8 +401,8 @@ def test_rejects_type_mismatch():
 
 ## Related
 
-- [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — parent guide covering ring orientation, topology checks, and CRS alignment strategies
-- [Implementing ST_Within and ST_Intersects in FastAPI](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/) — how validated geometry flows into PostGIS spatial filter queries
-- [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choosing the right serialization format for your API responses
+- [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — parent guide covering ring orientation, topology checks, and CRS alignment strategies
+- [Implementing ST_Within and ST_Intersects in FastAPI](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/implementing-st_within-and-st_intersects-in-fastapi/) — how validated geometry flows into PostGIS spatial filter queries
+- [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choosing the right serialization format for your API responses
 
-← Back to [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/)
+← Back to [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/)

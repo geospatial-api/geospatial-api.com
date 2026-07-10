@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "How to Structure FastAPI Routers for PostGIS Tables"
 description: "Step-by-step guide to structuring FastAPI routers for PostGIS tables: domain-scoped files, GeoAlchemy2 type mapping, async sessions, and spatial filter pushdown via SQLAlchemy."
 slug: how-to-structure-fastapi-routers-for-postgis-tables
-type: long_tail
 breadcrumb:
   - label: "Core Geospatial API Architecture"
     url: "/core-geospatial-api-architecture-with-fastapi-postgis/"
@@ -37,9 +36,9 @@ dateModified: "2026-06-23"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Core Geospatial API Architecture", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/" },
-        { "@type": "ListItem", "position": 2, "name": "Spatial Resource Modeling Patterns", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/" },
-        { "@type": "ListItem", "position": 3, "name": "How to Structure FastAPI Routers for PostGIS Tables", "item": "https://geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/how-to-structure-fastapi-routers-for-postgis-tables/" }
+        { "@type": "ListItem", "position": 1, "name": "Core Geospatial API Architecture", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/" },
+        { "@type": "ListItem", "position": 2, "name": "Spatial Resource Modeling Patterns", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/" },
+        { "@type": "ListItem", "position": 3, "name": "How to Structure FastAPI Routers for PostGIS Tables", "item": "https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/how-to-structure-fastapi-routers-for-postgis-tables/" }
       ]
     },
     {
@@ -86,7 +85,7 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [Spatial Resource Modeling Patterns](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/)
+← Back to [Spatial Resource Modeling Patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/)
 
 # How to Structure FastAPI Routers for PostGIS Tables
 
@@ -96,7 +95,7 @@ Isolate spatial endpoints into modular, domain-scoped router files, map geometry
 
 This approach is the right choice when a FastAPI application exposes more than one spatial entity—for example, `parcels`, `sensors`, and `routes` in the same codebase. Monolithic route files that mix spatial CRUD, analysis endpoints, and admin utilities become impossible to test in isolation and make it hard to attach entity-specific middleware (CRS validation, bounding-box sanitisation, rate limiting).
 
-The pattern fits best when you are using [SQLAlchemy 2.0 async with PostGIS](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) and need geometry filtering to stay inside the database. If you are building a single-entity prototype or a read-only tile proxy, the added structure is premature—but for anything that will carry production traffic, separating router, schema, and query layers pays off quickly.
+The pattern fits best when you are using [SQLAlchemy 2.0 async with PostGIS](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) and need geometry filtering to stay inside the database. If you are building a single-entity prototype or a read-only tile proxy, the added structure is premature—but for anything that will carry production traffic, separating router, schema, and query layers pays off quickly.
 
 One precondition: every geometry column must carry an explicit SRID (typically EPSG:4326) and a GiST index. Without the index, `ST_DWithin` and `ST_Intersects` degrade to sequential scans that make router-level optimisations irrelevant.
 
@@ -119,7 +118,7 @@ app/
 └── main.py                 # Router aggregation & app factory
 ```
 
-This structure scales as your platform grows to include raster layers, topology checks, or [multi-tenant spatial isolation](/core-geospatial-api-architecture-with-fastapi-postgis/). Each router imports only the models and schemas it requires, preventing circular dependencies and enabling independent deployment if you later migrate to microservices.
+This structure scales as your platform grows to include raster layers, topology checks, or [multi-tenant spatial isolation](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/). Each router imports only the models and schemas it requires, preventing circular dependencies and enabling independent deployment if you later migrate to microservices.
 
 <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FastAPI router architecture diagram showing request flow from client through router to service and PostGIS" style="width:100%;max-width:640px;height:auto;display:block;margin:1.5rem auto;">
   <title>FastAPI router architecture for PostGIS</title>
@@ -217,7 +216,7 @@ class ParcelOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 ```
 
-For stricter RFC 7946 validation—enforcing correct coordinate ranges, geometry type constraints, and ring orientation—replace the `Dict[str, Any]` field with `geojson-pydantic`'s typed geometry models. See [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) for a complete migration path.
+For stricter RFC 7946 validation—enforcing correct coordinate ranges, geometry type constraints, and ring orientation—replace the `Dict[str, Any]` field with `geojson-pydantic`'s typed geometry models. See [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) for a complete migration path.
 
 **Step 3 — Async database session (`app/database.py`)**
 
@@ -340,7 +339,7 @@ app = FastAPI(title="Geospatial Platform API", version="1.0.0")
 app.include_router(parcels.router, prefix="/api/v1")
 ```
 
-Mount additional entity routers (`sensors`, `zones`, `routes`) with the same pattern: one `include_router` call per domain, each carrying its own prefix and tags. For a full strategy on evolving these prefixes without breaking existing clients, see [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/).
+Mount additional entity routers (`sensors`, `zones`, `routes`) with the same pattern: one `include_router` call per domain, each carrying its own prefix and tags. For a full strategy on evolving these prefixes without breaking existing clients, see [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/).
 
 ## Key Parameters & Options
 
@@ -350,7 +349,7 @@ Mount additional entity routers (`sensors`, `zones`, `routes`) with the same pat
 | `pool_size=20, max_overflow=10` | `create_async_engine` | Caps concurrent DB connections; raise for high-concurrency PostGIS workloads, lower for serverless deployments |
 | `expire_on_commit=False` | `async_sessionmaker` | Prevents stale-state errors when accessing model attributes after `await db.commit()` |
 | `radius_meters` in `ST_DWithin` | Service layer | Only meaningful with a `geography` cast; without it the unit is degrees |
-| `limit=50` in spatial queries | Service layer | Hard cap prevents runaway responses on large tables; combine with [cursor-based pagination](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) for full result sets |
+| `limit=50` in spatial queries | Service layer | Hard cap prevents runaway responses on large tables; combine with [cursor-based pagination](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) for full result sets |
 | `prefix="/api/v1"` | `include_router` | Namespaces all routes; bump to `/api/v2` for breaking schema changes |
 
 ## Gotchas & Failure Modes
@@ -363,7 +362,7 @@ Mount additional entity routers (`sensors`, `zones`, `routes`) with the same pat
 
 - **Blocking ORM calls inside async handlers.** Using synchronous `psycopg2` sessions or calling `session.execute()` without `await` freezes the event loop under concurrent load. All SQLAlchemy calls inside async route handlers must use `await`.
 
-- **Lazy-loading N+1 on spatial relationships.** If a `Parcel` has a relationship to `Zone` objects and you access `parcel.zones` inside a loop, SQLAlchemy fires one query per parcel. Use `selectinload` or an explicit `JOIN` with a single `ST_Intersects` predicate. The [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) page covers serialisation strategies that compound with this problem for large response payloads.
+- **Lazy-loading N+1 on spatial relationships.** If a `Parcel` has a relationship to `Zone` objects and you access `parcel.zones` inside a loop, SQLAlchemy fires one query per parcel. Use `selectinload` or an explicit `JOIN` with a single `ST_Intersects` predicate. The [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) page covers serialisation strategies that compound with this problem for large response payloads.
 
 ## Verification
 
@@ -413,10 +412,10 @@ The plan should show `Index Scan using idx_parcels_geom` (or the auto-generated 
 
 ## Related
 
-- [Spatial Resource Modeling Patterns](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) — the parent page covering geometry type selection, connection pooling, and pagination design across all spatial entities
-- [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — replace offset pagination with bounding-box cursors that respect GiST indexes
-- [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — format decision matrix for router response serialisation at scale
-- [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — evolve router prefixes and schema versions without breaking existing clients
-- [Strict Pydantic Validation for Geometry](/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — enforce RFC 7946 geometry constraints in the Pydantic layer before touching the database
+- [Spatial Resource Modeling Patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) — the parent page covering geometry type selection, connection pooling, and pagination design across all spatial entities
+- [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — replace offset pagination with bounding-box cursors that respect GiST indexes
+- [GeoJSON vs GeoParquet Serialization](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — format decision matrix for router response serialisation at scale
+- [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — evolve router prefixes and schema versions without breaking existing clients
+- [Strict Pydantic Validation for Geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) — enforce RFC 7946 geometry constraints in the Pydantic layer before touching the database
 
-← Back to [Spatial Resource Modeling Patterns](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/)
+← Back to [Spatial Resource Modeling Patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/)

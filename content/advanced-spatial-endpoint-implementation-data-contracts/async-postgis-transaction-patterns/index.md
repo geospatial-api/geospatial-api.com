@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Async PostGIS Transaction Patterns"
 description: "Correct transaction handling for async spatial writes with SQLAlchemy 2.0 AsyncSession and asyncpg: explicit transactions, savepoints, isolation levels, short-held GiST locks, SET LOCAL under PgBouncer, and batched geometry writes."
 slug: "async-postgis-transaction-patterns"
-type: "cluster"
 breadcrumb: "Advanced Spatial Endpoints & Data Contracts > Async PostGIS Transaction Patterns"
 datePublished: "2025-09-12"
 dateModified: "2026-07-10"
@@ -31,9 +30,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/"},
-        {"@type": "ListItem", "position": 2, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/"},
-        {"@type": "ListItem", "position": 3, "name": "Async PostGIS Transaction Patterns", "item": "https://geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/"}
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Advanced Spatial Endpoints & Data Contracts", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/"},
+        {"@type": "ListItem", "position": 3, "name": "Async PostGIS Transaction Patterns", "item": "https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/"}
       ]
     },
     {
@@ -80,13 +79,13 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Advanced Spatial Endpoints & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/)
+← Back to [Advanced Spatial Endpoints & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/)
 
 # Async PostGIS transaction patterns
 
 A spatial write is rarely a single statement. Inserting a parcel, updating its centroid, and refreshing an adjacency row belong together — either all of them land or none of them do. When that work runs inside an async FastAPI handler on top of SQLAlchemy 2.0's `AsyncSession` and `asyncpg`, the transaction boundary stops being a background detail and becomes the thing that decides whether your geometry data stays consistent under concurrency. Get it wrong and you leak half-written geometries, pile GiST and heap locks on hot rows, and eventually starve the connection pool with `idle in transaction` backends.
 
-This guide is about drawing that boundary deliberately: when to let a statement autocommit, when to wrap several writes in one explicit transaction, when to nest a savepoint so a single failing geometry does not abort the whole request, and how to keep transactions short enough that PostGIS's per-row locks never become a queue. It assumes you have already put a pooler in front of PostgreSQL — the [connection pooling and PgBouncer setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) guide covers that layer — because transaction pooling changes what `SET` and prepared statements are allowed to do.
+This guide is about drawing that boundary deliberately: when to let a statement autocommit, when to wrap several writes in one explicit transaction, when to nest a savepoint so a single failing geometry does not abort the whole request, and how to keep transactions short enough that PostGIS's per-row locks never become a queue. It assumes you have already put a pooler in front of PostgreSQL — the [connection pooling and PgBouncer setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) guide covers that layer — because transaction pooling changes what `SET` and prepared statements are allowed to do.
 
 ---
 
@@ -185,7 +184,7 @@ Before writing a handler, decide which of three shapes the write takes. This is 
 | **Explicit + savepoint** (`begin_nested()`) | Inner `RELEASE`/`ROLLBACK TO`, outer `COMMIT` | One step inside the transaction may fail recoverably (geometry repair, optional enrichment) | Extra round-trips per savepoint; still one outer lock scope |
 | **Batched writes** | Chunked `COMMIT` every N rows | Writing thousands of geometries where one atomic transaction would bloat WAL and hold locks too long | Partial visibility between chunks; needs idempotent retry |
 
-The default for a normal API write is the explicit transaction. Reach for a savepoint only when a specific step is expected to fail in a way you want to recover from without discarding the rest of the request. Reach for batching only for bulk loads — that path has its own gotchas, covered in [managing async transactions for bulk geometry writes](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/).
+The default for a normal API write is the explicit transaction. Reach for a savepoint only when a specific step is expected to fail in a way you want to recover from without discarding the rest of the request. Reach for batching only for bulk loads — that path has its own gotchas, covered in [managing async transactions for bulk geometry writes](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/).
 
 ---
 
@@ -294,11 +293,11 @@ async def recompute_coverage(session: AsyncSession, region_id: int) -> None:
         )
 ```
 
-`REPEATABLE READ` gives the `ST_Union` a stable snapshot, so a parcel inserted mid-transaction cannot make the aggregate inconsistent. The trade-off is that a concurrent writer to `regions` can trigger a serialization failure (`40001`) that the caller must retry — the same retry discipline used for [handling deadlocks in concurrent spatial updates](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/handling-deadlocks-in-concurrent-spatial-updates/).
+`REPEATABLE READ` gives the `ST_Union` a stable snapshot, so a parcel inserted mid-transaction cannot make the aggregate inconsistent. The trade-off is that a concurrent writer to `regions` can trigger a serialization failure (`40001`) that the caller must retry — the same retry discipline used for [handling deadlocks in concurrent spatial updates](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/handling-deadlocks-in-concurrent-spatial-updates/).
 
 ### Step 5: Keep it short — offload slow work out of the lock scope
 
-The cardinal rule: nothing slow happens between `BEGIN` and `COMMIT`. Compute the geometry, call external services, and validate payloads *before* you open the transaction. If a write is genuinely large, batch it — never hold one transaction open across thousands of rows or a long-running client stream, which is exactly the failure the [bulk geometry write patterns](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/) exist to avoid. Heavy ingestion belongs off the request path entirely, in a worker — see [async bulk uploads with Celery](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/).
+The cardinal rule: nothing slow happens between `BEGIN` and `COMMIT`. Compute the geometry, call external services, and validate payloads *before* you open the transaction. If a write is genuinely large, batch it — never hold one transaction open across thousands of rows or a long-running client stream, which is exactly the failure the [bulk geometry write patterns](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/) exist to avoid. Heavy ingestion belongs off the request path entirely, in a worker — see [async bulk uploads with Celery](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/).
 
 ---
 
@@ -413,7 +412,7 @@ UPDATE parcels SET status = 'valid'
 WHERE id = 42 AND NOT ST_IsValid(geom);
 ```
 
-Look for an `Index Scan using parcels_pkey` — an update filtered by `id` should never scan the heap. For the deeper reading of spatial plans, see [reading EXPLAIN ANALYZE for spatial query optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
+Look for an `Index Scan using parcels_pkey` — an update filtered by `id` should never scan the heap. For the deeper reading of spatial plans, see [reading EXPLAIN ANALYZE for spatial query optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
 
 **Unit test the atomicity guarantee** — a failure after the insert must leave no parcel behind:
 
@@ -444,11 +443,11 @@ async def test_rollback_leaves_no_partial_write(monkeypatch, count_parcels):
 
 4. **`SET` leaking across pooled clients** — using plain `SET search_path = tenant_x` (without `LOCAL`) under PgBouncer transaction pooling. The setting persists on the backend and the next borrowing client inherits it, silently reading another tenant's schema. Fix: always `SET LOCAL` inside a transaction, or use fully schema-qualified table names.
 
-5. **`prepared statement "__asyncpg_stmt_..." does not exist`** — asyncpg's client-side statement cache collides with transaction pooling. Fix: `statement_cache_size=0` in `connect_args`, as in the [PgBouncer setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) guide.
+5. **`prepared statement "__asyncpg_stmt_..." does not exist`** — asyncpg's client-side statement cache collides with transaction pooling. Fix: `statement_cache_size=0` in `connect_args`, as in the [PgBouncer setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) guide.
 
 6. **Silent `NULL` from `ST_MakeValid` inside a savepoint you never check** — the savepoint swallows the error, but the row is left with a null geometry. Fix: assert the post-condition (`status = 'valid'` or a non-null `geom`) rather than assuming the `RELEASE` succeeded.
 
-7. **Serialization failure (`SQLSTATE 40001`) surfacing as a 500** under `REPEATABLE READ`. It is not a bug — it means PostgreSQL correctly refused to lose an update. Fix: catch it and retry the whole transaction with fresh input, using the retry pattern from [handling deadlocks in concurrent spatial updates](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/handling-deadlocks-in-concurrent-spatial-updates/).
+7. **Serialization failure (`SQLSTATE 40001`) surfacing as a 500** under `REPEATABLE READ`. It is not a bug — it means PostgreSQL correctly refused to lose an update. Fix: catch it and retry the whole transaction with fresh input, using the retry pattern from [handling deadlocks in concurrent spatial updates](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/handling-deadlocks-in-concurrent-spatial-updates/).
 
 ---
 
@@ -460,9 +459,9 @@ async def test_rollback_leaves_no_partial_write(monkeypatch, count_parcels):
 
 **Isolation level cost.** `READ COMMITTED` (the default) re-snapshots per statement and rarely conflicts for writes to distinct geometries — keep it for ordinary CRUD. `REPEATABLE READ` holds one snapshot for the whole transaction, adds no lock overhead itself, but shifts cost to the application in the form of `40001` retries under contention. Only pay it where a multi-statement computation needs a stable view.
 
-**Batching WAL.** Committing every row generates one WAL flush per commit; committing 500 rows per transaction cuts flushes by ~500×, but a single giant transaction over 100k rows bloats WAL, delays vacuum, and holds locks. The sweet spot for geometry loads is a few thousand rows per commit — quantified in the [bulk geometry write guide](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/).
+**Batching WAL.** Committing every row generates one WAL flush per commit; committing 500 rows per transaction cuts flushes by ~500×, but a single giant transaction over 100k rows bloats WAL, delays vacuum, and holds locks. The sweet spot for geometry loads is a few thousand rows per commit — quantified in the [bulk geometry write guide](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/).
 
-**Pooling interaction.** Because transaction pooling returns the backend at `COMMIT`, short transactions directly raise the multiplexing ratio of the pool. Every millisecond shaved off a transaction is a millisecond that backend is available to another client — the connection-count budget from the [PgBouncer setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) guide only works if transactions stay short.
+**Pooling interaction.** Because transaction pooling returns the backend at `COMMIT`, short transactions directly raise the multiplexing ratio of the pool. Every millisecond shaved off a transaction is a millisecond that backend is available to another client — the connection-count budget from the [PgBouncer setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) guide only works if transactions stay short.
 
 ---
 
@@ -484,10 +483,10 @@ Yes — as long as it runs inside an explicit transaction. `SET LOCAL` scopes th
 
 ## Related
 
-- [Managing Async Transactions for Bulk Geometry Writes](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/) — chunked commits, `copy_records_to_table`, and deferring the GiST index for large loads
-- [Handling Deadlocks in Concurrent Spatial Updates](/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/handling-deadlocks-in-concurrent-spatial-updates/) — lock ordering, `40P01` retries, and advisory locks for hotspot geometries
-- [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — transaction pooling, `statement_cache_size=0`, and why `SET LOCAL` is mandatory
-- [Async Bulk Uploads with Celery](/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) — move heavy ingestion off the request path entirely
-- [Advanced Spatial Endpoints & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/) — the wider set of endpoint and contract patterns this fits into
+- [Managing Async Transactions for Bulk Geometry Writes](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/managing-async-transactions-for-bulk-geometry-writes/) — chunked commits, `copy_records_to_table`, and deferring the GiST index for large loads
+- [Handling Deadlocks in Concurrent Spatial Updates](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-postgis-transaction-patterns/handling-deadlocks-in-concurrent-spatial-updates/) — lock ordering, `40P01` retries, and advisory locks for hotspot geometries
+- [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — transaction pooling, `statement_cache_size=0`, and why `SET LOCAL` is mandatory
+- [Async Bulk Uploads with Celery](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/) — move heavy ingestion off the request path entirely
+- [Advanced Spatial Endpoints & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/) — the wider set of endpoint and contract patterns this fits into
 
-← Back to [Advanced Spatial Endpoints & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/)
+← Back to [Advanced Spatial Endpoints & Data Contracts](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/)

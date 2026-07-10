@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Connection Pooling & PgBouncer Setup for PostGIS APIs"
 description: "Configure PgBouncer in transaction mode for FastAPI and PostGIS. Decouple client concurrency from PostgreSQL process limits, eliminate connection exhaustion, and tune pool parameters for spatial workloads."
 slug: "connection-pooling-pgbouncer-setup"
-type: "cluster"
 breadcrumb: "High-Performance Caching & Query Optimization"
 datePublished: "2024-03-15"
 dateModified: "2026-06-23"
@@ -31,9 +30,9 @@ dateModified: "2026-06-23"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/"},
-        {"@type": "ListItem", "position": 2, "name": "High-Performance Caching & Query Optimization", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/"},
-        {"@type": "ListItem", "position": 3, "name": "Connection Pooling & PgBouncer Setup", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/"}
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/"},
+        {"@type": "ListItem", "position": 2, "name": "High-Performance Caching & Query Optimization", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/"},
+        {"@type": "ListItem", "position": 3, "name": "Connection Pooling & PgBouncer Setup", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/"}
       ]
     },
     {
@@ -80,13 +79,13 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/)
+← Back to [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/)
 
 # Connection Pooling & PgBouncer Setup for FastAPI & PostGIS
 
 PostgreSQL's process-per-connection model is a known scaling ceiling for spatial APIs. Every client connection spawns a dedicated backend OS process; when hundreds of concurrent FastAPI coroutines hit a raw PostGIS instance simultaneously, `max_connections` is exhausted within seconds, triggering queuing, timeouts, and cascading latency. Because spatial operations such as `ST_Intersects`, `ST_Union`, and bounding-box index scans consume disproportionate CPU and memory per query, the bottleneck lands far earlier than it does for plain OLTP workloads. PgBouncer inserts a lightweight multiplexing layer between your application tier and PostgreSQL, decoupling client concurrency from backend process count and allowing a fixed pool of database connections to serve thousands of simultaneous FastAPI requests.
 
-This guide walks from container orchestration through production hardening. For the broader performance context, see the [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/) overview, which situates connection pooling alongside query plan analysis and distributed caching.
+This guide walks from container orchestration through production hardening. For the broader performance context, see the [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/) overview, which situates connection pooling alongside query plan analysis and distributed caching.
 
 ---
 
@@ -416,7 +415,7 @@ async def db_health(db: AsyncSession = Depends(get_db)):
 
 ## Production Code Example
 
-A complete spatial query routed through PgBouncer, demonstrating the full async pattern with bounding-box filtering. The `ST_MakeEnvelope` call benefits from the GiST index on the geometry column; see [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) for EXPLAIN ANALYZE guidance on confirming the index is used.
+A complete spatial query routed through PgBouncer, demonstrating the full async pattern with bounding-box filtering. The `ST_MakeEnvelope` call benefits from the GiST index on the geometry column; see [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) for EXPLAIN ANALYZE guidance on confirming the index is used.
 
 ```python
 # app/routes/features.py
@@ -578,9 +577,9 @@ async def test_bbox_endpoint_returns_feature_collection():
 
 **Async vs. sync driver overhead.** `asyncpg`'s binary protocol parses geometry wire types 30–40% faster than `psycopg2`'s text protocol for large geometry payloads (tested on 50 KB MultiPolygon features). In transaction pooling, this matters: `asyncpg` returns the connection to PgBouncer faster, increasing pool availability.
 
-**Caching integration.** For endpoints returning immutable or slowly changing spatial responses — static administrative boundaries, precomputed catchment areas — place a [Redis caching layer for spatial queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) in front of the database call. Cached hits never touch PgBouncer, freeing pool slots for truly dynamic queries.
+**Caching integration.** For endpoints returning immutable or slowly changing spatial responses — static administrative boundaries, precomputed catchment areas — place a [Redis caching layer for spatial queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) in front of the database call. Cached hits never touch PgBouncer, freeing pool slots for truly dynamic queries.
 
-**Vector tile endpoints.** Map-heavy endpoints that serve the same bounding box to many users should bypass PgBouncer entirely by serving pre-generated tiles. The architecture for this is covered in [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/), which eliminates database reads for high-traffic tile routes.
+**Vector tile endpoints.** Map-heavy endpoints that serve the same bounding box to many users should bypass PgBouncer entirely by serving pre-generated tiles. The architecture for this is covered in [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/), which eliminates database reads for high-traffic tile routes.
 
 **Prometheus metrics.** Instrument PgBouncer with `prometheus_pgbouncer_exporter` and alert on:
 - `pgbouncer_pools_client_waiting > 0` for more than 30 s → pool starvation
@@ -607,10 +606,10 @@ Session pooling assigns one backend connection per client session, which preserv
 
 ## Related
 
-- [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — reduce PgBouncer pool contention by caching immutable spatial responses in Redis
-- [Query Plan Analysis & Index Tuning](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — use EXPLAIN ANALYZE to confirm GiST index usage on pooled spatial queries
-- [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — offload map tile reads from the database entirely to a CDN edge layer
-- [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — page through large spatial result sets without holding backend connections open
-- [Core Geospatial API Architecture](/core-geospatial-api-architecture-with-fastapi-postgis/) — broader FastAPI + PostGIS integration patterns
+- [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — reduce PgBouncer pool contention by caching immutable spatial responses in Redis
+- [Query Plan Analysis & Index Tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) — use EXPLAIN ANALYZE to confirm GiST index usage on pooled spatial queries
+- [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — offload map tile reads from the database entirely to a CDN edge layer
+- [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — page through large spatial result sets without holding backend connections open
+- [Core Geospatial API Architecture](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/) — broader FastAPI + PostGIS integration patterns
 
-← Back to [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/)
+← Back to [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/)

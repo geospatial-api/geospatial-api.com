@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "JWT Authentication for Spatial Scopes"
 description: "Design JWTs whose scope claims encode spatial permissions — regions, geofences, bounding boxes, tenants — and enforce them in FastAPI with PyJWT and RS256 before any PostGIS query runs."
 slug: "jwt-authentication-for-spatial-scopes"
-type: "cluster"
 breadcrumb:
   - label: "Securing Geospatial APIs"
     url: "/securing-geospatial-apis-authentication-authorization/"
@@ -24,8 +23,8 @@ dateModified: "2026-07-10"
       "datePublished": "2026-03-12",
       "dateModified": "2026-07-10",
       "author": {"@type": "Organization", "name": "geospatial-api.com"},
-      "publisher": {"@type": "Organization", "name": "geospatial-api.com", "url": "https://geospatial-api.com"},
-      "mainEntityOfPage": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/"
+      "publisher": {"@type": "Organization", "name": "geospatial-api.com", "url": "https://www.geospatial-api.com"},
+      "mainEntityOfPage": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/"
     },
     {
       "@type": "Article",
@@ -36,9 +35,9 @@ dateModified: "2026-07-10"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/"},
-        {"@type": "ListItem", "position": 2, "name": "Securing Geospatial APIs", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
-        {"@type": "ListItem", "position": 3, "name": "JWT Authentication for Spatial Scopes", "item": "https://geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/"}
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Securing Geospatial APIs", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/"},
+        {"@type": "ListItem", "position": 3, "name": "JWT Authentication for Spatial Scopes", "item": "https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/"}
       ]
     },
     {
@@ -85,13 +84,13 @@ dateModified: "2026-07-10"
 }
 </script>
 
-← Back to [Securing Geospatial APIs](/securing-geospatial-apis-authentication-authorization/)
+← Back to [Securing Geospatial APIs](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/)
 
 # JWT authentication for spatial scopes
 
 A geospatial API rarely wants to grant a client access to *all* geometry. A field-survey token should only read the county it was issued for; a partner integration should only query its own franchise territories; a tenant in a multi-tenant platform must never see another tenant's assets. The cleanest way to carry that constraint is inside the access token itself, as a spatial scope claim that travels with every request and is verified cryptographically before a single row is read. This guide shows how to design a `geo_scope` claim, sign and verify it with PyJWT using RS256, wire it into a FastAPI dependency, and translate the scope into `ST_Within` / `ST_Intersects` predicates that reject out-of-bounds requests with a `403` — long before an expensive PostGIS query has a chance to run.
 
-Spatial scoping sits at the front of the request path, so it belongs with the rest of your [security and authorization architecture](/securing-geospatial-apis-authentication-authorization/). It composes with, but does not replace, database-level [row-level security for multi-tenant PostGIS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/): the token gate is fast and coarse, RLS is the backstop.
+Spatial scoping sits at the front of the request path, so it belongs with the rest of your [security and authorization architecture](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/). It composes with, but does not replace, database-level [row-level security for multi-tenant PostGIS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/): the token gate is fast and coarse, RLS is the backstop.
 
 ## Where the scope check runs
 
@@ -202,7 +201,7 @@ The single most consequential design choice is *how* you represent the permitted
 | **WKT polygon** | `"POLYGON((...))"` | 60–4000+ | Exact | `ST_GeomFromText` → `ST_Within` | Small, irregular, high-value fences only |
 | **server-side ref** | `{"ref":"fence:8f3a...","hash":"..."}` | ~50 fixed | Exact (lookup) | Join to `geofences` table → `ST_Within` | Large or many polygons; keeps token tiny |
 
-Two rules fall straight out of the table. First, never embed a large `WKT polygon` directly — it re-transmits and re-verifies on every request and quickly blows past the header limit. Second, if the fence is irregular *and* large, use the `server-side ref` pattern: store the polygon once, reference it by a stable content hash in the claim, and resolve it during validation. The full trade-off — including how many H3 cells a country needs at each resolution — is worked through in [encoding geofence boundaries in JWT scope claims](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/encoding-geofence-boundaries-in-jwt-scope-claims/).
+Two rules fall straight out of the table. First, never embed a large `WKT polygon` directly — it re-transmits and re-verifies on every request and quickly blows past the header limit. Second, if the fence is irregular *and* large, use the `server-side ref` pattern: store the polygon once, reference it by a stable content hash in the claim, and resolve it during validation. The full trade-off — including how many H3 cells a country needs at each resolution — is worked through in [encoding geofence boundaries in JWT scope claims](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/encoding-geofence-boundaries-in-jwt-scope-claims/).
 
 ---
 
@@ -261,7 +260,7 @@ def decode_token(token: str) -> dict:
 
 ### Step 3 — Extract and normalise the scope
 
-Turn the `geo_scope` claim into a single PostGIS-ready envelope (or geometry). Normalising here means the rest of the request never re-parses the claim. The per-encoding parsing detail lives in [validating spatial scope claims in FastAPI dependencies](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/validating-spatial-scope-claims-in-fastapi-dependencies/); the essence is a small dispatch on `encoding`.
+Turn the `geo_scope` claim into a single PostGIS-ready envelope (or geometry). Normalising here means the rest of the request never re-parses the claim. The per-encoding parsing detail lives in [validating spatial scope claims in FastAPI dependencies](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/validating-spatial-scope-claims-in-fastapi-dependencies/); the essence is a small dispatch on `encoding`.
 
 ```python
 # app/security/scope.py
@@ -285,7 +284,7 @@ def parse_scope(claim: dict) -> SpatialScope:
 
 ### Step 4 — Map the scope to a spatial predicate
 
-The requested geometry (a point, a bbox the client asked for, an uploaded polygon) must fall *inside* the scope. For a bbox-encoded scope that is a `ST_Within` test of the request envelope against the union of scope envelopes. The same GiST-backed [bounding-box spatial index query](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) pattern applies — `&&` first for the index, then the exact predicate:
+The requested geometry (a point, a bbox the client asked for, an uploaded polygon) must fall *inside* the scope. For a bbox-encoded scope that is a `ST_Within` test of the request envelope against the union of scope envelopes. The same GiST-backed [bounding-box spatial index query](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) pattern applies — `&&` first for the index, then the exact predicate:
 
 ```sql
 -- Returns TRUE when the requested envelope lies within any scoped region.
@@ -488,16 +487,16 @@ Rarely. A raw WKT polygon inflates the token past the ~8 KB header limit most pr
 
 ### Do I still need row-level security if the JWT already scopes the region?
 
-Yes. The JWT check is a fast application-layer gate that rejects obviously out-of-scope requests with `403` before touching the database, but it is not a substitute for defence in depth. PostGIS row-level security enforces tenant isolation even when a query bypasses the ORM or a bug skips the dependency. Treat the scope check and [row-level security](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/) as two independent layers.
+Yes. The JWT check is a fast application-layer gate that rejects obviously out-of-scope requests with `403` before touching the database, but it is not a substitute for defence in depth. PostGIS row-level security enforces tenant isolation even when a query bypasses the ORM or a bug skips the dependency. Treat the scope check and [row-level security](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/) as two independent layers.
 
 ---
 
 ## Related
 
-- [Encoding Geofence Boundaries in JWT Scope Claims](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/encoding-geofence-boundaries-in-jwt-scope-claims/) — H3, geohash, bbox, and server-side-reference encodings compared by token size and precision
-- [Validating Spatial Scope Claims in FastAPI Dependencies](/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/validating-spatial-scope-claims-in-fastapi-dependencies/) — a reusable dependency that checks the requested geometry against the token scope and caches decoded claims
-- [Row-Level Security for Multi-Tenant PostGIS](/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/) — the database-layer backstop that enforces tenant isolation independently of the token gate
-- [Bounding-Box Spatial Index Queries](/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — the GiST-backed `ST_Within` / `ST_Intersects` pattern the scope check reuses
-- [Securing Geospatial APIs](/securing-geospatial-apis-authentication-authorization/) — the full authentication and authorization architecture this fits into
+- [Encoding Geofence Boundaries in JWT Scope Claims](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/encoding-geofence-boundaries-in-jwt-scope-claims/) — H3, geohash, bbox, and server-side-reference encodings compared by token size and precision
+- [Validating Spatial Scope Claims in FastAPI Dependencies](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/validating-spatial-scope-claims-in-fastapi-dependencies/) — a reusable dependency that checks the requested geometry against the token scope and caches decoded claims
+- [Row-Level Security for Multi-Tenant PostGIS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/) — the database-layer backstop that enforces tenant isolation independently of the token gate
+- [Bounding-Box Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) — the GiST-backed `ST_Within` / `ST_Intersects` pattern the scope check reuses
+- [Securing Geospatial APIs](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/) — the full authentication and authorization architecture this fits into
 
-← Back to [Securing Geospatial APIs](/securing-geospatial-apis-authentication-authorization/)
+← Back to [Securing Geospatial APIs](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/)

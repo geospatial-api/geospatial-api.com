@@ -3,7 +3,6 @@ layout: layouts/page.njk
 title: "Query Plan Analysis & Index Tuning for PostGIS"
 description: "Tune PostGIS query performance with EXPLAIN ANALYZE. Identify missing GiST indexes, sequential scans, and planner misestimates degrading your FastAPI spatial API."
 slug: query-plan-analysis-index-tuning
-type: cluster
 breadcrumb: "High-Performance Caching & Query Optimization > Query Plan Analysis & Index Tuning"
 datePublished: "2024-11-01"
 dateModified: "2026-06-23"
@@ -25,9 +24,9 @@ dateModified: "2026-06-23"
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://geospatial-api.com/" },
-        { "@type": "ListItem", "position": 2, "name": "High-Performance Caching & Query Optimization", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/" },
-        { "@type": "ListItem", "position": 3, "name": "Query Plan Analysis & Index Tuning", "item": "https://geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/" }
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.geospatial-api.com/" },
+        { "@type": "ListItem", "position": 2, "name": "High-Performance Caching & Query Optimization", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/" },
+        { "@type": "ListItem", "position": 3, "name": "Query Plan Analysis & Index Tuning", "item": "https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/" }
       ]
     },
     {
@@ -74,13 +73,13 @@ dateModified: "2026-06-23"
 }
 </script>
 
-← Back to [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/)
+← Back to [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/)
 
 # Query Plan Analysis & Index Tuning for PostGIS
 
 In a FastAPI service backed by PostGIS, latency is almost never caused by network overhead alone. The real bottleneck is usually the query planner: whether it chooses a GiST index scan or a sequential scan, whether bounding-box pre-filtering fires before exact geometry evaluation, and whether row-count estimates are accurate enough to select a sensible join strategy. Getting those decisions right — reliably, at scale — is what separates spatial APIs that sustain sub-50 ms p99 from those that collapse under moderate load.
 
-This page gives you a structured diagnostic workflow, a spatial index decision matrix, and production-ready FastAPI/SQLAlchemy 2.0 patterns to move from "query is slow" to "query is fast and stays fast". It is part of the broader [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/) strategy for geospatial backends.
+This page gives you a structured diagnostic workflow, a spatial index decision matrix, and production-ready FastAPI/SQLAlchemy 2.0 patterns to move from "query is slow" to "query is fast and stays fast". It is part of the broader [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/) strategy for geospatial backends.
 
 ---
 
@@ -110,7 +109,7 @@ auto_explain.log_buffers = true
 auto_explain.log_triggers = true
 ```
 
-Any spatial query exceeding 500 ms will then log its full execution plan to `postgresql.log`. The child page [Reading EXPLAIN ANALYZE for spatial query optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/) covers every output field in detail.
+Any spatial query exceeding 500 ms will then log its full execution plan to `postgresql.log`. The child page [Reading EXPLAIN ANALYZE for spatial query optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/) covers every output field in detail.
 
 ---
 
@@ -243,7 +242,7 @@ Key fields to inspect in the JSON output:
 | `Shared Read Blocks` | Blocks read from disk (slow) — minimize these |
 | `Actual Rows` vs `Plan Rows` | Large divergence = planner misestimate; fix with `ANALYZE` and higher `statistics_target` |
 
-For a complete reference on parsing these fields in spatial context, see [Reading EXPLAIN ANALYZE for spatial query optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
+For a complete reference on parsing these fields in spatial context, see [Reading EXPLAIN ANALYZE for spatial query optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/).
 
 ---
 
@@ -440,7 +439,7 @@ Key reliability notes:
 - `jit=off` avoids rare JIT-compilation overhead on short spatial queries; re-enable and benchmark for batch/analytics workloads.
 - Validate `radius_m` bounds at the FastAPI layer to prevent full-table-scan radius values that overwhelm `ST_DWithin`.
 
-For pagination strategies on large spatial result sets, see the [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) guide.
+For pagination strategies on large spatial result sets, see the [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) guide.
 
 ---
 
@@ -529,18 +528,18 @@ Any GiST index with `idx_scan = 0` after a warm-up period is unused — consider
 | Partial GiST on filtered subset | 1.5–5× | Smaller index = faster scan, lower memory pressure |
 | `work_mem = 64 MB` for spatial sorts | 1.2–2× | Avoids disk-based sort for ORDER BY distance |
 
-For repeated spatial queries with the same parameters — dashboard tiles, choropleth layers — supplement index tuning with [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) to eliminate repeated database round-trips entirely. For rasterized map layers, [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) pre-generates output so the database only handles dynamic, user-driven spatial filters rather than baseline rendering volume.
+For repeated spatial queries with the same parameters — dashboard tiles, choropleth layers — supplement index tuning with [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) to eliminate repeated database round-trips entirely. For rasterized map layers, [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) pre-generates output so the database only handles dynamic, user-driven spatial filters rather than baseline rendering volume.
 
-Connection pool sizing is directly linked to query latency under concurrency: see [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) for how to tune `pool_size` and transaction-mode pooling for spatial workloads.
+Connection pool sizing is directly linked to query latency under concurrency: see [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) for how to tune `pool_size` and transaction-mode pooling for spatial workloads.
 
 ---
 
 ## Related
 
-- [Reading EXPLAIN ANALYZE for spatial query optimization](/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/) — field-by-field breakdown of PostGIS execution plan output
-- [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — cache serialized GeoJSON and tile coordinates to offload the database
-- [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — tune transaction-mode pooling for concurrent spatial API traffic
-- [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — shift baseline map rendering load away from real-time query execution
-- [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — paginate large spatial result sets without offset-based row scans
+- [Reading EXPLAIN ANALYZE for spatial query optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/reading-explain-analyze-for-spatial-query-optimization/) — field-by-field breakdown of PostGIS execution plan output
+- [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — cache serialized GeoJSON and tile coordinates to offload the database
+- [Connection Pooling & PgBouncer Setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — tune transaction-mode pooling for concurrent spatial API traffic
+- [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — shift baseline map rendering load away from real-time query execution
+- [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — paginate large spatial result sets without offset-based row scans
 
-← Back to [High-Performance Caching & Query Optimization](/high-performance-caching-query-optimization/)
+← Back to [High-Performance Caching & Query Optimization](https://www.geospatial-api.com/high-performance-caching-query-optimization/)
