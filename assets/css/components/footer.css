@@ -62,3 +62,25 @@
   .footer-inner { grid-template-columns: 1fr; }
 }
 
+
+/* About column: description + GitHub icon link */
+.footer-about {
+  color: rgba(255,255,255,0.6);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  margin: 0 0 1rem;
+  max-width: 22rem;
+}
+.footer-brand {
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+.footer-github {
+  display: inline-flex;
+  color: rgba(255,255,255,0.7);
+  transition: color var(--transition);
+}
+.footer-github:hover,
+.footer-github:focus-visible { color: var(--color-lavender); }
