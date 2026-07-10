@@ -294,3 +294,6 @@ img, svg { max-width: 100%; display: block; }
 }
 .related-card svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--color-mauve); }
 
+
+/* Diagram SVGs: fill content width instead of inline max-width cap */
+.content-body svg[role="img"] { width: 100% !important; max-width: 100% !important; height: auto; }

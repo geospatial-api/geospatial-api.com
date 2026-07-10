@@ -22,6 +22,9 @@
   --text-muted:         #6e5c80;
   --text-inverse:       var(--color-white);
   --border-color:       #ddd4f0;
+  /* Muted label colour for inline diagram SVGs (var(--muted) fallback target) —
+     darker than the old #7c6fb0 fallback so SVG text clears WCAG AA (>=4.5:1). */
+  --muted:              #5f5296;
 
   /* Header */
   --header-height:      64px;

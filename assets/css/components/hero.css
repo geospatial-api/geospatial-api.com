@@ -96,6 +96,14 @@
   background: linear-gradient(135deg, #4ecdc4, #2eb5ac);
   color: white;
 }
+.btn-rose {
+  background: linear-gradient(135deg, #e879a6, #d6558a);
+  color: white;
+}
+.btn-amber {
+  background: linear-gradient(135deg, #e0993e, #c97f22);
+  color: white;
+}
 
 .btn svg { width: 20px; height: 20px; flex-shrink: 0; }
 
@@ -137,6 +145,8 @@
 .icon-purple { background: linear-gradient(135deg, var(--color-lavender-lt), var(--color-lavender)); }
 .icon-blue   { background: linear-gradient(135deg, #dbeafe, #93c5fd); }
 .icon-teal   { background: linear-gradient(135deg, #ccfbf1, #5eead4); }
+.icon-rose   { background: linear-gradient(135deg, #fce7f3, #f9a8d4); }
+.icon-amber  { background: linear-gradient(135deg, #fef3c7, #fcd34d); }
 .section-card-icon svg { width: 24px; height: 24px; }
 
 .section-card h2 {

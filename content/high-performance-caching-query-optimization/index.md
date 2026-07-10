@@ -523,4 +523,5 @@ Export these signals to Prometheus for alerting:
 - [Redis Caching for Spatial Queries](/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) — key normalization, H3-based cache tagging, compression pipelines, and eviction policies
 - [Connection Pooling & PgBouncer Setup](/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/) — complete `pgbouncer.ini` configuration, asyncpg compatibility, and pool sizing formulas
 - [Tile Generation & CDN Distribution](/high-performance-caching-query-optimization/tile-generation-cdn-distribution/) — `ST_AsMVT` pipelines, cache-header strategy, and fallback for uncached zoom levels
+- [Materialized Views for Spatial Aggregations](/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/) — precompute `ST_Union` rollups and heatmap grids, index the view, and refresh it concurrently
 - [GeoJSON vs GeoParquet Serialization](/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/) — choosing the right output format for browser clients, analytics pipelines, and bulk exports

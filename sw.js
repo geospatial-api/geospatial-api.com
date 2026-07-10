@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geo-api-v1';
+const CACHE_NAME = 'geo-api-v3';
 const STATIC_ASSETS = [
   '/',
   '/assets/css/global.css',
@@ -33,6 +33,10 @@ self.addEventListener('activate', event => {
 // Fetch strategy
 self.addEventListener('fetch', event => {
   const { request } = event;
+
+  // Never cache non-GET requests (Cache.put only supports GET)
+  if (request.method !== 'GET') return;
+
   const url = new URL(request.url);
 
   // Only handle same-origin requests
@@ -53,15 +57,15 @@ self.addEventListener('fetch', event => {
         .catch(() => caches.match(request))
     );
   } else if (isAsset) {
-    // Cache-first for static assets
+    // Stale-while-revalidate for static assets
     event.respondWith(
       caches.match(request).then(cached => {
-        if (cached) return cached;
-        return fetch(request).then(res => {
+        const network = fetch(request).then(res => {
           const clone = res.clone();
           caches.open(CACHE_NAME).then(c => c.put(request, clone));
           return res;
-        });
+        }).catch(() => cached);
+        return cached || network;
       })
     );
   }

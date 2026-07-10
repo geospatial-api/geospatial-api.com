@@ -42,7 +42,7 @@
   <meta name="twitter:image:alt" content="Geospatial API — FastAPI &amp; PostGIS spatial REST API guides">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="/assets/css/global.css">
+  <link rel="stylesheet" href="/assets/css/global.css?v={{ assets.v }}">
 
   <!-- JSON-LD Structured Data -->
   {% if page.url == "/" %}
@@ -141,9 +141,9 @@
   {% include "partials/footer.njk" %}
 
   <!-- Scripts -->
-  <script src="/assets/js/copy-code.js" defer></script>
-  <script src="/assets/js/checkbox.js" defer></script>
-  <script src="/assets/js/accordion.js" defer></script>
+  <script src="/assets/js/copy-code.js?v={{ assets.v }}" defer></script>
+  <script src="/assets/js/checkbox.js?v={{ assets.v }}" defer></script>
+  <script src="/assets/js/accordion.js?v={{ assets.v }}" defer></script>
 
   <!-- Service Worker registration -->
   <script>

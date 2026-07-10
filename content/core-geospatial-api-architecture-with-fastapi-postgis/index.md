@@ -466,3 +466,5 @@ The following mistakes appear repeatedly in production spatial APIs. Each has ca
 - [Spatial Pagination & Cursor Strategies](/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — keyset, Z-order, and tile-based pagination for geometry endpoints
 - [API Versioning for GIS Endpoints](/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/) — URL versioning, view-backed migrations, and deprecation patterns
 - [Advanced Spatial Endpoint Implementation & Data Contracts](/advanced-spatial-endpoint-implementation-data-contracts/) — strict Pydantic v2 validators, async bulk uploads, and bounding-box query patterns
+- [Securing Geospatial APIs](/securing-geospatial-apis-authentication-authorization/) — JWT spatial scope claims, PostGIS row-level security, and rate limiting for spatial endpoints
+- [Deploying & Operating Geospatial APIs](/deploying-and-operating-geospatial-apis/) — containerizing PostGIS and FastAPI, CI/CD with spatial integration tests, and edge tile delivery

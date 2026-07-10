@@ -138,7 +138,7 @@ When modelling spatial resources as detailed in [Spatial Resource Modeling Patte
     </marker>
   </defs>
   <!-- Client request box -->
-  <rect x="10" y="120" width="130" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+  <rect x="10" y="118" width="130" height="62" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
   <text x="75" y="141" text-anchor="middle" font-size="12" fill="currentColor" font-family="sans-serif" font-weight="600">Client Request</text>
   <text x="75" y="158" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" opacity="0.8">GET /api/features</text>
   <text x="75" y="172" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif" opacity="0.7">Accept: ???</text>

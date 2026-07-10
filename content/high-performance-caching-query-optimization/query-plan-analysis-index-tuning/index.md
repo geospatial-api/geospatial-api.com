@@ -155,40 +155,40 @@ The diagram below shows how PostgreSQL decides between a sequential scan, a bitm
   <text x="360" y="128" text-anchor="middle" font-size="12" fill="currentColor" font-family="inherit">on geom?</text>
   <!-- No → left → Seq Scan -->
   <line x1="260" y1="116" x2="120" y2="116" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow)"/>
-  <text x="190" y="108" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" opacity="0.7">No</text>
+  <text x="190" y="108" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" opacity="0.9">No</text>
   <rect x="40" y="96" width="80" height="40" rx="6" fill="none" stroke="#c97070" stroke-width="1.5"/>
-  <text x="80" y="118" text-anchor="middle" font-size="12" fill="#c97070" font-family="inherit" font-weight="600">Seq Scan</text>
+  <text x="80" y="118" text-anchor="middle" font-size="12" fill="#a82e1e" font-family="inherit" font-weight="600">Seq Scan</text>
   <!-- Yes → down -->
   <line x1="360" y1="148" x2="360" y2="186" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow)"/>
-  <text x="375" y="172" font-size="11" fill="currentColor" font-family="inherit" opacity="0.7">Yes</text>
+  <text x="375" y="172" font-size="11" fill="currentColor" font-family="inherit" opacity="0.9">Yes</text>
   <!-- Diamond 2: Good selectivity? -->
   <polygon points="360,188 470,222 360,256 250,222" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.7"/>
   <text x="360" y="218" text-anchor="middle" font-size="12" fill="currentColor" font-family="inherit">Planner estimate:</text>
   <text x="360" y="234" text-anchor="middle" font-size="12" fill="currentColor" font-family="inherit">rows &lt; 10%?</text>
   <!-- No → left → Seq Scan fallback -->
   <line x1="250" y1="222" x2="120" y2="222" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow)"/>
-  <text x="185" y="214" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" opacity="0.7">No</text>
+  <text x="185" y="214" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" opacity="0.9">No</text>
   <rect x="40" y="202" width="80" height="40" rx="6" fill="none" stroke="#c97070" stroke-width="1.5"/>
-  <text x="80" y="220" text-anchor="middle" font-size="11" fill="#c97070" font-family="inherit" font-weight="600">Seq Scan</text>
-  <text x="80" y="234" text-anchor="middle" font-size="10" fill="#c97070" font-family="inherit">(stale stats)</text>
+  <text x="80" y="220" text-anchor="middle" font-size="11" fill="#a82e1e" font-family="inherit" font-weight="600">Seq Scan</text>
+  <text x="80" y="234" text-anchor="middle" font-size="10" fill="#a82e1e" font-family="inherit">(stale stats)</text>
   <!-- Yes → down -->
   <line x1="360" y1="256" x2="360" y2="294" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow)"/>
-  <text x="375" y="278" font-size="11" fill="currentColor" font-family="inherit" opacity="0.7">Yes</text>
+  <text x="375" y="278" font-size="11" fill="currentColor" font-family="inherit" opacity="0.9">Yes</text>
   <!-- Diamond 3: Uses && operator? -->
   <polygon points="360,296 470,328 360,360 250,328" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.7"/>
   <text x="360" y="322" text-anchor="middle" font-size="12" fill="currentColor" font-family="inherit">Uses &amp;&amp; or</text>
   <text x="360" y="338" text-anchor="middle" font-size="12" fill="currentColor" font-family="inherit">ST_DWithin?</text>
   <!-- No → right → Filter scan -->
   <line x1="470" y1="328" x2="600" y2="328" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow)"/>
-  <text x="535" y="320" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" opacity="0.7">No</text>
+  <text x="535" y="320" text-anchor="middle" font-size="11" fill="currentColor" font-family="inherit" opacity="0.9">No</text>
   <rect x="600" y="308" width="100" height="40" rx="6" fill="none" stroke="#c97070" stroke-width="1.5"/>
-  <text x="650" y="326" text-anchor="middle" font-size="11" fill="#c97070" font-family="inherit" font-weight="600">Row Filter</text>
-  <text x="650" y="340" text-anchor="middle" font-size="10" fill="#c97070" font-family="inherit">(no index use)</text>
+  <text x="650" y="326" text-anchor="middle" font-size="11" fill="#a82e1e" font-family="inherit" font-weight="600">Row Filter</text>
+  <text x="650" y="340" text-anchor="middle" font-size="10" fill="#a82e1e" font-family="inherit">(no index use)</text>
   <!-- Yes → down → GiST Index Scan -->
   <line x1="360" y1="360" x2="360" y2="396" stroke="currentColor" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow)"/>
-  <text x="375" y="382" font-size="11" fill="currentColor" font-family="inherit" opacity="0.7">Yes</text>
+  <text x="375" y="382" font-size="11" fill="currentColor" font-family="inherit" opacity="0.9">Yes</text>
   <rect x="290" y="396" width="140" height="20" rx="6" fill="none" stroke="#7070c9" stroke-width="1.5"/>
-  <text x="360" y="410" text-anchor="middle" font-size="12" fill="#7070c9" font-family="inherit" font-weight="600">GiST Index Scan</text>
+  <text x="360" y="410" text-anchor="middle" font-size="12" fill="#4b3a7c" font-family="inherit" font-weight="600">GiST Index Scan</text>
 </svg>
 
 ---

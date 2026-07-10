@@ -84,6 +84,8 @@ module.exports = function (eleventyConfig) {
       "core-geospatial-api-architecture-with-fastapi-postgis": "Core Architecture",
       "advanced-spatial-endpoint-implementation-data-contracts": "Advanced Endpoints",
       "high-performance-caching-query-optimization": "Caching & Optimization",
+      "securing-geospatial-apis-authentication-authorization": "Security & Auth",
+      "deploying-and-operating-geospatial-apis": "Deployment & Operations",
     };
     const parts = url.replace(/^\/|\/$/g, "").split("/").filter(Boolean);
     const crumbs = [{ label: "Home", url: "/" }];

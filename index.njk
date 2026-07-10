@@ -33,6 +33,14 @@ permalink: /
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         Caching &amp; Optimization
       </a>
+      <a href="/securing-geospatial-apis-authentication-authorization/" class="btn btn-rose">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Security &amp; Auth
+      </a>
+      <a href="/deploying-and-operating-geospatial-apis/" class="btn btn-amber">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+        Deployment &amp; Ops
+      </a>
     </div>
   </div>
 </section>
@@ -69,6 +77,24 @@ permalink: /
       <h2>High-Performance Caching &amp; Query Optimization</h2>
       <p>Redis spatial cache key normalisation, EXPLAIN ANALYZE for PostGIS, PgBouncer transaction pooling, vector tile generation with ST_AsMVT, and CDN edge distribution strategies.</p>
       <span class="card-cta">Explore caching →</span>
+    </a>
+
+    <a href="/securing-geospatial-apis-authentication-authorization/" class="section-card">
+      <div class="section-card-icon icon-rose">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#b0286a" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <h2>Securing Geospatial APIs</h2>
+      <p>JWT authentication with spatial scope claims, PostGIS row-level security for multi-tenant geometry isolation, and rate limiting for expensive geofence and vector-tile endpoints.</p>
+      <span class="card-cta">Explore security →</span>
+    </a>
+
+    <a href="/deploying-and-operating-geospatial-apis/" class="section-card">
+      <div class="section-card-icon icon-amber">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#b5730f" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+      </div>
+      <h2>Deploying &amp; Operating Geospatial APIs</h2>
+      <p>Containerizing PostGIS and FastAPI, CI/CD pipelines with real spatial integration tests, and edge routing for vector-tile delivery at scale with Cloudflare Workers.</p>
+      <span class="card-cta">Explore deployment →</span>
     </a>
 
   </div>
@@ -197,6 +223,102 @@ permalink: /
             <a href="/high-performance-caching-query-optimization/tile-generation-cdn-distribution/">Tile Generation &amp; CDN Distribution</a>
             <span>ST_AsMVT pipeline, Cache-Control headers, edge delivery</span>
           </li>
+          <li>
+            <a href="/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/">Materialized Views for Spatial Aggregations</a>
+            <span>Precompute ST_Union rollups and heatmap grids; concurrent refresh</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Column 4: Security & Auth -->
+      <div class="start-col">
+        <h3 class="start-col-heading">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Security &amp; Auth
+        </h3>
+        <ul class="start-col-list">
+          <li>
+            <a href="/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/">JWT Authentication for Spatial Scopes</a>
+            <span>Scope claims that restrict which regions a token may query</span>
+          </li>
+          <li>
+            <a href="/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/encoding-geofence-boundaries-in-jwt-scope-claims/">Encoding Geofence Boundaries in JWT Claims</a>
+            <span>H3 cells vs geohash vs bbox within token size limits</span>
+          </li>
+          <li>
+            <a href="/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/validating-spatial-scope-claims-in-fastapi-dependencies/">Validating Spatial Scope Claims in FastAPI</a>
+            <span>Reusable Depends chain that rejects out-of-scope geometry</span>
+          </li>
+          <li>
+            <a href="/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/">Row-Level Security for Multi-Tenant PostGIS</a>
+            <span>FORCE RLS + current_setting policies on geometry tables</span>
+          </li>
+          <li>
+            <a href="/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/enforcing-tenant-geometry-isolation-with-postgis-rls/">Enforcing Tenant Geometry Isolation</a>
+            <span>Policies that block cross-tenant spatial joins and ST_DWithin</span>
+          </li>
+          <li>
+            <a href="/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/">Setting Tenant Context in asyncpg</a>
+            <span>SET LOCAL per transaction under PgBouncer pooling</span>
+          </li>
+          <li>
+            <a href="/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/">Rate Limiting Geofence &amp; Tile Endpoints</a>
+            <span>Sliding-window and cost-based limits for spatial routes</span>
+          </li>
+          <li>
+            <a href="/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/">Redis Sliding-Window Rate Limits</a>
+            <span>Atomic sorted-set limiter driven by a Lua script</span>
+          </li>
+          <li>
+            <a href="/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/">Cost-Based Throttling for PostGIS Queries</a>
+            <span>Weight requests by bbox area against a token budget</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Column 5: Deployment & Operations -->
+      <div class="start-col">
+        <h3 class="start-col-heading">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+          Deployment &amp; Operations
+        </h3>
+        <ul class="start-col-list">
+          <li>
+            <a href="/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/">Containerizing PostGIS &amp; FastAPI</a>
+            <span>Image choices, GDAL deps, compose topology, healthchecks</span>
+          </li>
+          <li>
+            <a href="/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/multi-stage-docker-builds-for-postgis-fastapi/">Multi-Stage Docker Builds for PostGIS</a>
+            <span>Builder + slim runtime; smaller, non-root images</span>
+          </li>
+          <li>
+            <a href="/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/pinning-postgis-versions-in-production-images/">Pinning PostGIS Versions in Images</a>
+            <span>Digest pins so ST_ outputs stay reproducible</span>
+          </li>
+          <li>
+            <a href="/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/">CI/CD Pipelines for Spatial APIs</a>
+            <span>Lint, real-PostGIS integration tests, build, migrate, deploy</span>
+          </li>
+          <li>
+            <a href="/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/github-actions-integration-tests-with-a-postgis-service-container/">GitHub Actions with a PostGIS Container</a>
+            <span>Service container, extension setup, seeded geometries</span>
+          </li>
+          <li>
+            <a href="/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/automating-spatial-database-migrations-in-ci/">Automating Spatial Migrations in CI</a>
+            <span>Alembic + GeoAlchemy2; CONCURRENTLY index gotchas</span>
+          </li>
+          <li>
+            <a href="/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/">Edge Routing &amp; Tile Delivery at Scale</a>
+            <span>Edge/CDN tier in front of an ST_AsMVT origin</span>
+          </li>
+          <li>
+            <a href="/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/cloudflare-workers-edge-routing-for-vector-tile-endpoints/">Cloudflare Workers Tile Routing</a>
+            <span>Parse z/x/y, check the Cache API, fetch origin on miss</span>
+          </li>
+          <li>
+            <a href="/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/caching-vector-tiles-at-the-edge-with-cache-control/">Caching Vector Tiles with Cache-Control</a>
+            <span>Immutable versioned tiles, s-maxage, stale-while-revalidate</span>
+          </li>
         </ul>
       </div>
 
@@ -262,6 +384,30 @@ permalink: /
         <span class="link-card-label">Caching &amp; Optimization</span>
         <h3>Query Plan Analysis &amp; Index Tuning</h3>
         <p>EXPLAIN ANALYZE for spatial queries, GiST health, and planner misestimation fixes.</p>
+      </a>
+
+      <a href="/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/" class="link-card">
+        <span class="link-card-label">Security &amp; Auth</span>
+        <h3>JWT Authentication for Spatial Scopes</h3>
+        <p>Encode spatial permissions in token claims and enforce them before any PostGIS query.</p>
+      </a>
+
+      <a href="/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/" class="link-card">
+        <span class="link-card-label">Security &amp; Auth</span>
+        <h3>Row-Level Security for Multi-Tenant PostGIS</h3>
+        <p>Guarantee tenant geometry isolation at the database row with FORCE RLS policies.</p>
+      </a>
+
+      <a href="/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/" class="link-card">
+        <span class="link-card-label">Deployment &amp; Operations</span>
+        <h3>Containerizing PostGIS &amp; FastAPI</h3>
+        <p>Base image choices, GDAL dependencies, and a compose stack with real healthchecks.</p>
+      </a>
+
+      <a href="/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/" class="link-card">
+        <span class="link-card-label">Deployment &amp; Operations</span>
+        <h3>CI/CD Pipelines for Spatial APIs</h3>
+        <p>Test against a real PostGIS service container; gate deploys on spatial migrations.</p>
       </a>
 
     </div>

@@ -157,7 +157,7 @@ This structure scales as your platform grows to include raster layers, topology 
   <rect x="315" y="185" width="120" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
   <text x="375" y="207" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif" font-weight="bold">Service layer</text>
   <text x="375" y="223" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">spatial_queries.py</text>
-  <text x="375" y="238" text-anchor="middle" font-size="10" fill="currentColor" font-family="sans-serif">ST_DWithin / ST_Intersects</text>
+  <text x="375" y="238" text-anchor="middle" font-size="9" fill="currentColor" font-family="sans-serif">ST_DWithin / ST_Intersects</text>
   <!-- Arrow: service → PostGIS -->
   <line x1="435" y1="215" x2="490" y2="215" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
   <text x="462" y="208" text-anchor="middle" font-size="9" fill="currentColor" font-family="sans-serif">async SQL</text>
