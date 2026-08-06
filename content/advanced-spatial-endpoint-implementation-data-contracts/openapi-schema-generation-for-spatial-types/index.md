@@ -101,6 +101,7 @@ The pipeline from a Python type annotation to a generated client is a straight l
 <svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Schema generation pipeline from Pydantic models to a generated client" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;">
   <title>From Pydantic geometry models to a typed client</title>
   <desc>Four stacked stages: Pydantic v2 geometry models with a discriminated union feed FastAPI's schema generator, which emits openapi.json containing a oneOf with a discriminator, which Swagger UI renders and code generators compile into typed clients. Two callouts mark where an empty schema and a discriminator error are introduced.</desc>
+  <rect x="0" y="0" width="760" height="340" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- Stage 1 -->
   <rect x="40" y="24" width="480" height="66" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
   <text x="280" y="50" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">1 · Pydantic v2 models</text>
@@ -183,6 +184,38 @@ Three approaches dominate, and the right one depends on how much you trust the p
 The middle row is the default recommendation for any endpoint whose clients you do not control. The loose `dict` is defensible only where the geometry is genuinely opaque to your service, and even then you pay for it the first time someone generates a client. The custom `Annotated` route matters when the runtime object is not a Pydantic model at all — a Shapely geometry or a `geoalchemy2` element — and you need to bolt a JSON Schema onto it so the contract stays honest. These trade-offs echo the format decision covered in [GeoJSON vs GeoParquet serialisation](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/); the serialisation format you choose determines which of these response schemas you actually emit.
 
 ---
+
+The schema decision propagates straight into every generated client, which is why the shortcut hurts twice.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How to type a geometry field in the schema: Validates, Generates well" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>How to type a geometry field in the schema</title>
+  <desc>A comparison table. free-form object: Validates no, Generates well no. documents nothing inline GeoJSON schema: Validates yes, Generates well partly. verbose, duplicated per route shared $ref component: Validates yes, Generates well yes. the right answer string with a WKT pattern: Validates partly, Generates well yes. fine for query parameters A shared component is what makes generated clients produce one geometry type rather than one per endpoint.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">How to type a geometry field in the schema</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Validates</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Generates well</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">free-form object</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">documents nothing</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">inline GeoJSON schema</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">verbose, duplicated per route</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">shared $ref component</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">the right answer</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">string with a WKT pattern</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">fine for query parameters</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">A shared component is what makes generated clients produce one geometry type rather than one per endpoint.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -462,6 +495,36 @@ def test_point_coordinates_are_bounded():
 ```
 
 ---
+
+The chain only pays off if nothing is edited after the first link.
+
+<svg viewBox="0 0 720 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="From Pydantic model to typed client: model then schema then generate then consume" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>From Pydantic model to typed client</title>
+  <desc>A left to right pipeline. Stage 1, model: Pydantic v2 Feature source of truth. Stage 2, schema: OpenAPI 3.1 $ref one component. Stage 3, generate: openapi-python-client per language. Stage 4, consume: typed Feature class no hand-written DTOs. Every hand-edit downstream of the first box has to be redone on the next generation — which is why the model must be the only place geometry is described.</desc>
+  <rect x="0" y="0" width="720" height="210" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">From Pydantic model to typed client</text>
+  <rect x="18" y="52" width="154" height="86" rx="8" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
+  <text x="95" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">model</text>
+  <text x="95" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">Pydantic v2 Feature</text>
+  <text x="95" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">source of truth</text>
+  <path d="M175 95 L189 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arfrompydant)"/>
+  <rect x="194" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="271" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">schema</text>
+  <text x="271" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">OpenAPI 3.1 $ref</text>
+  <text x="271" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">one component</text>
+  <path d="M351 95 L365 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arfrompydant)"/>
+  <rect x="370" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="447" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">generate</text>
+  <text x="447" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">openapi-python-client</text>
+  <text x="447" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">per language</text>
+  <path d="M527 95 L541 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arfrompydant)"/>
+  <rect x="546" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="623" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">consume</text>
+  <text x="623" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">typed Feature class</text>
+  <text x="623" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">no hand-written DTOs</text>
+  <text x="20" y="168" font-size="10.5" fill="var(--muted, #7c6fb0)">Every hand-edit downstream of the first box has to be redone on the next generation — which is why the model must be the only</text>
+  <defs><marker id="arfrompydant" markerWidth="8" markerHeight="8" refX="6.5" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker></defs>
+</svg>
 
 ## Failure Modes & Edge Cases
 

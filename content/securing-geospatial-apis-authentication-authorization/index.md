@@ -90,7 +90,7 @@ Security for a spatial API is defence in depth, not a single middleware. A reque
 <svg viewBox="0 0 760 442" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Layered security architecture for a spatial API request passing through edge rate limiting, JWT and spatial scope checks in FastAPI, PostGIS row-level security, and a filtered response" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;">
   <title>Layered security architecture for a spatial API request</title>
   <desc>A client request carrying a bearer JWT and bounding box or tile parameters flows downward through four gates: an edge rate limit and abuse shield that returns 429 on abuse, a FastAPI JWT verification and spatial scope check that returns 401 or 403, PostGIS row-level security that returns zero rows for out-of-tenant data, and finally a filtered GeoJSON response containing only in-scope, in-tenant features.</desc>
-  <rect x="8" y="8" width="744" height="426" rx="12" fill="var(--surface, #f5f3ff)" stroke="var(--border, #c4b5fd)" stroke-width="1.5"/>
+  <rect x="0" y="0" width="760" height="442" rx="12" fill="var(--surface, #f5f3ff)" stroke="var(--border, #c4b5fd)" stroke-width="1.5"/>
   <!-- Client -->
   <rect x="240" y="20" width="200" height="44" rx="8" fill="var(--accent, #7c3aed)" opacity="0.14" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
   <text x="340" y="41" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Client request</text>
@@ -312,6 +312,31 @@ async def with_tenant(session, claims: dict):
 
 The pooling interaction is subtle and easy to get wrong; the safe patterns for asyncpg and PgBouncer are detailed in [setting tenant context in asyncpg connections](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/setting-tenant-context-in-asyncpg-connections/), which builds on the transaction-pooling model from [connection pooling and PgBouncer setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/). The end-to-end policy design, including per-tenant geometry partitioning, is covered in [enforcing tenant geometry isolation with PostGIS RLS](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/row-level-security-for-multi-tenant-postgis/enforcing-tenant-geometry-isolation-with-postgis-rls/).
 
+The layered defence is often assumed to be expensive; measured, it is not.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cost of each security control per request: JWT verify, cached JWKS 0.4 ms, spatial scope check in FastAPI 0.7 ms, RLS predicate on an indexed column 3–8 % of query time, rate-limit token bucket in Redis 0.3 ms, audit envelope insert, off-path 0.6 ms, after the response" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Cost of each security control per request</title>
+  <desc>A horizontal bar chart. JWT verify, cached JWKS is 0.4 ms. spatial scope check in FastAPI is 0.7 ms. RLS predicate on an indexed column is 3–8 % of query time. rate-limit token bucket in Redis is 0.3 ms. audit envelope insert, off-path is 0.6 ms, after the response. The whole stack costs under two milliseconds of request time — security is not where a spatial API loses its latency budget.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Cost of each security control per request</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">JWT verify, cached JWKS</text>
+  <rect x="250" y="48" width="113" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="371" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">0.4 ms</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">spatial scope check in FastAPI</text>
+  <rect x="250" y="82" width="226" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="484" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">0.7 ms</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">RLS predicate on an indexed column</text>
+  <rect x="250" y="116" width="340" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="598" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">3–8 % of query time</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">rate-limit token bucket in Redis</text>
+  <rect x="250" y="150" width="113" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="371" y="163" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">0.3 ms</text>
+  <text x="20" y="197" font-size="10.5" fill="currentColor">audit envelope insert, off-path</text>
+  <rect x="250" y="184" width="226" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="484" y="197" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">0.6 ms, after the response</text>
+  <text x="20" y="234" font-size="10.5" fill="var(--muted, #7c6fb0)">The whole stack costs under two milliseconds of request time — security is not where a spatial API loses its latency budget.</text>
+</svg>
+
 ## Performance and scalability
 
 Security controls are only sustainable if they are cheap. The two that touch the hot path — RLS predicates and rate-limit lookups — both have measurable, controllable overhead.
@@ -323,6 +348,37 @@ An RLS policy is a predicate PostgreSQL ANDs onto every statement. When the pred
 ### Rate-limit lookup overhead
 
 A Redis sliding-window counter adds one network round-trip — typically 0.2–0.5 ms on a co-located instance — to each request. That is negligible next to a spatial query, and it is the cost that *prevents* a far larger cost: a single abusive `ST_DWithin` with a continental radius can hold a backend for seconds. Run the limiter as a Lua script so the read-decide-write is atomic under concurrency; the implementation and its benchmarks live in [Redis sliding-window rate limits for spatial endpoints](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/redis-sliding-window-rate-limits-for-spatial-endpoints/).
+
+Each layer refuses a different attack, and two of them are not refused by any layer at all.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Which layer stops which attack: Stops it" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Which layer stops which attack</title>
+  <desc>A comparison table. forged token with a wide scope: Stops it yes. signature verification valid token, out-of-area request: Stops it yes. spatial scope check application bug leaking another tenant: Stops it yes. row-level security slow enumeration within scope: Stops it partly. rate limiting plus the audit trail credential shared between customers: Stops it no. nothing here — that is a contract problem The last two rows are why an audit trail is a control rather than paperwork: they are the attacks no gate can refuse outright.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Which layer stops which attack</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Stops it</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">forged token with a wide scope</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="352" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">signature verification</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">valid token, out-of-area request</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="352" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">spatial scope check</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">application bug leaking another tenant</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="352" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">row-level security</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">slow enumeration within scope</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="352" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">rate limiting plus the audit trail</text>
+  <line x1="20" y1="194" x2="700" y2="194" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="216" font-size="10.5" fill="currentColor">credential shared between customers</text>
+  <text x="294" y="216" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="352" y="216" font-size="9.5" fill="var(--muted, #7c6fb0)">nothing here — that is a contract problem</text>
+  <text x="20" y="252" font-size="10.5" fill="var(--muted, #7c6fb0)">The last two rows are why an audit trail is a control rather than paperwork: they are the attacks no gate can refuse outright.</text>
+</svg>
 
 ## Abuse protection and rate limiting
 

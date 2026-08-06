@@ -120,18 +120,18 @@ app/
 
 This structure scales as your platform grows to include raster layers, topology checks, or [multi-tenant spatial isolation](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/). Each router imports only the models and schemas it requires, preventing circular dependencies and enabling independent deployment if you later migrate to microservices.
 
-<svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FastAPI router architecture diagram showing request flow from client through router to service and PostGIS" style="width:100%;max-width:640px;height:auto;display:block;margin:1.5rem auto;">
+<svg viewBox="-6 74 647 187" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FastAPI router architecture diagram showing request flow from client through router to service and PostGIS" style="width:100%;max-width:640px;height:auto;display:block;margin:1.5rem auto;">
   <title>FastAPI router architecture for PostGIS</title>
   <desc>A request flows from the HTTP client into a domain-scoped FastAPI router, which validates the payload through a Pydantic schema, delegates spatial query logic to a service layer, and pushes ST_DWithin or ST_Intersects predicates into PostgreSQL/PostGIS via an async SQLAlchemy session.</desc>
   <!-- Background -->
-  <rect width="640" height="300" fill="none"/>
+  <rect x="-6" y="74" width="647" height="187" fill="var(--surface, #f5f3ff)"/>
   <!-- Client box -->
   <rect x="10" y="115" width="90" height="50" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
   <text x="55" y="136" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">HTTP</text>
   <text x="55" y="152" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">Client</text>
   <!-- Arrow: client → router -->
   <line x1="100" y1="140" x2="145" y2="140" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
-  <text x="122" y="132" text-anchor="middle" font-size="9" fill="currentColor" font-family="sans-serif">POST /api/v1</text>
+  <text x="122" y="132" text-anchor="middle" font-size="9" fill="currentColor" font-family="sans-serif">POST</text>
   <text x="122" y="143" text-anchor="middle" font-size="9" fill="currentColor" font-family="sans-serif">/parcels</text>
   <!-- Router box -->
   <rect x="145" y="100" width="120" height="80" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
@@ -341,6 +341,49 @@ app.include_router(parcels.router, prefix="/api/v1")
 
 Mount additional entity routers (`sensors`, `zones`, `routes`) with the same pattern: one `include_router` call per domain, each carrying its own prefix and tags. For a full strategy on evolving these prefixes without breaking existing clients, see [API Versioning for GIS Endpoints](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/).
 
+The layout question is really an ownership question — each concern has exactly one right home.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where each concern belongs in the router tree: Router, Dependency, Query layer" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Where each concern belongs in the router tree</title>
+  <desc>A comparison table. bbox parsing: Router no, Dependency yes, Query layer no. reusable across routes auth and scope check: Router no, Dependency yes, Query layer no. runs before the handler SQL text: Router no, Dependency no, Query layer yes. one module per table response shaping: Router yes, Dependency no, Query layer no. route-specific pagination cursor: Router no, Dependency yes, Query layer partly. decoded once, applied in SQL A route that contains SQL is a route that cannot be tested without a database.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Where each concern belongs in the router tree</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Router</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Dependency</text>
+  <text x="502" y="58" font-size="10" font-weight="700" fill="currentColor">Query layer</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">bbox parsing</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">reusable across routes</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">auth and scope check</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">runs before the handler</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">SQL text</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="510" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">one module per table</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">response shaping</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="510" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">route-specific</text>
+  <line x1="20" y1="194" x2="700" y2="194" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="216" font-size="10.5" fill="currentColor">pagination cursor</text>
+  <text x="294" y="216" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="216" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="216" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="568" y="216" font-size="9.5" fill="var(--muted, #7c6fb0)">decoded once, applied in SQL</text>
+  <text x="20" y="252" font-size="10.5" fill="var(--muted, #7c6fb0)">A route that contains SQL is a route that cannot be tested without a database.</text>
+</svg>
+
 ## Key Parameters & Options
 
 | Parameter / setting | Where it lives | Effect |
@@ -351,6 +394,28 @@ Mount additional entity routers (`sensors`, `zones`, `routes`) with the same pat
 | `radius_meters` in `ST_DWithin` | Service layer | Only meaningful with a `geography` cast; without it the unit is degrees |
 | `limit=50` in spatial queries | Service layer | Hard cap prevents runaway responses on large tables; combine with [cursor-based pagination](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) for full result sets |
 | `prefix="/api/v1"` | `include_router` | Namespaces all routes; bump to `/api/v2` for breaking schema changes |
+
+Router files grow quietly, and the point at which they stop being readable is fairly predictable.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Routes per module, and what happens past the knee: 1–6 routes one module — comfortable, 7–12 routes split by resource, 13–25 routes split by resource and verb, 26+ routes the file nobody opens willingly" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Routes per module, and what happens past the knee</title>
+  <desc>A horizontal bar chart. 1–6 routes is one module — comfortable. 7–12 routes is split by resource. 13–25 routes is split by resource and verb. 26+ routes is the file nobody opens willingly. The split that scales is by resource, not by HTTP verb — a features module, a tiles module, an exports module.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Routes per module, and what happens past the knee</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">1–6 routes</text>
+  <rect x="250" y="48" width="51" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="309" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">one module — comfortable</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">7–12 routes</text>
+  <rect x="250" y="82" width="102" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="360" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">split by resource</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">13–25 routes</text>
+  <rect x="250" y="116" width="212" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="470" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">split by resource and verb</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">26+ routes</text>
+  <rect x="250" y="150" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="163" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">the file nobody opens</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">The split that scales is by resource, not by HTTP verb — a features module, a tiles module, an exports module.</text>
+</svg>
 
 ## Gotchas & Failure Modes
 

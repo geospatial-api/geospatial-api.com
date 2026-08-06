@@ -96,9 +96,10 @@ Spatial scoping sits at the front of the request path, so it belongs with the re
 
 Every request passes the same five stages before any geometry is read. The first four are cheap, in-process checks on the token; only a request that survives all of them reaches PostGIS, where an `ST_Within` predicate applies the final row-level gate.
 
-<svg viewBox="0 0 760 300" role="img" aria-label="Request path for a spatially-scoped JWT: client sends a Bearer token, FastAPI verifies the RS256 signature, extracts the geo_scope claim, runs a coarse containment check, and only then applies an ST_Within gate in PostGIS; failures at verification or the coarse check short-circuit to 401 or 403." xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;font-family:inherit;">
+<svg viewBox="2 102 756 194" role="img" aria-label="Request path for a spatially-scoped JWT: client sends a Bearer token, FastAPI verifies the RS256 signature, extracts the geo_scope claim, runs a coarse containment check, and only then applies an ST_Within gate in PostGIS; failures at verification or the coarse check short-circuit to 401 or 403." xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;font-family:inherit;">
   <title>Spatially-scoped JWT request path</title>
   <desc>A horizontal pipeline of five stages — Client with Bearer token, Verify RS256 signature, Extract geo_scope claim, Coarse containment check, and ST_Within gate in PostGIS — with a downward reject branch from the signature and coarse-check stages to a single 401/403 outcome box.</desc>
+  <rect x="2" y="102" width="756" height="194" rx="10" fill="var(--surface, #f5f3ff)"/>
   <defs>
     <marker id="jwtarr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/></marker>
     <marker id="jwtrej" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#a82e1e"/></marker>
@@ -204,6 +205,38 @@ The single most consequential design choice is *how* you represent the permitted
 Two rules fall straight out of the table. First, never embed a large `WKT polygon` directly — it re-transmits and re-verifies on every request and quickly blows past the header limit. Second, if the fence is irregular *and* large, use the `server-side ref` pattern: store the polygon once, reference it by a stable content hash in the claim, and resolve it during validation. The full trade-off — including how many H3 cells a country needs at each resolution — is worked through in [encoding geofence boundaries in JWT scope claims](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/encoding-geofence-boundaries-in-jwt-scope-claims/).
 
 ---
+
+Every scope encoding trades token size against how exactly it describes the permitted area.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How to encode a spatial scope in a token: Compact, Precise" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>How to encode a spatial scope in a token</title>
+  <desc>A comparison table. bounding box, four floats: Compact yes, Precise no. ~40 bytes, over-grants geohash prefix list: Compact yes, Precise partly. grid-aligned, cheap to test simplified polygon WKT: Compact no, Precise yes. grows the token quickly scope id resolved server-side: Compact yes, Precise yes. one lookup, no size limit The last row is the only one that stays small and exact — at the cost of a lookup the other three avoid.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">How to encode a spatial scope in a token</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Compact</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Precise</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">bounding box, four floats</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">~40 bytes, over-grants</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">geohash prefix list</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">grid-aligned, cheap to test</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">simplified polygon WKT</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">grows the token quickly</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">scope id resolved server-side</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">one lookup, no size limit</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">The last row is the only one that stays small and exact — at the cost of a lookup the other three avoid.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -444,6 +477,28 @@ def test_hs256_downgrade_rejected():
 ```
 
 ---
+
+Scope encoding has a hard ceiling that is set by HTTP, not by cryptography.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Token size by scope encoding: bbox only 310 bytes, 9 geohash prefixes 420 bytes, simplified polygon, 40 vertices 1 180 bytes, full polygon, 400 vertices 9 400 bytes — header limits bite" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Token size by scope encoding</title>
+  <desc>A horizontal bar chart. bbox only is 310 bytes. 9 geohash prefixes is 420 bytes. simplified polygon, 40 vertices is 1 180 bytes. full polygon, 400 vertices is 9 400 bytes — header limits bite. Most proxies cap request headers around 8 KB, so the last row fails as a transport problem long before it fails as a design one.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Token size by scope encoding</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">bbox only</text>
+  <rect x="250" y="48" width="11" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="269" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">310 bytes</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">9 geohash prefixes</text>
+  <rect x="250" y="82" width="15" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="273" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">420 bytes</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">simplified polygon, 40 vertices</text>
+  <rect x="250" y="116" width="42" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="300" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">1 180 bytes</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">full polygon, 400 vertices</text>
+  <rect x="250" y="150" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="163" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">9 400 bytes — header</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">Most proxies cap request headers around 8 KB, so the last row fails as a transport problem long before it fails as a design one.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

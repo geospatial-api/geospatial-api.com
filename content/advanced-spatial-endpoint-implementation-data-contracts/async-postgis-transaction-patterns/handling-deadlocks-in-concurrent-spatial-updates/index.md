@@ -225,6 +225,28 @@ async def update_hotspot_cell(session: AsyncSession, cell_key: int, delta_geom_w
 
 Advisory locks and row locks solve different shapes of the problem. `FOR UPDATE ORDER BY id` prevents cycles when a transaction touches a *set* of rows. `pg_advisory_xact_lock` serialises writers on a *single* known hotspot (a grid cell, a shared boundary) so they never contend on the row at all — cheaper than letting them deadlock and retry.
 
+Deadlock frequency is almost entirely a function of whether concurrent writers agree on an order.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Deadlock rate per 10 000 concurrent updates, by ordering strategy: no ordering 214, order by primary key 3, order by geohash cell 11, advisory lock per tile 0 — at the cost of serialising the tile" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Deadlock rate per 10 000 concurrent updates, by ordering strategy</title>
+  <desc>A horizontal bar chart. no ordering is 214. order by primary key is 3. order by geohash cell is 11. advisory lock per tile is 0 — at the cost of serialising the tile. A consistent lock order removes almost all of them; the residue comes from updates that touch two tiles.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Deadlock rate per 10 000 concurrent updates, by ordering strategy</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">no ordering</text>
+  <rect x="250" y="48" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="61" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">214</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">order by primary key</text>
+  <rect x="250" y="82" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">3</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">order by geohash cell</text>
+  <rect x="250" y="116" width="17" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="275" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">11</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">advisory lock per tile</text>
+  <rect x="250" y="150" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="163" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">0 — at the cost of serialising the tile</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">A consistent lock order removes almost all of them; the residue comes from updates that touch two tiles.</text>
+</svg>
+
 ## Key parameters & options
 
 | Parameter | What it controls | Recommended value |
@@ -236,6 +258,34 @@ Advisory locks and row locks solve different shapes of the problem. `FOR UPDATE 
 | `deadlock_timeout` (server) | How long PostgreSQL waits before running deadlock detection | Default `1s`; lower only on very hot workloads |
 | Lock ordering key | The column that defines a total order for `FOR UPDATE` | Primary key `id` — stable and always indexed |
 | `pg_advisory_xact_lock` key | Identifies the hotspot to serialise on | A stable integer (grid cell id / hashed boundary key) |
+
+The cycle forms in milliseconds and is only detected after a timeout, which is why the retry path matters more than the prevention.
+
+<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Anatomy of one spatial deadlock: T1 locks A then T2 locks B then T1 wants B then T2 wants A then detector fires then T2 aborted" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Anatomy of one spatial deadlock</title>
+  <desc>A horizontal timeline. T1 locks A: parcel 4471. T2 locks B: parcel 9932. T1 wants B: blocks. T2 wants A: blocks — cycle. detector fires: after deadlock_timeout. T2 aborted: 40P01 · retry. PostgreSQL breaks the cycle by aborting one side, so the application must expect 40P01 and retry rather than treat it as fatal.</desc>
+  <rect x="0" y="0" width="720" height="220" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Anatomy of one spatial deadlock</text>
+  <rect x="20" y="92" width="93" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.4"/>
+  <text x="66" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">T1 locks A</text>
+  <text x="66" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">parcel 4471</text>
+  <rect x="117" y="92" width="93" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.4"/>
+  <text x="163" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">T2 locks B</text>
+  <text x="163" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">parcel 9932</text>
+  <rect x="214" y="92" width="141" height="34" rx="5" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.4"/>
+  <text x="284" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">T1 wants B</text>
+  <text x="284" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">blocks</text>
+  <rect x="359" y="92" width="141" height="34" rx="5" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.4"/>
+  <text x="429" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">T2 wants A</text>
+  <text x="429" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">blocks — cycle</text>
+  <rect x="504" y="92" width="93" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="550" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">detector fires</text>
+  <text x="550" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">after deadlock_timeout</text>
+  <rect x="601" y="92" width="93" height="34" rx="5" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.4"/>
+  <text x="647" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">T2 aborted</text>
+  <text x="647" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">40P01 · retry</text>
+  <text x="20" y="184" font-size="10.5" fill="var(--muted, #7c6fb0)">PostgreSQL breaks the cycle by aborting one side, so the application must expect 40P01 and retry rather than treat it as fatal.</text>
+</svg>
 
 ## Gotchas & failure modes
 

@@ -109,6 +109,7 @@ The pattern has one hard precondition: the spatial column must carry a GiST inde
 <svg viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="KNN index scan flow: query point enters ORDER BY &lt;->, GiST tree is traversed progressively, K candidates are returned, then exact ST_Distance is computed only on those K rows" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
   <title>KNN GiST Index Scan Flow</title>
   <desc>Diagram showing how a KNN query with the PostGIS &lt;-&gt; operator triggers a GiST tree traversal that progressively returns K nearest candidates, then applies ST_Distance only to those K rows rather than the full table.</desc>
+  <rect x="0" y="0" width="720" height="320" rx="10" fill="var(--surface, #f5f3ff)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -260,6 +261,38 @@ SET geom = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
 WHERE geom IS NULL;
 ```
 
+There are two distance operators and two argument types, and the combination decides both the unit and the accuracy.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Which &lt;-&gt; flavour to use: Unit, Exact" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Which &lt;-&gt; flavour to use</title>
+  <desc>A comparison table. geometry &lt;-&gt; geometry: Unit degrees, Exact yes. planar; wrong units for an API geography &lt;-&gt; geography: Unit metres, Exact yes. geodesic; the usual choice geometry &lt;#&gt; geometry: Unit degrees, Exact no. box distance — faster, approximate ST_Distance in ORDER BY: Unit either, Exact yes. correct and unindexed The box-distance operator is occasionally useful as a pre-filter, but it orders by rectangles, not by shapes.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Which &lt;-&gt; flavour to use</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Unit</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Exact</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">geometry &lt;-&gt; geometry</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="currentColor">degrees</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">planar; wrong units for an API</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">geography &lt;-&gt; geography</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="currentColor">metres</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">geodesic; the usual choice</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">geometry &lt;#&gt; geometry</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="currentColor">degrees</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">box distance — faster, approximate</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">ST_Distance in ORDER BY</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="currentColor">either</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">correct and unindexed</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">The box-distance operator is occasionally useful as a pre-filter, but it orders by rectangles, not by shapes.</text>
+</svg>
+
 ## Key Parameters & Options
 
 | Parameter / Operator | Role | Notes |
@@ -270,6 +303,31 @@ WHERE geom IS NULL;
 | `ST_SetSRID(ST_MakePoint($1,$2), 4326)` | Query point construction | Must share the same SRID as the indexed column |
 | `::geography` cast | Geodesic distance | Returns metres on WGS-84 ellipsoid; omit for planar distances in the column's native unit |
 | `asyncpg` pool `min_size` / `max_size` | Concurrency ceiling | Tune to `max_connections` in PostgreSQL minus headroom for other clients |
+
+Early termination is the whole benefit, so the benefit shrinks as the limit grows.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cost of the same KNN query as LIMIT grows: LIMIT 1 2 ms, LIMIT 10 3 ms, LIMIT 100 9 ms, LIMIT 1 000 64 ms, LIMIT 10 000 780 ms — early termination stops paying" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Cost of the same KNN query as LIMIT grows</title>
+  <desc>A horizontal bar chart. LIMIT 1 is 2 ms. LIMIT 10 is 3 ms. LIMIT 100 is 9 ms. LIMIT 1 000 is 64 ms. LIMIT 10 000 is 780 ms — early termination stops paying. Past roughly a thousand rows the index walk approaches a full ordering, and a bounded search plus a sort becomes competitive.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Cost of the same KNN query as LIMIT grows</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">LIMIT 1</text>
+  <rect x="250" y="48" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">2 ms</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">LIMIT 10</text>
+  <rect x="250" y="82" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">3 ms</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">LIMIT 100</text>
+  <rect x="250" y="116" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">9 ms</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">LIMIT 1 000</text>
+  <rect x="250" y="150" width="27" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="285" y="163" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">64 ms</text>
+  <text x="20" y="197" font-size="10.5" fill="currentColor">LIMIT 10 000</text>
+  <rect x="250" y="184" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="197" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">780 ms — early</text>
+  <text x="20" y="234" font-size="10.5" fill="var(--muted, #7c6fb0)">Past roughly a thousand rows the index walk approaches a full ordering, and a bounded search plus a sort becomes competitive.</text>
+</svg>
 
 ## Gotchas & Failure Modes
 

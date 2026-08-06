@@ -84,6 +84,7 @@ A production spatial API divides cleanly into three tiers. Blurring the boundari
 <svg viewBox="0 0 720 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three-tier spatial API architecture diagram" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
   <title>Three-Tier Spatial API Architecture</title>
   <desc>Diagram showing three stacked tiers: Ingestion and Validation (FastAPI + Pydantic v2), Spatial Processing (PostGIS), and Serialisation and Delivery (FastAPI response layer), with arrows showing request and response flow.</desc>
+  <rect x="0" y="0" width="720" height="340" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- tier boxes -->
   <rect x="40" y="20" width="640" height="80" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
   <text x="360" y="48" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">Tier 1 — Ingestion &amp; Validation</text>
@@ -296,6 +297,43 @@ Align response schemas with [RFC 7946](https://www.rfc-editor.org/rfc/rfc7946) t
 
 Use `ST_AsGeoJSON(geom, 6)` (six decimal places ≈ 0.1 m precision) rather than `ST_AsText` to avoid a Python-side WKT-to-GeoJSON conversion step.
 
+Tier boundaries in a spatial API are not stylistic — each row below is a decision with a measurable cost when it lands in the wrong place.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What each tier owns, and what it must never do: Owns it, Never" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>What each tier owns, and what it must never do</title>
+  <desc>A comparison table. coordinate system normalisation: Owns it yes, Never no. database, on write shape and range validation: Owns it yes, Never no. application, before the query predicate evaluation: Owns it yes, Never no. database, index-backed output projection: Owns it yes, Never no. database, in the SELECT list pagination state: Owns it yes, Never no. application, opaque cursor Every misplacement in this table has the same symptom: work repeated per row that should have happened once.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">What each tier owns, and what it must never do</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Owns it</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Never</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">coordinate system normalisation</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">database, on write</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">shape and range validation</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">application, before the query</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">predicate evaluation</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">database, index-backed</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">output projection</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">database, in the SELECT list</text>
+  <line x1="20" y1="194" x2="700" y2="194" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="216" font-size="10.5" fill="currentColor">pagination state</text>
+  <text x="294" y="216" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="216" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="216" font-size="9.5" fill="var(--muted, #7c6fb0)">application, opaque cursor</text>
+  <text x="20" y="252" font-size="10.5" fill="var(--muted, #7c6fb0)">Every misplacement in this table has the same symptom: work repeated per row that should have happened once.</text>
+</svg>
+
 ## Performance and Scalability
 
 ### Query Plan Guidance
@@ -437,6 +475,61 @@ async def health(session: AsyncSession = Depends(get_db_session)):
 ```
 
 This distinguishes "PostgreSQL is up" from "PostGIS extension is installed and functional" — a distinction that matters after major upgrades.
+
+Knowing what a healthy request costs is what makes an unhealthy one obvious.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Latency budget for a healthy 200-feature response: connection acquire 1 ms, GiST index scan 7 ms, heap fetch + recheck 5 ms, ST_AsGeoJSON at 6 dp 9 ms, HTTP + client parse 22 ms" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Latency budget for a healthy 200-feature response</title>
+  <desc>A horizontal bar chart. connection acquire is 1 ms. GiST index scan is 7 ms. heap fetch + recheck is 5 ms. ST_AsGeoJSON at 6 dp is 9 ms. HTTP + client parse is 22 ms. Total 44 ms. Anything materially above this on a small envelope means one of the tier rules above was broken.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Latency budget for a healthy 200-feature response</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">connection acquire</text>
+  <rect x="250" y="48" width="15" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="273" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">1 ms</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">GiST index scan</text>
+  <rect x="250" y="82" width="108" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="366" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">7 ms</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">heap fetch + recheck</text>
+  <rect x="250" y="116" width="77" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="335" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">5 ms</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">ST_AsGeoJSON at 6 dp</text>
+  <rect x="250" y="150" width="139" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="397" y="163" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">9 ms</text>
+  <text x="20" y="197" font-size="10.5" fill="currentColor">HTTP + client parse</text>
+  <rect x="250" y="184" width="340" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="598" y="197" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">22 ms</text>
+  <text x="20" y="234" font-size="10.5" fill="var(--muted, #7c6fb0)">Total 44 ms. Anything materially above this on a small envelope means one of the tier rules above was broken.</text>
+</svg>
+
+## Reading the architecture as a sequence of decisions
+
+The three tiers above describe where code lives. It is more useful, when starting a service, to read them as an ordered sequence of decisions — because each one constrains the next, and reversing any of them later is expensive.
+
+The first decision is the **storage coordinate system**, and it is the only one on this list that is genuinely hard to change once data exists. Everything downstream inherits it: which predicates are index-backed, whether distances mean metres, what a cache key looks like. The trade is laid out in [Coordinate Reference Systems & SRID Handling](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/coordinate-reference-systems-and-srid-handling/), and for most services the answer is EPSG:4326 with a cast at the point of measurement.
+
+The second is the **resource shape**: whether the API exposes features individually, as collections, as tiles, or as all three. This decides how many endpoints exist and what each one caches. A feature-per-request API is simple and chatty; a collection API is efficient and needs pagination; a tile API is efficient and needs an entirely separate cache story. Most mature services end up offering all three, which is fine provided they are recognised as three contracts rather than one.
+
+The third is the **pagination model**, which sounds like a detail and is not. Offset pagination is the default in every framework and the wrong answer for spatial data, both because its cost grows with depth and because spatial result sets move under the reader. The keyset approach in [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) costs one extra index and removes both problems.
+
+The fourth is the **serialisation contract** — which formats the API speaks and at what precision. This one is cheap to revisit, which is why it belongs last: adding a format is additive, and precision is a parameter. What is not cheap is discovering after launch that a default of fifteen decimal places has tripled everyone's bandwidth bill for a year.
+
+Taken in that order, each decision is made with the information the previous one produced. Taken in any other order, at least one of them gets made implicitly by whichever endpoint was written first.
+
+## Reading the architecture as a sequence of decisions
+
+The three tiers above describe where code lives. It is more useful, when starting a service, to read them as an ordered sequence of decisions — because each one constrains the next, and reversing any of them later is expensive.
+
+The first decision is the **storage coordinate system**, and it is the only one on this list that is genuinely hard to change once data exists. Everything downstream inherits it: which predicates are index-backed, whether distances mean metres, what a cache key looks like. The trade is laid out in [Coordinate Reference Systems & SRID Handling](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/coordinate-reference-systems-and-srid-handling/), and for most services the answer is EPSG:4326 with a cast at the point of measurement.
+
+The second is the **resource shape**: whether the API exposes features individually, as collections, as tiles, or as all three. This decides how many endpoints exist and what each one caches. A feature-per-request API is simple and chatty; a collection API is efficient and needs pagination; a tile API is efficient and needs an entirely separate cache story. Most mature services end up offering all three, which is fine provided they are recognised as three contracts rather than one.
+
+The third is the **pagination model**, which sounds like a detail and is not. Offset pagination is the default in every framework and the wrong answer for spatial data, both because its cost grows with depth and because spatial result sets move under the reader. The keyset approach in [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) costs one extra index and removes both problems.
+
+The fourth is the **serialisation contract** — which formats the API speaks and at what precision. This one is cheap to revisit, which is why it belongs last: adding a format is additive, and precision is a parameter. What is not cheap is discovering after launch that a default of fifteen decimal places has tripled everyone's bandwidth bill for a year.
+
+Taken in that order, each decision is made with the information the previous one produced. Taken in any other order, at least one of them gets made implicitly by whichever endpoint was written first.
+
+A useful discipline when starting a new spatial service is to write these four decisions down as four short paragraphs before any endpoint exists, and to revisit them only when something forces a change. They occupy a page, they take an afternoon to agree, and they save the recurring argument that otherwise surfaces every time a new route is added to the codebase.
 
 ## Failure Modes and Common Misconfigurations
 

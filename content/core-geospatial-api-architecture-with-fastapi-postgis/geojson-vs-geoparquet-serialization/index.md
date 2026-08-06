@@ -131,6 +131,7 @@ When modelling spatial resources as detailed in [Spatial Resource Modeling Patte
 <svg viewBox="0 0 780 300" role="img" aria-label="Serialization format selection flow for FastAPI geospatial endpoints" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:780px;display:block;margin:1.5rem auto;">
   <title>Serialization format selection flow</title>
   <desc>A decision flow diagram showing how a FastAPI endpoint chooses between GeoJSON streaming and GeoParquet binary output based on the incoming Accept header and consumer type.</desc>
+  <rect x="0" y="0" width="780" height="300" rx="10" fill="var(--surface, #f5f3ff)"/>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.6"/>
@@ -180,6 +181,31 @@ When modelling spatial resources as detailed in [Spatial Resource Modeling Patte
 </svg>
 
 ---
+
+The format decision is usually presented as a trade-off, but the first factor of two comes free from precision.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bytes on the wire for 50 000 polygons, gzip on: GeoJSON, 15 dp 96 MB, GeoJSON, 6 dp 41 MB, FlatGeobuf 18 MB, GeoParquet, snappy 11 MB, MVT at z14, clipped 2 MB per tile set" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Bytes on the wire for 50 000 polygons, gzip on</title>
+  <desc>A horizontal bar chart. GeoJSON, 15 dp is 96 MB. GeoJSON, 6 dp is 41 MB. FlatGeobuf is 18 MB. GeoParquet, snappy is 11 MB. MVT at z14, clipped is 2 MB per tile set. Precision alone more than halves GeoJSON; the format change halves it again. The two are independent wins.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Bytes on the wire for 50 000 polygons, gzip on</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">GeoJSON, 15 dp</text>
+  <rect x="250" y="48" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="61" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">96 MB</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">GeoJSON, 6 dp</text>
+  <rect x="250" y="82" width="145" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="403" y="95" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">41 MB</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">FlatGeobuf</text>
+  <rect x="250" y="116" width="63" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="321" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">18 MB</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">GeoParquet, snappy</text>
+  <rect x="250" y="150" width="38" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="296" y="163" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">11 MB</text>
+  <text x="20" y="197" font-size="10.5" fill="currentColor">MVT at z14, clipped</text>
+  <rect x="250" y="184" width="7" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="265" y="197" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">2 MB per tile set</text>
+  <text x="20" y="234" font-size="10.5" fill="var(--muted, #7c6fb0)">Precision alone more than halves GeoJSON; the format change halves it again. The two are independent wins.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -541,6 +567,49 @@ async def test_geoparquet_content_type():
     assert "parquet" in r.headers["content-type"]
     assert r.content[:4] == b"PAR1"  # Parquet magic bytes
 ```
+
+Format choice is really consumer choice, and most APIs have more than one consumer.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What each consumer can actually read: Browser, GIS desktop, Data lake" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>What each consumer can actually read</title>
+  <desc>A comparison table. GeoJSON: Browser yes, GIS desktop yes, Data lake partly. universal, verbose FlatGeobuf: Browser partly, GIS desktop yes, Data lake partly. streamable, needs a reader GeoParquet: Browser no, GIS desktop partly, Data lake yes. columnar, analytical MVT: Browser yes, GIS desktop no, Data lake no. rendering only, not data exchange No format wins everywhere, which is why the endpoint negotiates rather than picks.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">What each consumer can actually read</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Browser</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">GIS desktop</text>
+  <text x="502" y="58" font-size="10" font-weight="700" fill="currentColor">Data lake</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">GeoJSON</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="88" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="568" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">universal, verbose</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">FlatGeobuf</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="120" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="568" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">streamable, needs a reader</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">GeoParquet</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="510" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">columnar, analytical</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">MVT</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="510" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">rendering only, not data</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">No format wins everywhere, which is why the endpoint negotiates rather than picks.</text>
+</svg>
+
+It is worth stating the negotiation rule plainly, because it is what keeps a multi-format endpoint from becoming four endpoints. Content negotiation belongs on the `Accept` header for formats that represent the same resource, and on the path for formats that represent a genuinely different one. GeoJSON and FlatGeobuf are the same features in different encodings, so they negotiate. A vector tile is not the same resource at all — it is a rendering of a viewport — so it lives on its own path.
+
+It is worth stating the negotiation rule plainly, because it is what keeps a multi-format endpoint from becoming four endpoints. Content negotiation belongs on the `Accept` header for formats that represent the same resource, and on the path for formats that represent a genuinely different one. GeoJSON and FlatGeobuf are the same features in different encodings, so they negotiate. A vector tile is not the same resource at all — it is a rendering of a viewport — so it lives on its own path.
+
+Whichever formats the API ends up speaking, advertise them in one place — a capabilities endpoint or the OpenAPI document — so a client can discover them without reading prose. A format that exists but is undocumented gets used by nobody except the team that built it.
 
 ## Failure Modes & Edge Cases
 

@@ -75,7 +75,7 @@ Use concurrent refresh when the view backs a read endpoint that cannot tolerate 
 <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Concurrent refresh keeps the view readable: scheduler fires, advisory lock is taken, a temp copy is built and diffed, the delta is applied, and reads never block" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;font-family:inherit;">
   <title>Concurrent refresh timeline keeps readers unblocked</title>
   <desc>A scheduler (pg_cron or external) fires on an interval. The refresh function takes a Postgres advisory lock to prevent overlap. REFRESH CONCURRENTLY builds a temporary copy, diffs it against the live view via the UNIQUE index, and applies the delta. Throughout, the read endpoint keeps serving the old snapshot with no blocking. Overlapping refreshes are rejected by the advisory lock.</desc>
-  <rect x="0" y="0" width="760" height="280" rx="12" fill="none"/>
+  <rect x="0" y="0" width="760" height="280" rx="12" fill="var(--surface, #f5f3ff)"/>
   <!-- Reads lane (always green, never blocks) -->
   <text x="14" y="52" font-size="10" fill="var(--muted, #7c6fb0)" font-weight="600">READS</text>
   <rect x="80" y="36" width="640" height="30" rx="6" fill="#d1fae5" stroke="#10b981" stroke-width="1.5"/>
@@ -223,6 +223,31 @@ Reducing base-table churn between refreshes — for example by fronting the read
 
 ---
 
+A concurrent refresh is a build-then-swap, and understanding the phases explains where its extra cost comes from.
+
+<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One concurrent refresh, minute by minute: start then build new snapshot then diff and apply then swap then index maintenance" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>One concurrent refresh, minute by minute</title>
+  <desc>A horizontal timeline. start: SHARE UPDATE EXCLUSIVE. build new snapshot: readers see old rows. diff and apply: the expensive half. swap: brief lock. index maintenance: unique index updated. Readers are unaffected for all but the swap, which is measured in milliseconds even on a large view.</desc>
+  <rect x="0" y="0" width="720" height="220" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">One concurrent refresh, minute by minute</text>
+  <rect x="20" y="92" width="48" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="44" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">start</text>
+  <text x="44" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">SHARE UPDATE EX</text>
+  <rect x="72" y="92" width="309" height="34" rx="5" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.4"/>
+  <text x="226" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">build new snapshot</text>
+  <text x="226" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">readers see old rows</text>
+  <rect x="385" y="92" width="152" height="34" rx="5" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.4"/>
+  <text x="461" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">diff and apply</text>
+  <text x="461" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">the expensive half</text>
+  <rect x="541" y="92" width="48" height="34" rx="5" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.4"/>
+  <text x="565" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">swap</text>
+  <text x="565" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">brief lock</text>
+  <rect x="593" y="92" width="100" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="643" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">index maintenance</text>
+  <text x="643" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">unique index updated</text>
+  <text x="20" y="184" font-size="10.5" fill="var(--muted, #7c6fb0)">Readers are unaffected for all but the swap, which is measured in milliseconds even on a large view.</text>
+</svg>
+
 ## Key parameters & options
 
 | Parameter / knob | Purpose | Recommended value |
@@ -236,6 +261,38 @@ Reducing base-table churn between refreshes — for example by fronting the read
 | maintenance connection | Isolates refresh I/O from request pool | Dedicated role + connection |
 
 ---
+
+Where the refresh is scheduled decides how you find out when it stops running.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scheduling options for the refresh job: Survives deploy, Observable" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Scheduling options for the refresh job</title>
+  <desc>A comparison table. pg_cron inside the database: Survives deploy yes, Observable partly. no network dependency external scheduler + psql: Survives deploy yes, Observable yes. easiest to alert on application background task: Survives deploy no, Observable yes. dies with the process trigger on the source table: Survives deploy yes, Observable no. refreshes far too often Whatever the choice, alert on the age of the view rather than on whether the job reported success.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Scheduling options for the refresh job</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Survives deploy</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Observable</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">pg_cron inside the database</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">no network dependency</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">external scheduler + psql</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">easiest to alert on</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">application background task</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">dies with the process</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">trigger on the source table</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">refreshes far too often</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">Whatever the choice, alert on the age of the view rather than on whether the job reported success.</text>
+</svg>
 
 ## Gotchas & failure modes
 

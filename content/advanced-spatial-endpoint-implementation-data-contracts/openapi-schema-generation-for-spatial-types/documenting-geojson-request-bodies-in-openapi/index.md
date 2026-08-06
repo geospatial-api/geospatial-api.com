@@ -74,9 +74,10 @@ A word on why examples deserve their own treatment for geometry specifically. Mo
 
 ## Data flow: where each example surfaces
 
-<svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How model and parameter examples flow into the OpenAPI document and Swagger UI" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;">
+<svg viewBox="14 24 732 202" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How model and parameter examples flow into the OpenAPI document and Swagger UI" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;">
   <title>Example sources merging into the OpenAPI request body</title>
   <desc>Two example sources — model json_schema_extra and Body openapi_examples — merge in FastAPI's schema builder, land in different parts of openapi.json (components schema example versus requestBody examples), and both render in Swagger UI as a selectable example dropdown.</desc>
+  <rect x="14" y="24" width="732" height="202" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- Left sources -->
   <rect x="30" y="40" width="210" height="60" rx="8" fill="var(--surface, #f5f3ff)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
   <text x="135" y="64" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">model_config</text>
@@ -209,6 +210,43 @@ The three counterpart mechanisms, ranked by scope: `json_schema_extra` on the mo
 
 ---
 
+Documentation lands in two very different places, and only some of it survives the trip to a generated client.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where each documentation artefact shows up: Swagger UI, Generated client" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Where each documentation artefact shows up</title>
+  <desc>A comparison table. field description: Swagger UI yes, Generated client yes. becomes a docstring example on the model: Swagger UI yes, Generated client no. UI "try it" prefill examples on the route: Swagger UI yes, Generated client no. multiple named cases $ref component name: Swagger UI yes, Generated client yes. becomes the class name json_schema_extra: Swagger UI yes, Generated client partly. passes through verbatim Examples never reach a generated client, so anything a client author must know belongs in a description rather than an example.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Where each documentation artefact shows up</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Swagger UI</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Generated client</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">field description</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">becomes a docstring</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">example on the model</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">UI "try it" prefill</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">examples on the route</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">multiple named cases</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">$ref component name</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">becomes the class name</text>
+  <line x1="20" y1="194" x2="700" y2="194" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="216" font-size="10.5" fill="currentColor">json_schema_extra</text>
+  <text x="294" y="216" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="216" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="460" y="216" font-size="9.5" fill="var(--muted, #7c6fb0)">passes through verbatim</text>
+  <text x="20" y="252" font-size="10.5" fill="var(--muted, #7c6fb0)">Examples never reach a generated client, so anything a client author must know belongs in a description rather than an example.</text>
+</svg>
+
 ## Key parameters & options
 
 | Mechanism | Where it lives | Multiple? | Named + described | Best for |
@@ -225,6 +263,28 @@ Notes that matter for geometry specifically:
 - `json_schema_extra` accepts either a dict or a callable; use the callable form if you need to strip internal fields before publishing.
 
 ---
+
+Inline schemas feel convenient at the point of writing and are paid for by every consumer.
+
+<svg viewBox="0 0 720 198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two ways to describe the same request body: ✕ one inline schema per route versus ✓ one component, referenced" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Two ways to describe the same request body</title>
+  <desc>Two panels. ✕ one inline schema per route: geometry described five times five generated classes, subtly different a fix has to be applied five times the UI shows five near-identical shapes ✓ one component, referenced: geometry described once one generated class, reused a fix propagates everywhere the UI links to a single definition The duplication is invisible in the source and glaring in the generated client, which is where it is discovered.</desc>
+  <rect x="0" y="0" width="720" height="198" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Two ways to describe the same request body</text>
+  <rect x="16" y="40" width="336" height="122" rx="9" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.5"/>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--viz-bad, #a32b23)">✕ one inline schema per route</text>
+  <text x="34" y="84" font-size="10" fill="currentColor">geometry described five times</text>
+  <text x="34" y="106" font-size="10" fill="currentColor">five generated classes, subtly different</text>
+  <text x="34" y="128" font-size="10" fill="currentColor">a fix has to be applied five times</text>
+  <text x="34" y="150" font-size="10" fill="currentColor">the UI shows five near-identical shapes</text>
+  <rect x="368" y="40" width="336" height="122" rx="9" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="386" y="62" font-size="11" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓ one component, referenced</text>
+  <text x="386" y="84" font-size="10" fill="currentColor">geometry described once</text>
+  <text x="386" y="106" font-size="10" fill="currentColor">one generated class, reused</text>
+  <text x="386" y="128" font-size="10" fill="currentColor">a fix propagates everywhere</text>
+  <text x="386" y="150" font-size="10" fill="currentColor">the UI links to a single definition</text>
+  <text x="20" y="194" font-size="10.5" fill="var(--muted, #7c6fb0)">The duplication is invisible in the source and glaring in the generated client, which is where it is discovered.</text>
+</svg>
 
 ## Gotchas & failure modes
 

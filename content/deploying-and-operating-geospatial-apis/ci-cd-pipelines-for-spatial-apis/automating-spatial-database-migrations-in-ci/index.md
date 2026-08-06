@@ -75,6 +75,7 @@ The three hazards are independent and each has a clean fix: create the extension
 <svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three spatial migration hazards and their fixes" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;">
   <title>Spatial migration hazards and fixes</title>
   <desc>Three hazards each mapped to a fix: missing extension mapped to create extension if not exists postgis; autogenerate dropping PostGIS-managed objects mapped to an include_object filter; create index concurrently failing inside a transaction mapped to an autocommit block.</desc>
+  <rect x="0" y="0" width="760" height="260" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- column headers -->
   <text x="210" y="34" text-anchor="middle" font-size="12" font-weight="700" fill="var(--muted, #7c6fb0)">Hazard</text>
   <text x="560" y="34" text-anchor="middle" font-size="12" font-weight="700" fill="#065f46">Fix</text>
@@ -211,6 +212,43 @@ Use a synchronous driver URL (psycopg) for Alembic even if the app runs asyncpg 
 
 ---
 
+The gate for automating a migration is not whether it is reversible but whether it takes a lock.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Which spatial migrations are safe to run automatically: Auto, Locks" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Which spatial migrations are safe to run automatically</title>
+  <desc>A comparison table. CREATE INDEX CONCURRENTLY: Auto yes, Locks no. slow but non-blocking ADD COLUMN with no default: Auto yes, Locks no. catalogue-only in PG 11+ ALTER TYPE geometry → typed: Auto no, Locks yes. full table rewrite ADD CONSTRAINT … NOT VALID: Auto yes, Locks no. validate separately DROP COLUMN with an index: Auto partly, Locks yes. brief exclusive lock Anything in the locking column belongs in a maintenance window, not in the deploy pipeline.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Which spatial migrations are safe to run automatically</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Auto</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Locks</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">CREATE INDEX CONCURRENTLY</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">slow but non-blocking</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">ADD COLUMN with no default</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">catalogue-only in PG 11+</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">ALTER TYPE geometry → typed</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">full table rewrite</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">ADD CONSTRAINT … NOT VALID</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">validate separately</text>
+  <line x1="20" y1="194" x2="700" y2="194" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="216" font-size="10.5" fill="currentColor">DROP COLUMN with an index</text>
+  <text x="294" y="216" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="402" y="216" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="216" font-size="9.5" fill="var(--muted, #7c6fb0)">brief exclusive lock</text>
+  <text x="20" y="252" font-size="10.5" fill="var(--muted, #7c6fb0)">Anything in the locking column belongs in a maintenance window, not in the deploy pipeline.</text>
+</svg>
+
 ## Key parameters & options
 
 | Parameter / call | Purpose |
@@ -225,6 +263,28 @@ Use a synchronous driver URL (psycopg) for Alembic even if the app runs asyncpg 
 | Sync (psycopg) `sqlalchemy.url` | DDL does not need async; sync driver makes autocommit behaviour predictable |
 
 ---
+
+Index creation is where most spatial migrations go from routine to outage.
+
+<svg viewBox="0 0 720 198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two ways to add a spatial index in a deploy: ✕ CREATE INDEX inside the migration versus ✓ CONCURRENTLY, outside the transaction" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Two ways to add a spatial index in a deploy</title>
+  <desc>Two panels. ✕ CREATE INDEX inside the migration: takes ACCESS EXCLUSIVE for the build 18 minutes on a 44 GB index every query blocks behind it the deploy looks hung ✓ CONCURRENTLY, outside the transaction: takes SHARE UPDATE EXCLUSIVE only roughly twice as slow to build reads and writes continue must run outside a transaction block The concurrent build can fail and leave an invalid index — check for one afterwards rather than assuming success.</desc>
+  <rect x="0" y="0" width="720" height="198" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Two ways to add a spatial index in a deploy</text>
+  <rect x="16" y="40" width="336" height="122" rx="9" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.5"/>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--viz-bad, #a32b23)">✕ CREATE INDEX inside the migration</text>
+  <text x="34" y="84" font-size="10" fill="currentColor">takes ACCESS EXCLUSIVE for the build</text>
+  <text x="34" y="106" font-size="10" fill="currentColor">18 minutes on a 44 GB index</text>
+  <text x="34" y="128" font-size="10" fill="currentColor">every query blocks behind it</text>
+  <text x="34" y="150" font-size="10" fill="currentColor">the deploy looks hung</text>
+  <rect x="368" y="40" width="336" height="122" rx="9" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="386" y="62" font-size="11" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓ CONCURRENTLY, outside the transaction</text>
+  <text x="386" y="84" font-size="10" fill="currentColor">takes SHARE UPDATE EXCLUSIVE only</text>
+  <text x="386" y="106" font-size="10" fill="currentColor">roughly twice as slow to build</text>
+  <text x="386" y="128" font-size="10" fill="currentColor">reads and writes continue</text>
+  <text x="386" y="150" font-size="10" fill="currentColor">must run outside a transaction block</text>
+  <text x="20" y="194" font-size="10.5" fill="var(--muted, #7c6fb0)">The concurrent build can fail and leave an invalid index — check for one afterwards rather than assuming success.</text>
+</svg>
 
 ## Gotchas & failure modes
 

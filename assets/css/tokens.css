@@ -26,6 +26,28 @@
      darker than the old #7c6fb0 fallback so SVG text clears WCAG AA (>=4.5:1). */
   --muted:              #5f5296;
 
+  /* Diagram palette — every inline SVG paints through these four names so a
+     single [data-theme] flip recolours all diagram interiors site-wide. Light
+     values deliberately equal the literal fallbacks baked into older diagrams
+     (var(--surface, #f5f3ff) etc.) so light mode renders unchanged. */
+  --surface:            #f5f3ff;
+  --surface-alt:        #ede8f8;
+  --surface2:           #ede9fe;
+  --accent:             #7c3aed;
+  --border:             #c4b5fd;
+  --viz-ink:            #2a1f3d;
+  --viz-good:           #1f6b3a;
+  --viz-good-soft:      #dff2e4;
+  --viz-warn:           #8a5000;
+  --viz-warn-soft:      #fbeed6;
+  --viz-bad:            #a32b23;
+  --viz-bad-soft:       #fbe4e1;
+  --viz-grid:           #d8cff0;
+
+  /* Code surfaces */
+  --code-bg:            #f3f0fa;
+  --code-badge:         #5c4d72;
+
   /* Header */
   --header-height:      64px;
   --header-bg:          rgba(250, 248, 245, 0.95);
@@ -65,3 +87,59 @@
   --transition: 200ms ease;
 }
 
+
+/* ── Dark theme ────────────────────────────────────────────────────────────
+   The header toggle (and, on a first visit, the OS preference) stamps
+   data-theme on <html>. Everything below re-points the same token names, so
+   page chrome, cards, tables, code blocks AND inline-SVG diagram interiors all
+   flip together. Palette hues stay lavender/indigo, lightened for AA contrast
+   on a dark surface. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Palette — lightened so these read as ink on a dark surface */
+  --color-lavender:     #cbbcf7;
+  --color-lavender-lt:  #2c2450;
+  --color-lavender-md:  #8d78c8;
+  --color-indigo:       #cbbcf7;
+  --color-indigo-dark:  #b6a2f0;
+  --color-indigo-light: #c3aef0;
+  --color-mauve:        #d8b6e8;
+  --color-plum:         #dcbde8;
+  --color-beige:        #211b3d;
+  --color-cream:        #17132a;
+
+  /* Semantic surfaces */
+  --bg-page:            #17132a;
+  --bg-surface:         #1f1a38;
+  --bg-accent:          #272049;
+  --text-primary:       #ece8f8;
+  --text-secondary:     #cac2e4;
+  --text-muted:         #b8aed2;
+  --border-color:       #3b3263;
+  --muted:              #bcb1e2;
+
+  --header-bg:          rgba(23, 19, 42, 0.95);
+
+  /* Diagram palette */
+  --surface:            #241d3f;
+  --surface-alt:        #2e2655;
+  --surface2:           #2e2655;
+  --accent:             #b39ddc;
+  --border:             #4f4482;
+  --viz-ink:            #ece8f8;
+  --viz-good:           #7fd6a0;
+  --viz-good-soft:      #1e3a2b;
+  --viz-warn:           #f0c07a;
+  --viz-warn-soft:      #3b2f18;
+  --viz-bad:            #f2a099;
+  --viz-bad-soft:       #3d2320;
+  --viz-grid:           #453a72;
+
+  --code-bg:            #1b1636;
+  --code-badge:         #b8aed2;
+
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.5);
+  --shadow-md:  0 4px 16px rgba(0,0,0,0.55);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.6);
+}

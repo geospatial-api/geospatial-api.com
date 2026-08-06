@@ -333,6 +333,31 @@ def process_shapefile_task(
 
 ---
 
+The stage timings are what decide the worker timeout, and they make the case for the queue on their own.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Time to ingest a 480 MB shapefile bundle, by stage: unzip + sidecar check 4 s, ogr2ogr → staging 63 s, validity repair 21 s, upsert into features 38 s, GiST index rebuild 27 s" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Time to ingest a 480 MB shapefile bundle, by stage</title>
+  <desc>A horizontal bar chart. unzip + sidecar check is 4 s. ogr2ogr → staging is 63 s. validity repair is 21 s. upsert into features is 38 s. GiST index rebuild is 27 s. Total 2 m 33 s — far past any reasonable request timeout, which is the whole argument for the queue.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Time to ingest a 480 MB shapefile bundle, by stage</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">unzip + sidecar check</text>
+  <rect x="250" y="48" width="21" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="279" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">4 s</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">ogr2ogr → staging</text>
+  <rect x="250" y="82" width="340" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="598" y="95" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">63 s</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">validity repair</text>
+  <rect x="250" y="116" width="113" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="371" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">21 s</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">upsert into features</text>
+  <rect x="250" y="150" width="205" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="463" y="163" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">38 s</text>
+  <text x="20" y="197" font-size="10.5" fill="currentColor">GiST index rebuild</text>
+  <rect x="250" y="184" width="145" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="403" y="197" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">27 s</text>
+  <text x="20" y="234" font-size="10.5" fill="var(--muted, #7c6fb0)">Total 2 m 33 s — far past any reasonable request timeout, which is the whole argument for the queue.</text>
+</svg>
+
 ## Key parameters & options
 
 | Parameter / flag | Purpose | Recommended value |
@@ -347,6 +372,43 @@ def process_shapefile_task(
 | `queue="heavy"` | Routes long-running tasks to a dedicated Celery queue | Prevents large imports from starving fast API-status tasks |
 
 ---
+
+A shapefile is a bundle, and the two files most often missing are the two whose absence is silent.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sidecar files and what breaks without each: Required, Silent?" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Sidecar files and what breaks without each</title>
+  <desc>A comparison table. .shp — geometry: Required yes, Silent? no. nothing loads at all .dbf — attributes: Required yes, Silent? no. ogr2ogr refuses the source .shx — index: Required yes, Silent? partly. some drivers rebuild it, some do not .prj — projection: Required no, Silent? yes. loads as SRID 0 — the dangerous one .cpg — encoding: Required no, Silent? yes. attribute text silently mojibaked The two optional files are the two that fail quietly, which is exactly backwards from what an importer expects.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Sidecar files and what breaks without each</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Required</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Silent?</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">.shp — geometry</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">nothing loads at all</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">.dbf — attributes</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">ogr2ogr refuses the source</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">.shx — index</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">some drivers rebuild it, some do not</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">.prj — projection</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">loads as SRID 0 — the dangerous one</text>
+  <line x1="20" y1="194" x2="700" y2="194" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="216" font-size="10.5" fill="currentColor">.cpg — encoding</text>
+  <text x="294" y="216" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="216" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="216" font-size="9.5" fill="var(--muted, #7c6fb0)">attribute text silently mojibaked</text>
+  <text x="20" y="252" font-size="10.5" fill="var(--muted, #7c6fb0)">The two optional files are the two that fail quietly, which is exactly backwards from what an importer expects.</text>
+</svg>
 
 ## Gotchas & failure modes
 

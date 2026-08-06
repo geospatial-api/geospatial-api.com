@@ -105,9 +105,10 @@ For the broader indexing and query-planning decisions that determine which spati
 
 Before writing code, it helps to understand the two-phase evaluation PostGIS uses for any spatial predicate.
 
-<svg viewBox="0 0 720 300" role="img" aria-label="Two-phase spatial query evaluation: bounding-box index filter followed by exact geometry test" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+<svg viewBox="14 46 692 242" role="img" aria-label="Two-phase spatial query evaluation: bounding-box index filter followed by exact geometry test" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
   <title>Two-phase spatial query evaluation</title>
   <desc>A diagram showing Phase 1 (GiST bounding-box filter using the &amp;&amp; operator) narrowing down candidate rows, followed by Phase 2 (exact ST_Intersects or ST_Within geometry test) returning the final result set.</desc>
+  <rect x="14" y="46" width="692" height="242" rx="10" fill="var(--surface, #f5f3ff)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -271,6 +272,28 @@ def run_spatial_query(
 
 The `&&` pre-filter on line 3 of the query is what ensures the GiST index is actually used — without it, the query planner sometimes performs a sequential scan even when the index exists, particularly on small tables or with unusual statistics.
 
+Choosing between them is easy once you know the single input on which they differ.
+
+<svg viewBox="0 0 720 198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The one case where the two predicates disagree: ST_Intersects — boundary counts versus ST_Within — boundary excluded" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>The one case where the two predicates disagree</title>
+  <desc>Two panels. ST_Intersects — boundary counts: a point exactly on the fence: true two polygons sharing an edge: true use for "does this touch my area?" the safer default for coverage checks ST_Within — boundary excluded: a point exactly on the fence: false a polygon touching from inside: false use for "is this strictly inside?" surprises people at tile seams For interiors the two agree on every input; only boundary cases separate them, which is why a boundary fixture belongs in the test set.</desc>
+  <rect x="0" y="0" width="720" height="198" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">The one case where the two predicates disagree</text>
+  <rect x="16" y="40" width="336" height="122" rx="9" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--viz-good, #1f6b3a)">ST_Intersects — boundary counts</text>
+  <text x="34" y="84" font-size="10" fill="currentColor">a point exactly on the fence: true</text>
+  <text x="34" y="106" font-size="10" fill="currentColor">two polygons sharing an edge: true</text>
+  <text x="34" y="128" font-size="10" fill="currentColor">use for "does this touch my area?"</text>
+  <text x="34" y="150" font-size="10" fill="currentColor">the safer default for coverage checks</text>
+  <rect x="368" y="40" width="336" height="122" rx="9" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.5"/>
+  <text x="386" y="62" font-size="11" font-weight="700" fill="var(--viz-warn, #8a5000)">ST_Within — boundary excluded</text>
+  <text x="386" y="84" font-size="10" fill="currentColor">a point exactly on the fence: false</text>
+  <text x="386" y="106" font-size="10" fill="currentColor">a polygon touching from inside: false</text>
+  <text x="386" y="128" font-size="10" fill="currentColor">use for "is this strictly inside?"</text>
+  <text x="386" y="150" font-size="10" fill="currentColor">surprises people at tile seams</text>
+  <text x="20" y="194" font-size="10.5" fill="var(--muted, #7c6fb0)">For interiors the two agree on every input; only boundary cases separate them, which is why a boundary fixture belongs in the test set.</text>
+</svg>
+
 ## Key Parameters & Options
 
 | Parameter / Concept | Value / Notes |
@@ -282,6 +305,36 @@ The `&&` pre-filter on line 3 of the query is what ensures the GiST index is act
 | `make_valid()` | Shapely 2.x uses GEOS `MakeValid`. Repairs self-intersecting rings and unclosed polygons. The original topology type is preserved where possible. |
 | `ST_GeomFromText(wkt, srid)` | Preferred over `ST_GeomFromGeoJSON` for WKT strings; avoids a JSON-parse step inside the database. |
 | `ST_Transform(geom, target_srid)` | Use when input coordinates are in a projected CRS (e.g., EPSG:27700 British National Grid) and the stored data is in EPSG:4326. |
+
+A single predicate call is really a two-phase execution, and the phases have very different costs.
+
+<svg viewBox="0 0 720 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What ST_Intersects actually executes: index stage then fetch then recheck then return" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>What ST_Intersects actually executes</title>
+  <desc>A left to right pipeline. Stage 1, index stage: &amp;&amp; against the envelope 1 240 candidates. Stage 2, fetch: heap rows for candidates I/O bound. Stage 3, recheck: exact geometry predicate 912 survive. Stage 4, return: only true matches exactly correct. The generous first stage is what makes the exact third stage affordable — and why a small recheck count is a sign of health.</desc>
+  <rect x="0" y="0" width="720" height="210" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">What ST_Intersects actually executes</text>
+  <rect x="18" y="52" width="154" height="86" rx="8" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
+  <text x="95" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">index stage</text>
+  <text x="95" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">&amp;&amp; against the envelope</text>
+  <text x="95" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">1 240 candidates</text>
+  <path d="M175 95 L189 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arwhatstinte)"/>
+  <rect x="194" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="271" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">fetch</text>
+  <text x="271" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">heap rows for candidates</text>
+  <text x="271" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">I/O bound</text>
+  <path d="M351 95 L365 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arwhatstinte)"/>
+  <rect x="370" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="447" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">recheck</text>
+  <text x="447" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">exact geometry predicate</text>
+  <text x="447" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">912 survive</text>
+  <path d="M527 95 L541 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arwhatstinte)"/>
+  <rect x="546" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="623" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">return</text>
+  <text x="623" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">only true matches</text>
+  <text x="623" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">exactly correct</text>
+  <text x="20" y="168" font-size="10.5" fill="var(--muted, #7c6fb0)">The generous first stage is what makes the exact third stage affordable — and why a small recheck count is a sign of health.</text>
+  <defs><marker id="arwhatstinte" markerWidth="8" markerHeight="8" refX="6.5" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker></defs>
+</svg>
 
 ## Gotchas & Failure Modes
 

@@ -75,6 +75,7 @@ The preconditions are: FastAPI ≥ 0.111, Pydantic v2 (`pydantic>=2.0`), and asy
 <svg viewBox="0 0 720 300" role="img" aria-label="Diagram showing four categories of spatial breaking changes: axis order, precision, parameter types, and cursor invalidation" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
   <title>Categories of Breaking Changes in Geospatial APIs</title>
   <desc>Four boxes arranged in a 2×2 grid, each describing a type of breaking change specific to spatial endpoints: axis-order shifts, precision drift, parameter ambiguity, and cursor invalidation.</desc>
+  <rect x="0" y="0" width="720" height="300" rx="10" fill="var(--surface, #f5f3ff)"/>
   <defs>
     <style>
       .sv-box { fill: none; stroke: currentColor; stroke-width: 1.5; rx: 6; }
@@ -277,6 +278,43 @@ The key architectural decision is that `fetch_features_postgis` owns all PostGIS
 
 For context on how `ST_MakeEnvelope` and bounding-box query patterns interact with spatial indexing, see the [Bounding Box Spatial Index Queries](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/) guide. If any endpoint serves paginated feature collections, wire its cursor tokens to [Spatial Pagination & Cursor Strategies](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/) — token format is a version-sensitive contract and must be treated the same way as field names.
 
+Four placements are possible and only one of them keeps tile caching simple.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where the version can live, and what each costs: Cacheable, OGC-friendly, Debuggable" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Where the version can live, and what each costs</title>
+  <desc>A comparison table. URL path /v2/features: Cacheable yes, OGC-friendly yes, Debuggable yes. the default choice Accept header: Cacheable no, OGC-friendly partly, Debuggable no. needs Vary; hard to curl query ?version=2: Cacheable partly, OGC-friendly no, Debuggable yes. pollutes the cache key subdomain v2.api…: Cacheable yes, OGC-friendly partly, Debuggable yes. extra TLS and CORS burden Path versioning wins on every axis that matters for a spatial API, mostly because tiles and features must cache cleanly.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Where the version can live, and what each costs</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Cacheable</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">OGC-friendly</text>
+  <text x="502" y="58" font-size="10" font-weight="700" fill="currentColor">Debuggable</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">URL path /v2/features</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">the default choice</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">Accept header</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="510" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">needs Vary; hard to curl</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">query ?version=2</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="510" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">pollutes the cache key</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">subdomain v2.api…</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="510" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">extra TLS and CORS burden</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">Path versioning wins on every axis that matters for a spatial API, mostly because tiles and features must cache cleanly.</text>
+</svg>
+
 ## Key Parameters & Options
 
 | Parameter / Header | Version | Accepted values | Notes |
@@ -291,6 +329,31 @@ For context on how `ST_MakeEnvelope` and bounding-box query patterns interact wi
 | `Link: rel=successor-version` | v1 | `/v2/features` | Guides clients to the current endpoint |
 
 CDN cache keys must be prefixed with the version string (`v1:features:bbox=…`, `v2:features:bbox=…`). Without this isolation a stale v1 response can be served to a v2 client after a cache miss — coordinate-order differences make this a silent data corruption scenario. See the [Redis Caching for Spatial Queries](https://www.geospatial-api.com/high-performance-caching-query-optimization/redis-caching-for-spatial-queries/) patterns for version-aware key construction.
+
+Migration curves for spatial clients are slower than for ordinary APIs, because a coordinate change usually means recalibrating something downstream.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Client migration after a v2 launch, by week: week 1 8 % on v2, week 4 31 %, week 12 74 %, week 26 93 %, week 52 98 % — the last 2 % never move" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Client migration after a v2 launch, by week</title>
+  <desc>A horizontal bar chart. week 1 is 8 % on v2. week 4 is 31 %. week 12 is 74 %. week 26 is 93 %. week 52 is 98 % — the last 2 % never move. The tail is the whole story: plan the sunset around the stragglers, not around the median client.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Client migration after a v2 launch, by week</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">week 1</text>
+  <rect x="250" y="48" width="27" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="285" y="61" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">8 % on v2</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">week 4</text>
+  <rect x="250" y="82" width="107" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="365" y="95" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">31 %</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">week 12</text>
+  <rect x="250" y="116" width="256" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="514" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">74 %</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">week 26</text>
+  <rect x="250" y="150" width="322" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="580" y="163" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">93 %</text>
+  <text x="20" y="197" font-size="10.5" fill="currentColor">week 52</text>
+  <rect x="250" y="184" width="340" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="598" y="197" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">98 % — the last 2 %</text>
+  <text x="20" y="234" font-size="10.5" fill="var(--muted, #7c6fb0)">The tail is the whole story: plan the sunset around the stragglers, not around the median client.</text>
+</svg>
 
 ## Gotchas & Failure Modes
 

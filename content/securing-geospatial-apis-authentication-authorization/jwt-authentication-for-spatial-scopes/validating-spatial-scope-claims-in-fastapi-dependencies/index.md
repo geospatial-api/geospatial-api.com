@@ -75,6 +75,7 @@ The chain is four dependencies deep. Each layer does one thing and hands a narro
 <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FastAPI dependency chain for spatial scope validation" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
   <title>Spatial scope dependency chain</title>
   <desc>Four stacked FastAPI dependencies flowing left to right. First, the OAuth2 bearer dependency extracts the token. Second, current_claims decodes and caches it on request.state. Third, spatial_scope extracts the geo_scope claim. Fourth, require_geometry_in_scope runs ST_Within and either passes the validated geometry to the route handler or raises 403.</desc>
+  <rect x="0" y="0" width="720" height="300" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- boxes -->
   <rect x="20" y="60" width="150" height="70" rx="8" fill="var(--accent, #7c3aed)" opacity="0.15" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
   <text x="95" y="90" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">oauth2</text>
@@ -228,6 +229,36 @@ The gate uses the same GiST-friendly [bounding-box query mechanics](https://www.
 
 ---
 
+A scope dependency is a sequence of increasingly expensive checks, ordered so the cheapest refusal happens first.
+
+<svg viewBox="0 0 720 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Order of checks in the dependency: signature then claims then coarse scope then fine scope" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Order of checks in the dependency</title>
+  <desc>A left to right pipeline. Stage 1, signature: algorithms pinned reject alg=none. Stage 2, claims: exp · aud · iss cheap, no I/O. Stage 3, coarse scope: bbox vs scope bbox rejects before the query. Stage 4, fine scope: ST_Within in SQL per row, backstopped by RLS. Each step is cheaper than the one after it, so the order is not stylistic — it is what keeps rejection cost near zero.</desc>
+  <rect x="0" y="0" width="720" height="210" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Order of checks in the dependency</text>
+  <rect x="18" y="52" width="154" height="86" rx="8" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
+  <text x="95" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">signature</text>
+  <text x="95" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">algorithms pinned</text>
+  <text x="95" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">reject alg=none</text>
+  <path d="M175 95 L189 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arorderofche)"/>
+  <rect x="194" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="271" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">claims</text>
+  <text x="271" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">exp · aud · iss</text>
+  <text x="271" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">cheap, no I/O</text>
+  <path d="M351 95 L365 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arorderofche)"/>
+  <rect x="370" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="447" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">coarse scope</text>
+  <text x="447" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">bbox vs scope bbox</text>
+  <text x="447" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">rejects before the query</text>
+  <path d="M527 95 L541 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arorderofche)"/>
+  <rect x="546" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="623" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">fine scope</text>
+  <text x="623" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">ST_Within in SQL</text>
+  <text x="623" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">per row, backstopped by RLS</text>
+  <text x="20" y="168" font-size="10.5" fill="var(--muted, #7c6fb0)">Each step is cheaper than the one after it, so the order is not stylistic — it is what keeps rejection cost near zero.</text>
+  <defs><marker id="arorderofche" markerWidth="8" markerHeight="8" refX="6.5" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker></defs>
+</svg>
+
 ## Key parameters & options
 
 | Knob | Effect | Recommended |
@@ -241,6 +272,38 @@ The gate uses the same GiST-friendly [bounding-box query mechanics](https://www.
 
 ---
 
+Four enforcement points, and only the last one survives an application bug.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where the scope check can be enforced: Bypassable, Cheap" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Where the scope check can be enforced</title>
+  <desc>A comparison table. client-side only: Bypassable yes, Cheap yes. not a control at all FastAPI dependency: Bypassable partly, Cheap yes. an application bug bypasses it SQL predicate per query: Bypassable partly, Cheap yes. a forgotten WHERE bypasses it row-level security: Bypassable no, Cheap partly. cannot be bypassed from the app The dependency is for fast, clear rejection; RLS is for the guarantee. Neither replaces the other.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Where the scope check can be enforced</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Bypassable</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Cheap</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">client-side only</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">not a control at all</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">FastAPI dependency</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">an application bug bypasses it</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">SQL predicate per query</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">a forgotten WHERE bypasses it</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">row-level security</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">cannot be bypassed from the app</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">The dependency is for fast, clear rejection; RLS is for the guarantee. Neither replaces the other.</text>
+</svg>
+
 ## Gotchas & failure modes
 
 - **Checking scope *after* the DB query.** The single worst mistake: fetching features and filtering by scope in Python. An out-of-scope request still runs the full query, holds a connection, and may leak result size via timing. The gate must be a dependency that runs before the handler body — as above — so an unauthorised bbox never reaches `spatial_features`.
@@ -250,6 +313,10 @@ The gate uses the same GiST-friendly [bounding-box query mechanics](https://www.
 - **Dependency cache assumptions across background tasks.** `request.state` lives for the request only. If you enqueue a background task that re-checks scope, re-decode there — the cached claims object is not available once the response is sent.
 
 ---
+
+One further habit is worth adopting: log the reason a scope check refused, not merely that it did. "Outside scope" and "scope claim missing" are different bugs on the client side, and distinguishing them in the response turns an integration problem into a five-minute fix.
+
+One further habit is worth adopting: log the reason a scope check refused, not merely that it did. "Outside scope" and "scope claim missing" are different bugs on the client side, and distinguishing them in the response turns an integration problem into a five-minute fix.
 
 ## Verification
 

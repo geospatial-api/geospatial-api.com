@@ -91,6 +91,7 @@ Designing production-grade geospatial APIs requires more than mapping database t
 <svg viewBox="0 0 820 340" role="img" aria-label="Spatial resource modeling layer diagram: client, FastAPI application, and PostGIS database layers with labeled data flow" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:820px;font-family:inherit">
   <title>Spatial Resource Modeling: Three-Layer Architecture</title>
   <desc>Diagram showing the flow from Client through FastAPI Application Layer (Pydantic validation, router, serialization) down to PostGIS Database Layer (geometry type, GIST index, async pool), with labeled arrows for each handoff.</desc>
+  <rect x="0" y="0" width="820" height="340" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- Background panels -->
   <rect x="10" y="10" width="800" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
   <rect x="10" y="100" width="800" height="140" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3"/>
@@ -98,7 +99,7 @@ Designing production-grade geospatial APIs requires more than mapping database t
   <!-- Layer labels -->
   <text x="26" y="46" font-size="13" fill="currentColor" opacity="0.6" font-weight="600">CLIENT</text>
   <text x="26" y="113" font-size="11" fill="currentColor" opacity="0.6" font-weight="600">FASTAPI APPLICATION LAYER</text>
-  <text x="26" y="278" font-size="11" fill="currentColor" opacity="0.6" font-weight="600">POSTGIS DATABASE LAYER</text>
+  <text x="26" y="259" font-size="11" fill="currentColor" opacity="0.6" font-weight="600">POSTGIS DATABASE LAYER</text>
   <!-- Client box -->
   <rect x="330" y="20" width="160" height="38" rx="6" fill="currentColor" opacity="0.08" stroke="currentColor" stroke-width="1.5"/>
   <text x="410" y="44" text-anchor="middle" font-size="13" fill="currentColor">HTTP Request / GeoJSON</text>
@@ -161,6 +162,43 @@ This is the first modeling decision you make and the one that most affects query
 | Type declaration | `Geometry(geometry_type="POLYGON", srid=4326)` | `Geography(geometry_type="POLYGON", srid=4326)` |
 
 When modeling resources that span regional or global extents, default to the spheroidal `geography` type. For localized, high-throughput applications, planar `geometry` with an explicit SRID constraint outperforms at scale.
+
+The column type is the first and strongest validation layer, and the untyped option gives all of it away.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Choosing a geometry column type: Mixed types, Indexable, Validated" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Choosing a geometry column type</title>
+  <desc>A comparison table. geometry: Mixed types yes, Indexable yes, Validated no. accepts anything, including SRID 0 geometry(Point, 4326): Mixed types no, Indexable yes, Validated yes. the default for point layers geometry(MultiPolygon, 4326): Mixed types no, Indexable yes, Validated yes. survives ST_MakeValid geography(Point, 4326): Mixed types no, Indexable yes, Validated yes. metric, fewer functions Typing the column is the cheapest validation available: enforced by the database, applied to every writer.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Choosing a geometry column type</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Mixed types</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Indexable</text>
+  <text x="502" y="58" font-size="10" font-weight="700" fill="currentColor">Validated</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">geometry</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">accepts anything, including</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">geometry(Point, 4326)</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">the default for point layers</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">geometry(MultiPolygon, 4326)</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">survives ST_MakeValid</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">geography(Point, 4326)</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">metric, fewer functions</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">Typing the column is the cheapest validation available: enforced by the database, applied to every writer.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -433,6 +471,50 @@ async def test_parcel_geojson_structure():
     first_coord = body["geometry"]["coordinates"][0][0]
     assert -180 <= first_coord[0] <= 180, "Longitude out of range — likely swapped with latitude"
 ```
+
+Resource modelling is deciding which of these four is canonical — and the answer should always be the leftmost.
+
+<svg viewBox="0 0 720 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One feature resource, four representations: row then model then payload then tile" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>One feature resource, four representations</title>
+  <desc>A left to right pipeline. Stage 1, row: geometry(…, 4326) canonical. Stage 2, model: Pydantic Feature validated. Stage 3, payload: GeoJSON Feature negotiated. Stage 4, tile: MVT layer rendered. Each representation drops something: the tile has no attributes to speak of, the payload has no index, the model has no persistence.</desc>
+  <rect x="0" y="0" width="720" height="210" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">One feature resource, four representations</text>
+  <rect x="18" y="52" width="154" height="86" rx="8" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
+  <text x="95" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">row</text>
+  <text x="95" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">geometry(…, 4326)</text>
+  <text x="95" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">canonical</text>
+  <path d="M175 95 L189 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#aronefeature)"/>
+  <rect x="194" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="271" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">model</text>
+  <text x="271" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">Pydantic Feature</text>
+  <text x="271" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">validated</text>
+  <path d="M351 95 L365 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#aronefeature)"/>
+  <rect x="370" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="447" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">payload</text>
+  <text x="447" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">GeoJSON Feature</text>
+  <text x="447" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">negotiated</text>
+  <path d="M527 95 L541 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#aronefeature)"/>
+  <rect x="546" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="623" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">tile</text>
+  <text x="623" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">MVT layer</text>
+  <text x="623" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">rendered</text>
+  <text x="20" y="168" font-size="10.5" fill="var(--muted, #7c6fb0)">Each representation drops something: the tile has no attributes to speak of, the payload has no index, the model has no persistence.</text>
+  <defs><marker id="aronefeature" markerWidth="8" markerHeight="8" refX="6.5" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker></defs>
+</svg>
+
+## One more modelling decision: where identity lives
+
+A spatial resource usually has two candidate identifiers: the database key and whatever the source system calls the feature — a parcel reference, an asset tag, a national grid identifier. Exposing the database key is simpler and couples clients to an implementation detail that changes on every migration. Exposing the source identifier is more stable and forces the API to handle the case where two sources disagree about the same real-world object.
+
+The workable compromise is to expose both: the database key as the canonical `id` used in URLs, and the source identifier as an indexed property that supports lookup. That keeps URLs stable across a re-import, which is the failure this decision actually protects against.
+
+## One more modelling decision: where identity lives
+
+A spatial resource usually has two candidate identifiers: the database key and whatever the source system calls the feature — a parcel reference, an asset tag, a national grid identifier. Exposing the database key is simpler and couples clients to an implementation detail that changes on every migration. Exposing the source identifier is more stable and forces the API to handle the case where two sources disagree about the same real-world object.
+
+The workable compromise is to expose both: the database key as the canonical `id` used in URLs, and the source identifier as an indexed property that supports lookup. That keeps URLs stable across a re-import, which is the failure this decision actually protects against.
+
+Whichever identifier scheme is chosen, document it as part of the resource contract rather than leaving it implied by the URL structure. Clients build their own indexes against whatever the API returns, and discovering after a year that the stable-looking identifier was never guaranteed to be stable is an expensive conversation.
 
 ## Failure Modes & Edge Cases
 

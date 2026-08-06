@@ -2,14 +2,14 @@
 
 /* Override Prism theme to match lavender palette — only block code */
 pre[class*="language-"] {
-  background: #f3f0fa !important;
+  background: var(--code-bg) !important;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
 }
 
 /* Plain pre blocks (no language specifier) get the same scroll + visual treatment */
 .content-body pre:not([class*="language-"]) {
-  background: #f3f0fa;
+  background: var(--code-bg);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   overflow-x: auto;
@@ -106,7 +106,7 @@ pre[class*="language-"] {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #5c4d72;
+  color: var(--code-badge);
   font-family: var(--font-mono);
 }
 

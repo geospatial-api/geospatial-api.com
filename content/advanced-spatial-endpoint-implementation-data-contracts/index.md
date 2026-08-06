@@ -91,7 +91,7 @@ The diagram below shows how the four sub-systems compose into a layered request 
   <title>Spatial API Architecture: Four Sub-Systems</title>
   <desc>A layered architecture diagram with four horizontal bands: (1) Client / API Gateway at the top, (2) Contract &amp; Validation Layer with Pydantic v2 geometry validators, (3) Query Engine with GiST index selection, KNN routing, and ST_DWithin, and (4) PostGIS + Celery Workers at the bottom. Arrows show the synchronous request path on the left and the async bulk-upload path on the right.</desc>
   <!-- Background bands -->
-  <rect x="0" y="0" width="760" height="420" rx="10" fill="none"/>
+  <rect x="0" y="0" width="760" height="420" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- Band 1: Client layer -->
   <rect x="10" y="10" width="740" height="64" rx="8" fill="#ede9f6" stroke="#7c6fcd" stroke-width="1.5"/>
   <text x="380" y="32" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#3b2f70">Client / API Gateway</text>
@@ -328,6 +328,36 @@ Any endpoint consumed by external GIS clients must follow OGC Simple Features ru
 
 ---
 
+The four stages below run on every spatial write, and each exists to stop the next one doing avoidable work.
+
+<svg viewBox="0 0 720 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="From request to persisted geometry: Validate then Normalise then Predicate then Serialise" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>From request to persisted geometry</title>
+  <desc>A left to right pipeline. Stage 1, Validate: Pydantic v2 shape + range. Stage 2, Normalise: SetSRID + Transform one storage system. Stage 3, Predicate: &amp;&amp; then ST_* GiST index scan. Stage 4, Serialise: GeoJSON / MVT explicit precision. Each stage discards work the next would otherwise repeat — which is why order matters more than tuning.</desc>
+  <rect x="0" y="0" width="720" height="210" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">From request to persisted geometry</text>
+  <rect x="18" y="52" width="154" height="86" rx="8" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
+  <text x="95" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">Validate</text>
+  <text x="95" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">Pydantic v2</text>
+  <text x="95" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">shape + range</text>
+  <path d="M175 95 L189 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arfromreques)"/>
+  <rect x="194" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="271" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">Normalise</text>
+  <text x="271" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">SetSRID + Transform</text>
+  <text x="271" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">one storage system</text>
+  <path d="M351 95 L365 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arfromreques)"/>
+  <rect x="370" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="447" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">Predicate</text>
+  <text x="447" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">&amp;&amp; then ST_*</text>
+  <text x="447" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">GiST index scan</text>
+  <path d="M527 95 L541 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arfromreques)"/>
+  <rect x="546" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="623" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">Serialise</text>
+  <text x="623" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">GeoJSON / MVT</text>
+  <text x="623" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">explicit precision</text>
+  <text x="20" y="168" font-size="10.5" fill="var(--muted, #7c6fb0)">Each stage discards work the next would otherwise repeat — which is why order matters more than tuning.</text>
+  <defs><marker id="arfromreques" markerWidth="8" markerHeight="8" refX="6.5" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker></defs>
+</svg>
+
 ## Performance & Scalability
 
 ### Index-Aware Query Patterns
@@ -461,6 +491,62 @@ Track these metrics to detect spatial query degradation before it impacts users:
 Run `VACUUM ANALYZE spatial_features` after bulk imports and during low-traffic windows. GiST indexes degrade under high-write workloads due to page splits — schedule monthly `REINDEX CONCURRENTLY` to rebuild without table locks.
 
 ---
+
+Measuring a healthy endpoint is what tells you which layer to work on next.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where request time goes on a typical bbox endpoint: PostGIS index scan 7 ms, row fetch + recheck 4 ms, GeoJSON serialisation 11 ms, JSON transport + parse 26 ms client-side" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Where request time goes on a typical bbox endpoint</title>
+  <desc>A horizontal bar chart. PostGIS index scan is 7 ms. row fetch + recheck is 4 ms. GeoJSON serialisation is 11 ms. JSON transport + parse is 26 ms client-side. Serialisation and transport dominate once the index is right — which is why format choice outranks further query tuning.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Where request time goes on a typical bbox endpoint</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">PostGIS index scan</text>
+  <rect x="250" y="48" width="91" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="349" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">7 ms</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">row fetch + recheck</text>
+  <rect x="250" y="82" width="52" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="310" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">4 ms</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">GeoJSON serialisation</text>
+  <rect x="250" y="116" width="143" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="401" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">11 ms</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">JSON transport + parse</text>
+  <rect x="250" y="150" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="163" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">26 ms client-side</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">Serialisation and transport dominate once the index is right — which is why format choice outranks further query tuning.</text>
+</svg>
+
+## Choosing the contract before the implementation
+
+The endpoints in this section differ in mechanism but share one design question: what exactly does the API promise about the geometry it accepts and returns? Answering that question first removes most of the disagreements that otherwise surface during code review.
+
+Three commitments cover almost everything. The first is the **coordinate system contract** — one storage system, declared on the column, with input transformed on write and output projected on read. Once that is written down, arguments about where `ST_Transform` belongs stop being matters of taste, because the contract already says the predicate compares stored coordinates and nothing else. The reasoning behind that choice is set out in [Coordinate Reference Systems & SRID Handling](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/coordinate-reference-systems-and-srid-handling/).
+
+The second is the **validity contract**. An API that accepts geometry has to decide whether it repairs, rejects or stores whatever arrives. Rejecting is right for interactive writes and wrong for bulk imports, where refusing one row discards a whole file; the split is examined in [Rejecting Invalid Polygons with ST_IsValid](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/rejecting-invalid-polygons-with-st-isvalid/). What matters is that the decision is made once, at the level of the API rather than per endpoint, because a service that repairs on one route and rejects on another produces datasets nobody can reason about.
+
+The third is the **size contract**. Every spatial endpoint has an input whose magnitude the client controls: a bounding box, a radius, a zoom level, an export window. Left unbounded, each of those is a way for one request to consume a machine. Every route in this section therefore carries an explicit ceiling — a maximum envelope area, a maximum radius, a maximum export window — and returns 422 with the limit named rather than attempting the work. That ceiling is also what makes capacity planning possible, since the worst case becomes a number rather than an unknown.
+
+These three commitments interact. A generous size contract makes the validity contract more expensive, because validating a 200 000-vertex polygon costs a hundred milliseconds. A strict coordinate contract makes the size contract easier to enforce, because envelope area is only meaningful once every envelope is in the same system. Writing them down together, before the first route is implemented, is what keeps a spatial API coherent as it grows past a handful of endpoints.
+
+## Where the data contract is actually enforced
+
+It is worth being explicit about which layer holds each promise, because a contract that lives only in documentation is a convention rather than a guarantee. The column type enforces the coordinate system. A `CHECK` constraint enforces validity. The application enforces size, since the database has no way to know that a continent-sized envelope was unintended. And the OpenAPI schema publishes all three, which is what allows a generated client to fail at compile time rather than at runtime — the pipeline described in [OpenAPI Schema Generation for Spatial Types](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/).
+
+## Choosing the contract before the implementation
+
+The endpoints in this section differ in mechanism but share one design question: what exactly does the API promise about the geometry it accepts and returns? Answering that question first removes most of the disagreements that otherwise surface during code review.
+
+Three commitments cover almost everything. The first is the **coordinate system contract** — one storage system, declared on the column, with input transformed on write and output projected on read. Once that is written down, arguments about where `ST_Transform` belongs stop being matters of taste, because the contract already says the predicate compares stored coordinates and nothing else. The reasoning behind that choice is set out in [Coordinate Reference Systems & SRID Handling](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/coordinate-reference-systems-and-srid-handling/).
+
+The second is the **validity contract**. An API that accepts geometry has to decide whether it repairs, rejects or stores whatever arrives. Rejecting is right for interactive writes and wrong for bulk imports, where refusing one row discards a whole file; the split is examined in [Rejecting Invalid Polygons with ST_IsValid](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/rejecting-invalid-polygons-with-st-isvalid/). What matters is that the decision is made once, at the level of the API rather than per endpoint, because a service that repairs on one route and rejects on another produces datasets nobody can reason about.
+
+The third is the **size contract**. Every spatial endpoint has an input whose magnitude the client controls: a bounding box, a radius, a zoom level, an export window. Left unbounded, each of those is a way for one request to consume a machine. Every route in this section therefore carries an explicit ceiling — a maximum envelope area, a maximum radius, a maximum export window — and returns 422 with the limit named rather than attempting the work. That ceiling is also what makes capacity planning possible, since the worst case becomes a number rather than an unknown.
+
+These three commitments interact. A generous size contract makes the validity contract more expensive, because validating a 200 000-vertex polygon costs a hundred milliseconds. A strict coordinate contract makes the size contract easier to enforce, because envelope area is only meaningful once every envelope is in the same system. Writing them down together, before the first route is implemented, is what keeps a spatial API coherent as it grows past a handful of endpoints.
+
+## Where the data contract is actually enforced
+
+It is worth being explicit about which layer holds each promise, because a contract that lives only in documentation is a convention rather than a guarantee. The column type enforces the coordinate system. A `CHECK` constraint enforces validity. The application enforces size, since the database has no way to know that a continent-sized envelope was unintended. And the OpenAPI schema publishes all three, which is what allows a generated client to fail at compile time rather than at runtime — the pipeline described in [OpenAPI Schema Generation for Spatial Types](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/openapi-schema-generation-for-spatial-types/).
+
+None of this removes the need for judgement on individual endpoints, but it changes what the judgement is about. With the three contracts written down, a review question stops being "is this the right way to do it?" and becomes the far easier "does this endpoint honour the contract we already agreed?" — a question a reviewer can answer without re-deriving the whole design from scratch each time.
 
 ## Failure Modes & Gotchas
 

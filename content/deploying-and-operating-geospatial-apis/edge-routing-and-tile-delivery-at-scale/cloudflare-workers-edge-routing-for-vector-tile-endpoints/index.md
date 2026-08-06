@@ -78,7 +78,7 @@ The Worker below is JavaScript because it runs on Cloudflare's V8 edge runtime, 
 <svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cloudflare Worker tile routing flow: client to Worker, Worker validates coordinates, checks the Cache API, on a hit returns cached bytes, on a miss fetches the FastAPI origin and stores the tile with waitUntil" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;font-family:inherit;">
   <title>Cloudflare Worker vector tile routing</title>
   <desc>A map client requests a tile from the Worker. The Worker validates z, x and y coordinate bounds, returning 400 if invalid. It builds a normalised cache key and probes the Cache API. On a hit it returns the cached tile. On a miss it fetches from the FastAPI origin, attaches Cache-Control, stores the response asynchronously with waitUntil, and returns it with CORS headers.</desc>
-  <rect x="0" y="0" width="760" height="300" rx="12" fill="none"/>
+  <rect x="0" y="0" width="760" height="300" rx="12" fill="var(--surface, #f5f3ff)"/>
   <!-- Client -->
   <rect x="20" y="120" width="110" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
   <text x="75" y="146" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Map Client</text>
@@ -243,6 +243,36 @@ function applyCors(response, request) {
 
 ---
 
+The value of an edge Worker is how many requests it can finish without asking the origin anything.
+
+<svg viewBox="0 0 720 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What the Worker decides before the origin is involved: parse then authorise then cache then fetch" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>What the Worker decides before the origin is involved</title>
+  <desc>A left to right pipeline. Stage 1, parse: z/x/y from the path reject out-of-range. Stage 2, authorise: token or signed URL no origin round trip. Stage 3, cache: caches.default lookup hit → return. Stage 4, fetch: origin, once store then return. Three of the four steps can answer the request entirely at the edge; only the last one costs origin capacity.</desc>
+  <rect x="0" y="0" width="720" height="210" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">What the Worker decides before the origin is involved</text>
+  <rect x="18" y="52" width="154" height="86" rx="8" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
+  <text x="95" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">parse</text>
+  <text x="95" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">z/x/y from the path</text>
+  <text x="95" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">reject out-of-range</text>
+  <path d="M175 95 L189 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arwhatthewor)"/>
+  <rect x="194" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="271" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">authorise</text>
+  <text x="271" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">token or signed URL</text>
+  <text x="271" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">no origin round trip</text>
+  <path d="M351 95 L365 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arwhatthewor)"/>
+  <rect x="370" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="447" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">cache</text>
+  <text x="447" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">caches.default lookup</text>
+  <text x="447" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">hit → return</text>
+  <path d="M527 95 L541 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arwhatthewor)"/>
+  <rect x="546" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="623" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">fetch</text>
+  <text x="623" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">origin, once</text>
+  <text x="623" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">store then return</text>
+  <text x="20" y="168" font-size="10.5" fill="var(--muted, #7c6fb0)">Three of the four steps can answer the request entirely at the edge; only the last one costs origin capacity.</text>
+  <defs><marker id="arwhatthewor" markerWidth="8" markerHeight="8" refX="6.5" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker></defs>
+</svg>
+
 ## Key parameters & options
 
 | Parameter | Purpose | Recommended value |
@@ -259,6 +289,28 @@ function applyCors(response, request) {
 The **Cache API is per-colo**: a tile cached in Frankfurt is not visible in Singapore, so the first request in each region is a miss. This is expected and fine for tiles — each PoP warms independently and the origin sees at most one miss per region per version. If you need cross-colo coordination (for example, a globally consistent data version), read it from Workers KV, which replicates to every PoP within seconds.
 
 ---
+
+Distance to the origin only matters on a miss, which is why miss rate and geography have to be read together.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Latency by point of presence, 95th percentile: same-region edge HIT 11 ms, cross-region edge HIT 24 ms, edge MISS to same-region origin 68 ms, edge MISS to distant origin 240 ms" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Latency by point of presence, 95th percentile</title>
+  <desc>A horizontal bar chart. same-region edge HIT is 11 ms. cross-region edge HIT is 24 ms. edge MISS to same-region origin is 68 ms. edge MISS to distant origin is 240 ms. The last row is the case a cache exists to prevent — and it is also the one that dominates a cold cache after a purge.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Latency by point of presence, 95th percentile</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">same-region edge HIT</text>
+  <rect x="250" y="48" width="15" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="273" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">11 ms</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">cross-region edge HIT</text>
+  <rect x="250" y="82" width="34" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="292" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">24 ms</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">edge MISS to same-region origin</text>
+  <rect x="250" y="116" width="96" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="354" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">68 ms</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">edge MISS to distant origin</text>
+  <rect x="250" y="150" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="163" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">240 ms</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">The last row is the case a cache exists to prevent — and it is also the one that dominates a cold cache after a purge.</text>
+</svg>
 
 ## Gotchas & failure modes
 

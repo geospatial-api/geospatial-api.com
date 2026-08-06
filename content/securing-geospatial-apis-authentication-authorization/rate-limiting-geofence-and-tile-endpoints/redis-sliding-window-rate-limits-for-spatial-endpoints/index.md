@@ -76,7 +76,7 @@ The single hard requirement is **atomicity**. Trim, count, and conditionally add
 <svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sliding window over request timestamps in a Redis sorted set" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;font-family:inherit;">
   <title>Sliding window over a Redis sorted set of request timestamps</title>
   <desc>A timeline of request timestamps stored as sorted-set members. The window of fixed width slides to now. Timestamps older than now-minus-window are trimmed by ZREMRANGEBYSCORE. ZCARD counts survivors inside the window. If the count is below the limit the new request is admitted and ZADDed; otherwise it is rejected with a 429 and Retry-After equal to when the oldest in-window entry expires.</desc>
-  <rect x="0" y="0" width="760" height="300" rx="12" fill="none"/>
+  <rect x="0" y="0" width="760" height="300" rx="12" fill="var(--surface, #f5f3ff)"/>
   <!-- timeline axis -->
   <line x1="40" y1="150" x2="720" y2="150" stroke="currentColor" stroke-width="1.5"/>
   <text x="40" y="176" font-size="10" fill="currentColor" opacity="0.6">older</text>
@@ -235,6 +235,28 @@ async def enforce_geofence_limit(
 
 ---
 
+Sliding windows can be exact or cheap, and for rate limiting the cheap version is almost always correct enough.
+
+<svg viewBox="0 0 720 198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two window implementations in Redis: sorted-set log versus two-counter approximation" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Two window implementations in Redis</title>
+  <desc>Two panels. sorted-set log: ZADD per request, ZREMRANGEBYSCORE to trim exact to the millisecond memory grows with the limit four commands per check two-counter approximation: INCR on the current and previous window weighted estimate, ±2 % error constant memory per key two commands per check The approximation is wrong by a couple of percent and costs a fraction as much — which is the right trade for a limiter.</desc>
+  <rect x="0" y="0" width="720" height="198" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Two window implementations in Redis</text>
+  <rect x="16" y="40" width="336" height="122" rx="9" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.5"/>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--viz-warn, #8a5000)">sorted-set log</text>
+  <text x="34" y="84" font-size="10" fill="currentColor">ZADD per request, ZREMRANGEBYSCORE to trim</text>
+  <text x="34" y="106" font-size="10" fill="currentColor">exact to the millisecond</text>
+  <text x="34" y="128" font-size="10" fill="currentColor">memory grows with the limit</text>
+  <text x="34" y="150" font-size="10" fill="currentColor">four commands per check</text>
+  <rect x="368" y="40" width="336" height="122" rx="9" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="386" y="62" font-size="11" font-weight="700" fill="var(--viz-good, #1f6b3a)">two-counter approximation</text>
+  <text x="386" y="84" font-size="10" fill="currentColor">INCR on the current and previous window</text>
+  <text x="386" y="106" font-size="10" fill="currentColor">weighted estimate, ±2 % error</text>
+  <text x="386" y="128" font-size="10" fill="currentColor">constant memory per key</text>
+  <text x="386" y="150" font-size="10" fill="currentColor">two commands per check</text>
+  <text x="20" y="194" font-size="10.5" fill="var(--muted, #7c6fb0)">The approximation is wrong by a couple of percent and costs a fraction as much — which is the right trade for a limiter.</text>
+</svg>
+
 ## Key parameters & options
 
 | Parameter | Meaning | Typical value | Notes |
@@ -247,6 +269,28 @@ async def enforce_geofence_limit(
 | Score | Sorted-set score for each member | `now_ms` | Millisecond time; drives both trimming and Retry-After |
 
 ---
+
+Command volume matters, but atomicity is the reason to reach for a script.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Redis commands per second at 12 000 requests/min: sorted-set log 800 cmd/s, two-counter 400, two-counter with pipelining 200, Lua script, one round trip 200 — and atomic" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Redis commands per second at 12 000 requests/min</title>
+  <desc>A horizontal bar chart. sorted-set log is 800 cmd/s. two-counter is 400. two-counter with pipelining is 200. Lua script, one round trip is 200 — and atomic. The Lua form matters less for throughput than for atomicity: check and increment cannot interleave between two clients.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Redis commands per second at 12 000 requests/min</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">sorted-set log</text>
+  <rect x="250" y="48" width="340" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="598" y="61" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">800 cmd/s</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">two-counter</text>
+  <rect x="250" y="82" width="170" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="428" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">400</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">two-counter with pipelining</text>
+  <rect x="250" y="116" width="85" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="343" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">200</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">Lua script, one round trip</text>
+  <rect x="250" y="150" width="85" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="343" y="163" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">200 — and atomic</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">The Lua form matters less for throughput than for atomicity: check and increment cannot interleave between two clients.</text>
+</svg>
 
 ## Gotchas & failure modes
 

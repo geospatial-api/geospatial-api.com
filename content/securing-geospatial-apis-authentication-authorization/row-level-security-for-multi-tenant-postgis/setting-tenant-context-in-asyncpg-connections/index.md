@@ -193,6 +193,38 @@ With the `ContextVar` set from a middleware that decodes the JWT, every transact
 
 ---
 
+The difference between two SQL keywords decides whether tenant identity leaks between requests.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SET versus SET LOCAL under a pooler: Survives commit, Leaks" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>SET versus SET LOCAL under a pooler</title>
+  <desc>A comparison table. SET app.tenant_id: Survives commit yes, Leaks yes. stays on the backend after release SET LOCAL app.tenant_id: Survives commit no, Leaks no. discarded at transaction end set_config(…, true): Survives commit no, Leaks no. the function form of SET LOCAL connection init hook: Survives commit yes, Leaks yes. wrong for per-request identity Under transaction pooling the first and last rows put one tenant’s identity on a backend the next tenant may receive.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">SET versus SET LOCAL under a pooler</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Survives commit</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Leaks</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">SET app.tenant_id</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">stays on the backend after release</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">SET LOCAL app.tenant_id</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">discarded at transaction end</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">set_config(…, true)</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">the function form of SET LOCAL</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">connection init hook</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">wrong for per-request identity</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">Under transaction pooling the first and last rows put one tenant’s identity on a backend the next tenant may receive.</text>
+</svg>
+
 ## Key parameters & options
 
 | Choice | Correct value | Why |
@@ -207,6 +239,34 @@ With the `ContextVar` set from a middleware that decodes the JWT, every transact
 
 ---
 
+Correct tenant context has a lifetime, and it is shorter than the connection.
+
+<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One request’s tenant context, correctly scoped: acquire then BEGIN then SET LOCAL then query then COMMIT then release" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>One request’s tenant context, correctly scoped</title>
+  <desc>A horizontal timeline. acquire: from the pool. BEGIN: transaction opens. SET LOCAL: identity applied. query: RLS policy reads it. COMMIT: setting discarded. release: backend is clean. The setting exists for exactly the span in which it is needed, which is what makes the connection safe to hand to the next request.</desc>
+  <rect x="0" y="0" width="720" height="220" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">One request’s tenant context, correctly scoped</text>
+  <rect x="20" y="92" width="119" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="79" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">acquire</text>
+  <text x="79" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">from the pool</text>
+  <rect x="143" y="92" width="57" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.4"/>
+  <text x="171" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">BEGIN</text>
+  <text x="171" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">transaction opens</text>
+  <rect x="204" y="92" width="57" height="34" rx="5" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.4"/>
+  <text x="232" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">SET LOCAL</text>
+  <text x="232" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">identity applied</text>
+  <rect x="265" y="92" width="243" height="34" rx="5" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.4"/>
+  <text x="386" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">query</text>
+  <text x="386" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">RLS policy reads it</text>
+  <rect x="512" y="92" width="57" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.4"/>
+  <text x="540" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">COMMIT</text>
+  <text x="540" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">setting discarded</text>
+  <rect x="573" y="92" width="119" height="34" rx="5" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.4"/>
+  <text x="632" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">release</text>
+  <text x="632" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">backend is clean</text>
+  <text x="20" y="184" font-size="10.5" fill="var(--muted, #7c6fb0)">The setting exists for exactly the span in which it is needed, which is what makes the connection safe to hand to the next request.</text>
+</svg>
+
 ## Gotchas & failure modes
 
 - **Session `SET` leaks across tenants.** A bare `SET app.tenant_id = ...` (or `set_config(..., false)`) runs outside transaction scope and stays on the pooled backend. The next client inherits it and reads foreign rows. Symptom: intermittent, load-dependent cross-tenant results that vanish when you switch PgBouncer to session mode. Fix: always `SET LOCAL`.
@@ -220,6 +280,10 @@ With the `ContextVar` set from a middleware that decodes the JWT, every transact
 - **asyncpg `prepared statement "__asyncpg_..." does not exist` behind PgBouncer.** Unrelated to tenancy but co-occurs: transaction pooling breaks asyncpg's statement cache. Set `statement_cache_size=0` in `connect_args`, as detailed in [connection pooling & PgBouncer setup](https://www.geospatial-api.com/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/).
 
 ---
+
+Because the failure mode here is silent by nature, the connection-level test matters more than the unit test. Assert that a connection returned to the pool carries no tenant setting, using the same pooling configuration production uses — a test against a direct connection will pass regardless of whether the bug exists.
+
+Because the failure mode here is silent by nature, the connection-level test matters more than the unit test. Assert that a connection returned to the pool carries no tenant setting, using the same pooling configuration production uses — a test against a direct connection will pass regardless of whether the bug exists.
 
 ## Verification
 

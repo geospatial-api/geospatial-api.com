@@ -105,7 +105,7 @@ The diagram below shows how a single paginated request moves through the stack, 
   <title>Cursor-based pagination data flow in FastAPI + PostGIS</title>
   <desc>Sequence diagram showing: client sends GET /locations?bbox=…&amp;cursor=BASE64, FastAPI decodes cursor to uuid, PostGIS GiST index filters by bounding box, B-tree index applies WHERE id &gt; cursor_id ORDER BY id LIMIT n, rows returned, next cursor encoded and sent in JSON response.</desc>
   <!-- background -->
-  <rect width="680" height="320" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.08" stroke-width="1"/>
+  <rect y="0" x="0" width="680" height="320" rx="8" fill="var(--surface, #f5f3ff)" stroke="currentColor" stroke-opacity="0.08" stroke-width="1"/>
   <!-- lane headers -->
   <rect x="10" y="10" width="140" height="36" rx="6" fill="currentColor" fill-opacity="0.08"/>
   <text x="80" y="33" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Client</text>
@@ -127,7 +127,7 @@ The diagram below shows how a single paginated request moves through the stack, 
   <text x="250" y="109" text-anchor="middle" font-size="11" fill="currentColor">decode cursor → uuid</text>
   <!-- step 3: spatial pre-filter -->
   <line x1="328" y1="104" x2="418" y2="104" stroke="currentColor" stroke-opacity="0.7" stroke-width="1.5" marker-end="url(#arr)"/>
-  <text x="373" y="98" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity="0.8">geom &amp;&amp; bbox</text>
+  <text x="373" y="84" text-anchor="middle" font-size="10" fill="currentColor" fill-opacity="0.8">geom &amp;&amp; bbox</text>
   <rect x="352" y="114" width="156" height="28" rx="5" fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.2" stroke-width="1"/>
   <text x="430" y="133" text-anchor="middle" font-size="11" fill="currentColor">GiST bbox pre-filter</text>
   <!-- step 4: keyset filter -->
@@ -308,6 +308,28 @@ async def list_locations(
     return PagedLocations(items=items, next_cursor=next_cursor)
 ```
 
+The client cannot tell these apart — but the database certainly can.
+
+<svg viewBox="0 0 720 198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two cursors over the same result set: ✕ cursor encodes an offset versus ✓ cursor encodes the last key" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Two cursors over the same result set</title>
+  <desc>Two panels. ✕ cursor encodes an offset: page 7 means "skip 1 200 rows" cost grows with depth inserts shift every later page no way to detect drift ✓ cursor encodes the last key: page 7 means "id &gt; 4471" cost is flat at any depth inserts appear once, in order drift is measurable Both are opaque strings to the client; only one of them is cheap to resume from.</desc>
+  <rect x="0" y="0" width="720" height="198" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Two cursors over the same result set</text>
+  <rect x="16" y="40" width="336" height="122" rx="9" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.5"/>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--viz-bad, #a32b23)">✕ cursor encodes an offset</text>
+  <text x="34" y="84" font-size="10" fill="currentColor">page 7 means "skip 1 200 rows"</text>
+  <text x="34" y="106" font-size="10" fill="currentColor">cost grows with depth</text>
+  <text x="34" y="128" font-size="10" fill="currentColor">inserts shift every later page</text>
+  <text x="34" y="150" font-size="10" fill="currentColor">no way to detect drift</text>
+  <rect x="368" y="40" width="336" height="122" rx="9" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="386" y="62" font-size="11" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓ cursor encodes the last key</text>
+  <text x="386" y="84" font-size="10" fill="currentColor">page 7 means "id &gt; 4471"</text>
+  <text x="386" y="106" font-size="10" fill="currentColor">cost is flat at any depth</text>
+  <text x="386" y="128" font-size="10" fill="currentColor">inserts appear once, in order</text>
+  <text x="386" y="150" font-size="10" fill="currentColor">drift is measurable</text>
+  <text x="20" y="194" font-size="10.5" fill="var(--muted, #7c6fb0)">Both are opaque strings to the client; only one of them is cheap to resume from.</text>
+</svg>
+
 ## Key Parameters & Options
 
 | Parameter | Type | Default | Notes |
@@ -318,6 +340,28 @@ async def list_locations(
 | `ORDER BY` | SQL | `id ASC` | Must be deterministic. Replace `id` with a composite key if you sort by distance — always append `id` as a tiebreaker. |
 | `ST_MakeEnvelope` | SQL | — | Fourth argument must match the geometry column's SRID (4326 here). Mismatches produce silent wrong results, not errors. |
 | `pool_size` | engine | 10 | Size the connection pool relative to your concurrent request volume; spatial queries hold connections longer than simple CRUD. |
+
+Every cursor design implies an index; the fourth row implies one that cannot exist.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Index support required for a stable keyset walk: bbox filter only GiST on geom, bbox + id cursor GiST + btree(id), bbox + created_at cursor GiST + btree(created_at, id), bbox + distance order no stable index — unstable ordering" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Index support required for a stable keyset walk</title>
+  <desc>A horizontal bar chart. bbox filter only is GiST on geom. bbox + id cursor is GiST + btree(id). bbox + created_at cursor is GiST + btree(created_at, id). bbox + distance order is no stable index — unstable ordering. Each extra sort column needs its own index term, and the last row simply cannot be made stable.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Index support required for a stable keyset walk</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">bbox filter only</text>
+  <rect x="250" y="48" width="85" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="343" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">GiST on geom</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">bbox + id cursor</text>
+  <rect x="250" y="82" width="170" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="428" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">GiST + btree(id)</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">bbox + created_at cursor</text>
+  <rect x="250" y="116" width="255" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="513" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">GiST + btree(created_at, id)</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">bbox + distance order</text>
+  <rect x="250" y="150" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="163" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">no stable index</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">Each extra sort column needs its own index term, and the last row simply cannot be made stable.</text>
+</svg>
 
 ## Gotchas & Failure Modes
 

@@ -1,0 +1,6 @@
+.env
+node_modules/
+_site/
+_plan/
+CLAUDE.md
+.wrangler/

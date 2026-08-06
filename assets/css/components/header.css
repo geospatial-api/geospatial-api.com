@@ -87,7 +87,7 @@
 }
 .nav-toggle svg { width: 24px; height: 24px; }
 
-@media (max-width: 768px) {
+@media (max-width: 1199px) {
   .nav-toggle { display: flex; align-items: center; }
   .site-nav {
     display: none;

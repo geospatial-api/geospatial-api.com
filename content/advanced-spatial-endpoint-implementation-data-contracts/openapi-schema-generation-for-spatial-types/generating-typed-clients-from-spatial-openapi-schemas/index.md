@@ -78,6 +78,7 @@ The two generators covered here occupy different niches. `openapi-python-client`
 <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spatial openapi.json feeding two generators into Python and TypeScript clients" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;">
   <title>One schema, two typed clients</title>
   <desc>A single openapi.json with a geometry oneOf and discriminator feeds two generators: openapi-python-client producing attrs/Pydantic models and a typed Python client, and openapi-generator-cli producing a TypeScript tagged union and a fetch client. Both narrow geometry on the type field.</desc>
+  <rect x="0" y="0" width="760" height="280" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- source -->
   <rect x="280" y="24" width="200" height="60" rx="8" fill="var(--surface, #f5f3ff)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
   <text x="380" y="48" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">openapi.json</text>
@@ -194,6 +195,28 @@ function toLngLat(geom: Geometry): [number, number] {
 
 ---
 
+Class-count in the generated client is a direct readout of how much the schema repeats itself.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Generated client size for the same spatial API: inline schemas 62 model classes, shared geometry component 18, + shared error component 14, + pagination envelope shared 11 — one per real resource" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Generated client size for the same spatial API</title>
+  <desc>A horizontal bar chart. inline schemas is 62 model classes. shared geometry component is 18. + shared error component is 14. + pagination envelope shared is 11 — one per real resource. Each shared component removes a family of near-duplicate classes; the target is one class per resource, not one per endpoint.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Generated client size for the same spatial API</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">inline schemas</text>
+  <rect x="250" y="48" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="61" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">62 model classes</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">shared geometry component</text>
+  <rect x="250" y="82" width="98" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="356" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">18</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">+ shared error component</text>
+  <rect x="250" y="116" width="76" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="334" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">14</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">+ pagination envelope shared</text>
+  <rect x="250" y="150" width="60" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="318" y="163" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">11 — one per real resource</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">Each shared component removes a family of near-duplicate classes; the target is one class per resource, not one per endpoint.</text>
+</svg>
+
 ## Key parameters & options
 
 | Generator | Flag | Effect |
@@ -222,6 +245,31 @@ use_path_prefixes_for_title_model_names: false
 Regeneration is meant to be cheap and frequent, so keep both the export command and the generate command in a single `make client` target and run it in CI on every schema change.
 
 ---
+
+Generation is easy; keeping the artefact honest is the part that needs a pipeline step.
+
+<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Keeping the generated client in step: model change then schema export then diff gate then regenerate then publish" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Keeping the generated client in step</title>
+  <desc>A horizontal timeline. model change: a field is added. schema export: CI dumps openapi.json. diff gate: fails if the committed schema is stale. regenerate: client rebuilt from the new schema. publish: versioned package. The diff gate is the load-bearing step: without it the committed schema silently drifts from the running API.</desc>
+  <rect x="0" y="0" width="720" height="220" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Keeping the generated client in step</text>
+  <rect x="20" y="92" width="147" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.4"/>
+  <text x="93" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">model change</text>
+  <text x="93" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">a field is added</text>
+  <rect x="171" y="92" width="71" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="206" y="114" text-anchor="middle" font-size="9" font-weight="700" fill="currentColor">schema</text>
+  <text x="206" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">CI dumps openapi.json</text>
+  <rect x="246" y="92" width="147" height="34" rx="5" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.4"/>
+  <text x="319" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">diff gate</text>
+  <text x="319" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">fails if the committed schema is stale</text>
+  <rect x="397" y="92" width="147" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="470" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">regenerate</text>
+  <text x="470" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">client rebuilt from the new schema</text>
+  <rect x="548" y="92" width="147" height="34" rx="5" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.4"/>
+  <text x="621" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">publish</text>
+  <text x="621" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">versioned package</text>
+  <text x="20" y="184" font-size="10.5" fill="var(--muted, #7c6fb0)">The diff gate is the load-bearing step: without it the committed schema silently drifts from the running API.</text>
+</svg>
 
 ## Gotchas & failure modes
 

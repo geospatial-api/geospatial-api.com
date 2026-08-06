@@ -97,7 +97,7 @@ The diagram below shows how PgBouncer fits between FastAPI workers and the PostG
   <title>PgBouncer transaction-pooling architecture</title>
   <desc>Diagram showing multiple FastAPI worker processes connecting to PgBouncer on port 6432, which multiplexes those connections onto a small pool of PostgreSQL/PostGIS backend processes on port 5432, plus a PgBouncer admin console.</desc>
   <!-- Background -->
-  <rect x="0" y="0" width="760" height="320" rx="12" fill="none"/>
+  <rect x="0" y="0" width="760" height="320" rx="12" fill="var(--surface, #f5f3ff)"/>
   <!-- FastAPI Workers group -->
   <rect x="20" y="30" width="160" height="260" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 3" opacity="0.5"/>
   <text x="100" y="22" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7" font-family="inherit">FastAPI Workers</text>
@@ -189,6 +189,28 @@ The three pooling modes have meaningfully different trade-offs for spatial API w
 For FastAPI with `asyncpg`, **transaction pooling** is the correct choice. It delivers the highest multiplexing ratio: a `default_pool_size` of 20 can serve thousands of concurrent async requests. The only material trade-off is that `asyncpg`'s client-side prepared statement cache must be disabled — covered in Step 3.
 
 ---
+
+Pool sizing is the difference between a database that idles and one that spends its memory on connection overhead.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Backends needed for 400 concurrent API clients: no pooler 400 backends — 40 GB RAM, session pooling 400 — no saving at all, transaction pooling, size 40 40, transaction pooling, size 20 20 — watch cl_waiting" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Backends needed for 400 concurrent API clients</title>
+  <desc>A horizontal bar chart. no pooler is 400 backends — 40 GB RAM. session pooling is 400 — no saving at all. transaction pooling, size 40 is 40. transaction pooling, size 20 is 20 — watch cl_waiting. Session pooling saves connection setup, not backends. Only transaction pooling changes the multiplier.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Backends needed for 400 concurrent API clients</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">no pooler</text>
+  <rect x="250" y="48" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="61" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">400 backends — 40</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">session pooling</text>
+  <rect x="250" y="82" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="95" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">400 — no saving at all</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">transaction pooling, size 40</text>
+  <rect x="250" y="116" width="34" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="292" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">40</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">transaction pooling, size 20</text>
+  <rect x="250" y="150" width="17" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="275" y="163" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">20 — watch cl_waiting</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">Session pooling saves connection setup, not backends. Only transaction pooling changes the multiplier.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -552,6 +574,31 @@ async def test_bbox_endpoint_returns_feature_collection():
 ```
 
 ---
+
+Saturation looks like a site-wide slowdown, and that misleading appearance is the reason it is so often misdiagnosed.
+
+<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How pool exhaustion actually presents: normal then one slow query then queue forms then latency spikes then timeouts" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>How pool exhaustion actually presents</title>
+  <desc>A horizontal timeline. normal: cl_waiting = 0. one slow query: a backend is held. queue forms: cl_waiting climbs. latency spikes: every endpoint, not just the slow one. timeouts: clients retry, making it worse. The symptom is global even though the cause is one statement — which is why pool wait time must be measured separately from query time.</desc>
+  <rect x="0" y="0" width="720" height="220" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">How pool exhaustion actually presents</text>
+  <rect x="20" y="92" width="181" height="34" rx="5" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.4"/>
+  <text x="110" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">normal</text>
+  <text x="110" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">cl_waiting = 0</text>
+  <rect x="205" y="92" width="119" height="34" rx="5" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.4"/>
+  <text x="264" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">one slow query</text>
+  <text x="264" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">a backend is held</text>
+  <rect x="328" y="92" width="119" height="34" rx="5" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.4"/>
+  <text x="387" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">queue forms</text>
+  <text x="387" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">cl_waiting climbs</text>
+  <rect x="451" y="92" width="119" height="34" rx="5" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.4"/>
+  <text x="510" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">latency spikes</text>
+  <text x="510" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">every endpoint, not just the slow one</text>
+  <rect x="574" y="92" width="119" height="34" rx="5" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.4"/>
+  <text x="633" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">timeouts</text>
+  <text x="633" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">clients retry, making it worse</text>
+  <text x="20" y="184" font-size="10.5" fill="var(--muted, #7c6fb0)">The symptom is global even though the cause is one statement — which is why pool wait time must be measured separately from query time.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

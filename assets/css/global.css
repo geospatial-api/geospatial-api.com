@@ -10,6 +10,7 @@
 @import './components/table.css';
 @import './components/mermaid.css';
 @import './components/inline-code.css';
+@import './components/dark.css';
 
 /* ── Reset & Base ──────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }

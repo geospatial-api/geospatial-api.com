@@ -74,7 +74,7 @@ Use immutable caching whenever you can put a version in the path, which the deli
 <svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two Cache-Control timelines: an immutable versioned tile served for a year until the version bumps, versus a mutable tile that serves fresh, then stale-while-revalidate, then must revalidate" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;font-family:inherit;">
   <title>Cache-Control lifecycle for immutable versus mutable tiles</title>
   <desc>The top timeline shows an immutable versioned tile: fresh for one year, no revalidation, then a version bump replaces the URL. The bottom timeline shows a mutable tile: fresh during s-maxage, then a stale-while-revalidate window where the stale tile is served instantly while the edge revalidates in the background, then a hard revalidation.</desc>
-  <rect x="0" y="0" width="760" height="300" rx="12" fill="none"/>
+  <rect x="0" y="0" width="760" height="300" rx="12" fill="var(--surface, #f5f3ff)"/>
   <!-- Immutable timeline -->
   <text x="20" y="46" font-size="12" font-weight="700" fill="currentColor">Immutable  ·  /tiles/v42/roads/10/512/340.mvt</text>
   <rect x="20" y="60" width="560" height="34" rx="6" fill="var(--accent, #7c3aed)" opacity="0.15" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
@@ -193,6 +193,43 @@ async def publish_new_tile_version(pool) -> int:
 
 ---
 
+Four directives cover every sensible tile policy, and they act on different caches.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Which directive does what for a tile: Edge, Browser" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Which directive does what for a tile</title>
+  <desc>A comparison table. max-age: Edge partly, Browser yes. browser lifetime s-maxage: Edge yes, Browser no. edge lifetime, overrides max-age stale-while-revalidate: Edge yes, Browser partly. serve stale, refresh behind immutable: Edge yes, Browser yes. only for versioned URLs no-store: Edge yes, Browser yes. defeats the entire point The pair that matters is a short s-maxage with a long stale-while-revalidate: fresh enough to be correct, stale enough to absorb a spike.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Which directive does what for a tile</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Edge</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Browser</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">max-age</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">browser lifetime</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">s-maxage</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">edge lifetime, overrides max-age</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">stale-while-revalidate</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">serve stale, refresh behind</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">immutable</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">only for versioned URLs</text>
+  <line x1="20" y1="194" x2="700" y2="194" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="216" font-size="10.5" fill="currentColor">no-store</text>
+  <text x="294" y="216" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="216" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="216" font-size="9.5" fill="var(--muted, #7c6fb0)">defeats the entire point</text>
+  <text x="20" y="252" font-size="10.5" fill="var(--muted, #7c6fb0)">The pair that matters is a short s-maxage with a long stale-while-revalidate: fresh enough to be correct, stale enough to absorb a spike.</text>
+</svg>
+
 ## Key parameters & options
 
 | Directive | Meaning | Immutable tile | Mutable tile |
@@ -209,6 +246,28 @@ async def publish_new_tile_version(pool) -> int:
 `s-maxage` is the directive teams most often forget, and its absence is the classic bug: without it the edge falls back to `max-age`, so if you set `max-age=0` for "always revalidate in the browser" you accidentally also stop the edge from caching. Always set `s-maxage` explicitly for the edge behaviour you want, independent of the browser's `max-age`.
 
 ---
+
+Each directive removes a different slice of origin traffic, and the last one removes the spikes.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Origin requests per minute at 12 000 tile requests/min: no caching 12 000, max-age only 2 100, s-maxage 300 340, + stale-while-revalidate 41" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Origin requests per minute at 12 000 tile requests/min</title>
+  <desc>A horizontal bar chart. no caching is 12 000. max-age only is 2 100. s-maxage 300 is 340. + stale-while-revalidate is 41. Stale-while-revalidate is what collapses the last order of magnitude: expiry stops causing a stampede.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Origin requests per minute at 12 000 tile requests/min</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">no caching</text>
+  <rect x="250" y="48" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="61" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">12 000</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">max-age only</text>
+  <rect x="250" y="82" width="59" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="317" y="95" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">2 100</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">s-maxage 300</text>
+  <rect x="250" y="116" width="9" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="267" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">340</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">+ stale-while-revalidate</text>
+  <rect x="250" y="150" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="163" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">41</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">Stale-while-revalidate is what collapses the last order of magnitude: expiry stops causing a stampede.</text>
+</svg>
 
 ## Gotchas & failure modes
 

@@ -96,9 +96,10 @@ Preconditions: Python 3.10+, `pydantic>=2.5`, `shapely>=2.0`, and `fastapi>=0.10
 
 The diagram below shows how a request body moves through the validation layers before reaching the database:
 
-<svg viewBox="0 0 640 320" role="img" aria-label="WKT and GeoJSON validation pipeline in Pydantic v2" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;display:block;margin:1.5rem 0">
+<svg viewBox="-6 94 570 222" role="img" aria-label="WKT and GeoJSON validation pipeline in Pydantic v2" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;display:block;margin:1.5rem 0">
   <title>WKT and GeoJSON validation pipeline in Pydantic v2</title>
   <desc>Sequence diagram showing HTTP request body flowing through model_validator before, then BeforeValidator parse functions, then strict type assignment, then model_validator after bounds check, and finally the PostGIS write.</desc>
+  <rect x="-6" y="94" width="570" height="222" rx="10" fill="var(--surface, #f5f3ff)"/>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
       <path d="M0,0 L0,7 L8,3.5 Z" fill="currentColor" opacity="0.7"/>
@@ -142,7 +143,7 @@ The diagram below shows how a request body moves through the validation layers b
   <!-- labels -->
   <text x="128" y="147" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">raw JSON</text>
   <text x="278" y="147" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">raw dict</text>
-  <text x="430" y="147" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">clean model</text>
+  <text x="429" y="147" text-anchor="middle" font-size="9" fill="currentColor" font-family="system-ui,sans-serif" opacity="0.7">model</text>
 </svg>
 
 ## Runnable Implementation
@@ -291,6 +292,38 @@ async def validate_geometry(payload: SpatialPayload) -> dict:
 
 For endpoints that accept bulk uploads — multiple geometries in one request — see the [Handling Async File Uploads for Shapefile Processing](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/) guide, which builds on this same validator pattern for Celery-backed ingestion pipelines.
 
+Two textual formats dominate spatial input, and they fail in different ways.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="WKT and GeoJSON as inputs: Compact, Self-describing" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>WKT and GeoJSON as inputs</title>
+  <desc>A comparison table. GeoJSON object: Compact no, Self-describing yes. the RFC 7946 default WKT string: Compact yes, Self-describing partly. no CRS, no nesting rules EWKT with SRID prefix: Compact yes, Self-describing yes. PostGIS-specific WKB hex: Compact yes, Self-describing no. machine-to-machine only Accepting more than one input format doubles the validation surface — pick one for writes and convert everything else at the edge.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">WKT and GeoJSON as inputs</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Compact</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Self-describing</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">GeoJSON object</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">the RFC 7946 default</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">WKT string</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">no CRS, no nesting rules</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">EWKT with SRID prefix</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">PostGIS-specific</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">WKB hex</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">machine-to-machine only</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">Accepting more than one input format doubles the validation surface — pick one for writes and convert everything else at the edge.</text>
+</svg>
+
 ## Key Parameters & Options
 
 | Parameter / Config | Values | Effect |
@@ -301,6 +334,31 @@ For endpoints that accept bulk uploads — multiple geometries in one request �
 | `srid` field default | `4326` | Only `4326` triggers the bounds check; other SRIDs skip it. Add `pyproj.CRS` lookups to validate arbitrary SRIDs. |
 | `make_valid()` (Shapely 2.x) | — | Repairs degenerate rings and self-intersections. Note: may change geometry type (e.g., `Polygon` → `MultiPolygon`). |
 | `BeforeValidator` vs `AfterValidator` | — | `BeforeValidator` runs before type coercion. Use it to normalize raw inputs. `AfterValidator` receives the already-typed value; use it for business-logic checks on clean data. |
+
+Model validation is cheap until the geometry is large, and then it is the request.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Validation cost by geometry size: point 0.02 ms, parcel, 40 vertices 0.09 ms, building block, 400 0.6 ms, coastline, 50 000 26 ms, national boundary, 200 000 104 ms" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Validation cost by geometry size</title>
+  <desc>A horizontal bar chart. point is 0.02 ms. parcel, 40 vertices is 0.09 ms. building block, 400 is 0.6 ms. coastline, 50 000 is 26 ms. national boundary, 200 000 is 104 ms. Cost is linear in vertex count, so a per-request limit on vertices is a more effective guard than a timeout.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Validation cost by geometry size</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">point</text>
+  <rect x="250" y="48" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">0.02 ms</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">parcel, 40 vertices</text>
+  <rect x="250" y="82" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">0.09 ms</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">building block, 400</text>
+  <rect x="250" y="116" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">0.6 ms</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">coastline, 50 000</text>
+  <rect x="250" y="150" width="84" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="342" y="163" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">26 ms</text>
+  <text x="20" y="197" font-size="10.5" fill="currentColor">national boundary, 200 000</text>
+  <rect x="250" y="184" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="197" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">104 ms</text>
+  <text x="20" y="234" font-size="10.5" fill="var(--muted, #7c6fb0)">Cost is linear in vertex count, so a per-request limit on vertices is a more effective guard than a timeout.</text>
+</svg>
 
 ## Gotchas & Failure Modes
 

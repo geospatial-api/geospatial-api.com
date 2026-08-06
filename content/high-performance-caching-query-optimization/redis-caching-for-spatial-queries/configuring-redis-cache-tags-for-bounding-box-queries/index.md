@@ -93,7 +93,7 @@ The diagram below shows the data flow from an incoming bbox request through the 
   <title>Redis cache tag architecture for bounding box queries</title>
   <desc>Diagram showing two flows: a read path where bbox requests hit Redis and fall through to PostGIS on a miss, and an invalidation path where PostGIS mutations purge the Redis tag Set.</desc>
   <!-- Background panels -->
-  <rect x="0" y="0" width="640" height="400" rx="6" fill="none"/>
+  <rect x="0" y="0" width="640" height="400" rx="6" fill="var(--surface, #f5f3ff)"/>
   <!-- Client box -->
   <rect x="20" y="20" width="120" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
   <text x="80" y="37" text-anchor="middle" font-size="12" fill="currentColor" font-weight="600">FastAPI</text>
@@ -306,6 +306,28 @@ async def update_feature(
     return {"invalidated_keys": removed}
 ```
 
+The grid size is the one tuning knob here, and its cost curve is steep at the large end.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Keys purged per invalidation, by grid size: 0.01° cells 12 keys — precise, many tag sets, 0.1° cells 140 keys, 1° cells 2 400 keys, 5° cells 41 000 keys — UNLINK stalls" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Keys purged per invalidation, by grid size</title>
+  <desc>A horizontal bar chart. 0.01° cells is 12 keys — precise, many tag sets. 0.1° cells is 140 keys. 1° cells is 2 400 keys. 5° cells is 41 000 keys — UNLINK stalls. Grid size trades over-invalidation against the number of tag sets Redis has to hold. One degree suits regional data; five never does.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Keys purged per invalidation, by grid size</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">0.01° cells</text>
+  <rect x="250" y="48" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">12 keys — precise, many tag sets</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">0.1° cells</text>
+  <rect x="250" y="82" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">140 keys</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">1° cells</text>
+  <rect x="250" y="116" width="19" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="277" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">2 400 keys</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">5° cells</text>
+  <rect x="250" y="150" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="163" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">41 000 keys — UNLINK</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">Grid size trades over-invalidation against the number of tag sets Redis has to hold. One degree suits regional data; five never does.</text>
+</svg>
+
 ## Key Parameters & Options
 
 | Parameter | Default | Effect |
@@ -316,6 +338,28 @@ async def update_feature(
 | `TAG_TTL` | `5400` s | TTL applied to the tag Set itself. Should exceed `CACHE_TTL` so entries always expire before their tag Set disappears. |
 | `transaction=False` | — | Pipelines without `MULTI/EXEC`. Correct here because we do not need rollback semantics; removing it avoids the round-trip cost of `MULTI`. |
 | `UNLINK` vs `DEL` | `UNLINK` preferred | `UNLINK` defers memory reclamation to a background thread. Use `DEL` only if you need guaranteed synchronous deletion (rarely needed in production). |
+
+Both failure modes come from the same grid decision, and they are not equally serious.
+
+<svg viewBox="0 0 720 198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two ways an invalidation goes wrong: over-invalidation versus under-invalidation" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Two ways an invalidation goes wrong</title>
+  <desc>Two panels. over-invalidation: grid cell far larger than the edit thousands of live keys purged hit rate collapses for minutes harmless to correctness under-invalidation: bbox straddles a cell boundary key registered only in the centre cell stale response served until TTL a correctness bug, invisible Only the right-hand column is dangerous, which is why every cache entry needs a TTL as well as a tag.</desc>
+  <rect x="0" y="0" width="720" height="198" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Two ways an invalidation goes wrong</text>
+  <rect x="16" y="40" width="336" height="122" rx="9" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.5"/>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--viz-warn, #8a5000)">over-invalidation</text>
+  <text x="34" y="84" font-size="10" fill="currentColor">grid cell far larger than the edit</text>
+  <text x="34" y="106" font-size="10" fill="currentColor">thousands of live keys purged</text>
+  <text x="34" y="128" font-size="10" fill="currentColor">hit rate collapses for minutes</text>
+  <text x="34" y="150" font-size="10" fill="currentColor">harmless to correctness</text>
+  <rect x="368" y="40" width="336" height="122" rx="9" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.5"/>
+  <text x="386" y="62" font-size="11" font-weight="700" fill="var(--viz-bad, #a32b23)">under-invalidation</text>
+  <text x="386" y="84" font-size="10" fill="currentColor">bbox straddles a cell boundary</text>
+  <text x="386" y="106" font-size="10" fill="currentColor">key registered only in the centre cell</text>
+  <text x="386" y="128" font-size="10" fill="currentColor">stale response served until TTL</text>
+  <text x="386" y="150" font-size="10" fill="currentColor">a correctness bug, invisible</text>
+  <text x="20" y="194" font-size="10.5" fill="var(--muted, #7c6fb0)">Only the right-hand column is dangerous, which is why every cache entry needs a TTL as well as a tag.</text>
+</svg>
 
 ## Gotchas & Failure Modes
 

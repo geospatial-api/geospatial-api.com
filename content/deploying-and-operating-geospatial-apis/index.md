@@ -90,6 +90,7 @@ A spatial API has two distinct flows that must be reasoned about separately: the
 <svg viewBox="0 0 760 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Deployment topology for a FastAPI and PostGIS spatial API, from developer through CI and container registry to an edge-fronted runtime cluster" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;">
   <title>Build-to-edge deployment topology for a spatial API</title>
   <desc>A developer pushes to GitHub Actions CI, which runs tests against a PostGIS service container and publishes a pinned image to a container registry. The registry rolls the image out to a runtime cluster containing FastAPI replicas, PgBouncer, PostGIS, and Redis. Separately, a map client requests vector tiles from an edge/CDN tier that caches tiles and only forwards cache misses to the FastAPI origin.</desc>
+  <rect x="0" y="0" width="760" height="470" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- Build & delivery pipeline -->
   <text x="40" y="22" font-size="11" font-weight="700" fill="var(--muted, #7c6fb0)">BUILD &amp; DELIVERY</text>
   <rect x="40" y="30" width="140" height="56" rx="8" fill="var(--surface, #f5f3ff)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
@@ -391,6 +392,36 @@ Not every consumer wants MVT. The origin negotiates the serialization format by 
 
 Tile responses are the only ones worth pushing hard to the edge; exports and internal binary transfers are deliberately kept out of the shared cache.
 
+The deployment path for a spatial API has one more gate than an ordinary one — the data layer has to be migrated in step with the code.
+
+<svg viewBox="0 0 720 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One commit, four gates, one edge: build then migrate then verify then publish" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>One commit, four gates, one edge</title>
+  <desc>A left to right pipeline. Stage 1, build: multi-stage image pinned PostGIS + PROJ. Stage 2, migrate: reviewed SQL index built CONCURRENTLY. Stage 3, verify: spatial fixtures exact assertions. Stage 4, publish: edge routing tiles cached at the POP. Each gate can fail the deploy; only the last one is visible to users, which is the point of the first three.</desc>
+  <rect x="0" y="0" width="720" height="210" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">One commit, four gates, one edge</text>
+  <rect x="18" y="52" width="154" height="86" rx="8" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
+  <text x="95" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">build</text>
+  <text x="95" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">multi-stage image</text>
+  <text x="95" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">pinned PostGIS + PROJ</text>
+  <path d="M175 95 L189 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#aronecommitf)"/>
+  <rect x="194" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="271" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">migrate</text>
+  <text x="271" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">reviewed SQL</text>
+  <text x="271" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">index built CONCURRENTLY</text>
+  <path d="M351 95 L365 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#aronecommitf)"/>
+  <rect x="370" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="447" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">verify</text>
+  <text x="447" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">spatial fixtures</text>
+  <text x="447" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">exact assertions</text>
+  <path d="M527 95 L541 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#aronecommitf)"/>
+  <rect x="546" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="623" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">publish</text>
+  <text x="623" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">edge routing</text>
+  <text x="623" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">tiles cached at the POP</text>
+  <text x="20" y="168" font-size="10.5" fill="var(--muted, #7c6fb0)">Each gate can fail the deploy; only the last one is visible to users, which is the point of the first three.</text>
+  <defs><marker id="aronecommitf" markerWidth="8" markerHeight="8" refX="6.5" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker></defs>
+</svg>
+
 ## Performance & Scalability
 
 Scaling a spatial API is not "add more replicas". The database is the shared, hard-to-scale resource, and the edge is the lever that keeps load off it.
@@ -480,6 +511,31 @@ async def spatial_health(db=Depends(get_db)):
 ```
 
 Set `auto_explain.log_min_duration = '1s'` on the database so slow spatial plans are captured without manual `EXPLAIN ANALYZE`, and alert on p95 `ST_` duration and PgBouncer `cl_waiting` rather than on raw CPU — those two signals lead every spatial incident.
+
+Knowing which stage dominates is what stops a pipeline optimisation from being guesswork.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where deployment time goes for a spatial service: image build, cold cache 5 m 40 s, image build, warm layers 48 s, migration apply 26 s, integration tests with PostGIS 3 m 34 s, rollout + probe settle 1 m 02 s" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Where deployment time goes for a spatial service</title>
+  <desc>A horizontal bar chart. image build, cold cache is 5 m 40 s. image build, warm layers is 48 s. migration apply is 26 s. integration tests with PostGIS is 3 m 34 s. rollout + probe settle is 1 m 02 s. The two slow rows are the ones worth caching and parallelising; the rest is already noise.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Where deployment time goes for a spatial service</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">image build, cold cache</text>
+  <rect x="250" y="48" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="61" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">5 m 40 s</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">image build, warm layers</text>
+  <rect x="250" y="82" width="48" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="306" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">48 s</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">migration apply</text>
+  <rect x="250" y="116" width="26" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="284" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">26 s</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">integration tests with PostGIS</text>
+  <rect x="250" y="150" width="214" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="472" y="163" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">3 m 34 s</text>
+  <text x="20" y="197" font-size="10.5" fill="currentColor">rollout + probe settle</text>
+  <rect x="250" y="184" width="62" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="320" y="197" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">1 m 02 s</text>
+  <text x="20" y="234" font-size="10.5" fill="var(--muted, #7c6fb0)">The two slow rows are the ones worth caching and parallelising; the rest is already noise.</text>
+</svg>
 
 ## Failure Modes and Common Misconfigurations
 

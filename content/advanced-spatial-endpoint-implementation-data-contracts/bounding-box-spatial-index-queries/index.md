@@ -106,9 +106,10 @@ The standard two-step pattern is: `WHERE geom && ST_MakeEnvelope(...) AND ST_Int
 
 ---
 
-<svg viewBox="0 0 720 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-step bounding box query flow: GiST index scan followed by exact topological refinement" style="width:100%;max-width:720px;display:block;margin:2rem auto;">
+<svg viewBox="4 14 682 242" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-step bounding box query flow: GiST index scan followed by exact topological refinement" style="width:100%;max-width:720px;display:block;margin:2rem auto;">
   <title>Two-step bounding box query execution in PostGIS</title>
   <desc>Diagram showing a FastAPI request flowing through Pydantic validation, then into PostGIS where the GiST index narrows candidates via the &amp;&amp; operator, followed by ST_Intersects for exact topological refinement before serialisation to GeoJSON.</desc>
+  <rect x="4" y="14" width="682" height="242" rx="10" fill="var(--surface, #f5f3ff)"/>
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -173,6 +174,43 @@ SELECT PostGIS_Full_Version();
 ```
 
 ---
+
+Five predicates cover almost every spatial filter, and only one of them cannot use the index.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Which operator answers which question: Indexed, Exact" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Which operator answers which question</title>
+  <desc>A comparison table. &amp;&amp; bounding box overlap: Indexed yes, Exact no. the index stage itself ST_Intersects: Indexed yes, Exact yes. shares any point, boundary included ST_Within: Indexed yes, Exact yes. strictly inside, boundary excluded ST_Contains: Indexed yes, Exact yes. the inverse of Within ST_Distance(…) &lt; r: Indexed no, Exact yes. no index — rewrite as ST_DWithin The first row is not a shortcut for the others: &amp;&amp; answers a question about rectangles, not about shapes.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Which operator answers which question</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Indexed</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Exact</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">&amp;&amp; bounding box overlap</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">the index stage itself</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">ST_Intersects</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">shares any point, boundary included</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">ST_Within</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">strictly inside, boundary excluded</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">ST_Contains</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">the inverse of Within</text>
+  <line x1="20" y1="194" x2="700" y2="194" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="216" font-size="10.5" fill="currentColor">ST_Distance(…) &lt; r</text>
+  <text x="294" y="216" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="216" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="216" font-size="9.5" fill="var(--muted, #7c6fb0)">no index — rewrite as ST_DWithin</text>
+  <text x="20" y="252" font-size="10.5" fill="var(--muted, #7c6fb0)">The first row is not a shortcut for the others: &amp;&amp; answers a question about rectangles, not about shapes.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -447,6 +485,28 @@ async def test_bbox_rejects_inverted_envelope():
 ```
 
 ---
+
+The index stage is automatic unless something hides the column from the planner.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rows examined for the same viewport, by predicate shape: &amp;&amp; only 1 240 candidates, &amp;&amp; then ST_Intersects 912 exact matches, ST_Intersects alone 912 — same plan, &amp;&amp; is implicit, ST_Transform(geom) wrapped 4 200 000 — index lost" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Rows examined for the same viewport, by predicate shape</title>
+  <desc>A horizontal bar chart. &amp;&amp; only is 1 240 candidates. &amp;&amp; then ST_Intersects is 912 exact matches. ST_Intersects alone is 912 — same plan, &amp;&amp; is implicit. ST_Transform(geom) wrapped is 4 200 000 — index lost. ST_Intersects already performs the &amp;&amp; stage internally; the only way to lose it is to wrap the column in a function.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Rows examined for the same viewport, by predicate shape</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">&amp;&amp; only</text>
+  <rect x="250" y="48" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">1 240 candidates</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">&amp;&amp; then ST_Intersects</text>
+  <rect x="250" y="82" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">912 exact matches</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">ST_Intersects alone</text>
+  <rect x="250" y="116" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">912 — same plan, &amp;&amp; is implicit</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">ST_Transform(geom) wrapped</text>
+  <rect x="250" y="150" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="163" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">4 200 000 — index lost</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">ST_Intersects already performs the &amp;&amp; stage internally; the only way to lose it is to wrap the column in a function.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

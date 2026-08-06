@@ -91,6 +91,7 @@ The four performance layers stack vertically. A request that misses the CDN fall
 <svg viewBox="0 0 680 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four-layer geospatial API performance architecture diagram" style="width:100%;max-width:680px;display:block;margin:1.5rem auto;">
   <title>Geospatial API Performance Architecture</title>
   <desc>Diagram showing four stacked layers: CDN Edge, Redis Cache, FastAPI Application, and PostGIS Database, with request and response arrows showing the fallthrough path.</desc>
+  <rect x="0" y="0" width="680" height="420" rx="10" fill="var(--surface, #f5f3ff)"/>
   <defs>
     <marker id="arrowD" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -413,6 +414,36 @@ Vary: Accept-Encoding
 
 For dynamic layers, set a shorter max-age (60–300 s) and rely on `stale-while-revalidate` to serve cached tiles while the CDN revalidates in the background. Full tile generation and CDN configuration details are in [Tile Generation & CDN Distribution](https://www.geospatial-api.com/high-performance-caching-query-optimization/tile-generation-cdn-distribution/).
 
+Every caching decision in this section is really a decision about which of these four answers a given request.
+
+<svg viewBox="0 0 720 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four places a spatial answer can come from: edge cache then Redis then materialised view then live PostGIS" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Four places a spatial answer can come from</title>
+  <desc>A left to right pipeline. Stage 1, edge cache: tile or payload ~12 ms. Stage 2, Redis: normalised bbox key ~2 ms. Stage 3, materialised view: pre-aggregated ~9 ms. Stage 4, live PostGIS: GiST index scan ~24 ms. Each layer exists to keep traffic off the one to its right; the rightmost is the only one that costs database capacity.</desc>
+  <rect x="0" y="0" width="720" height="210" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Four places a spatial answer can come from</text>
+  <rect x="18" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="95" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">edge cache</text>
+  <text x="95" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">tile or payload</text>
+  <text x="95" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">~12 ms</text>
+  <path d="M175 95 L189 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arfourplaces)"/>
+  <rect x="194" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="271" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">Redis</text>
+  <text x="271" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">normalised bbox key</text>
+  <text x="271" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">~2 ms</text>
+  <path d="M351 95 L365 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arfourplaces)"/>
+  <rect x="370" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="447" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">materialised view</text>
+  <text x="447" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">pre-aggregated</text>
+  <text x="447" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">~9 ms</text>
+  <path d="M527 95 L541 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arfourplaces)"/>
+  <rect x="546" y="52" width="154" height="86" rx="8" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
+  <text x="623" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">live PostGIS</text>
+  <text x="623" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">GiST index scan</text>
+  <text x="623" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">~24 ms</text>
+  <text x="20" y="168" font-size="10.5" fill="var(--muted, #7c6fb0)">Each layer exists to keep traffic off the one to its right; the rightmost is the only one that costs database capacity.</text>
+  <defs><marker id="arfourplaces" markerWidth="8" markerHeight="8" refX="6.5" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker></defs>
+</svg>
+
 ## Performance and Scalability
 
 ### Benchmarks and Baseline Targets
@@ -486,6 +517,43 @@ Export these signals to Prometheus for alerting:
 - `redis_cache_hits_total` and `redis_cache_misses_total`
 - `pgbouncer_pool_size` and `pgbouncer_waiting_clients`
 - `postgis_index_scans_total` vs `postgis_seq_scans_total` (via `pg_stat_user_tables`)
+
+The layers are not interchangeable, and the differences decide which requests each one can serve.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What each layer can and cannot do: Fresh, Filterable, Cheap" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>What each layer can and cannot do</title>
+  <desc>A comparison table. edge cache: Fresh no, Filterable no, Cheap yes. whole responses only Redis: Fresh partly, Filterable no, Cheap yes. exact key match materialised view: Fresh no, Filterable yes, Cheap partly. refreshed on a schedule live query: Fresh yes, Filterable yes, Cheap no. the only fully general answer Nothing in the first three columns is simultaneously fresh and filterable — which is why the live path can never be removed, only relieved.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">What each layer can and cannot do</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Fresh</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Filterable</text>
+  <text x="502" y="58" font-size="10" font-weight="700" fill="currentColor">Cheap</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">edge cache</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="510" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">whole responses only</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">Redis</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="510" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">exact key match</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">materialised view</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="152" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="568" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">refreshed on a schedule</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">live query</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">the only fully general answer</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">Nothing in the first three columns is simultaneously fresh and filterable — which is why the live path can never be removed, only relieved.</text>
+</svg>
 
 ## Failure Modes and Gotchas
 

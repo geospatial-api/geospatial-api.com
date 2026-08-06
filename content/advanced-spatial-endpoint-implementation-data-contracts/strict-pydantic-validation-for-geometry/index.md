@@ -73,9 +73,10 @@ This page walks through a production-ready Pydantic v2 validation pipeline for F
 
 ---
 
-<svg viewBox="0 0 780 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five-stage geometry validation pipeline from client payload to PostGIS" style="width:100%;max-width:780px;display:block;margin:1.5rem auto;">
+<svg viewBox="-12 44 802 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five-stage geometry validation pipeline from client payload to PostGIS" style="width:100%;max-width:780px;display:block;margin:1.5rem auto;">
   <title>Geometry Validation Pipeline</title>
   <desc>Five sequential stages: Payload Ingestion, Type Normalization, Structural Enforcement, Bounds &amp; Precision, Error Serialization — each connected by an arrow, showing the path from raw client input to a validated geometry ready for PostGIS.</desc>
+  <rect x="-12" y="44" width="802" height="160" rx="10" fill="var(--surface, #f5f3ff)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.55"/>
@@ -149,6 +150,28 @@ Choose the right validation layer for each check type. Running expensive topolog
 | CRS re-projection | No — reject mismatched SRID | `ST_Transform()` if SRID known |
 
 **Rule of thumb:** validate structure and bounds in Pydantic; delegate deep topology to Shapely inside an `AfterValidator`; never rely on PostGIS as the first line of defense.
+
+Validation position determines whether a bad geometry is a 422 or an outage.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where a malformed geometry is caught, and what it costs: Pydantic model 0.3 ms — before any I/O, database CHECK 1.2 ms — one round trip, query failure at read hours later, in a tile request, never — silently wrong data discovered by a user" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Where a malformed geometry is caught, and what it costs</title>
+  <desc>A horizontal bar chart. Pydantic model is 0.3 ms — before any I/O. database CHECK is 1.2 ms — one round trip. query failure at read is hours later, in a tile request. never — silently wrong data is discovered by a user. The first two rows are validation; the last two are incidents. The distance between them is one model definition.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Where a malformed geometry is caught, and what it costs</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">Pydantic model</text>
+  <rect x="250" y="48" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">0.3 ms — before any I/O</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">database CHECK</text>
+  <rect x="250" y="82" width="13" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="271" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">1.2 ms — one round trip</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">query failure at read</text>
+  <rect x="250" y="116" width="136" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="394" y="129" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">hours later, in a tile request</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">never — silently wrong data</text>
+  <rect x="250" y="150" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="163" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">discovered by a user</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">The first two rows are validation; the last two are incidents. The distance between them is one model definition.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -526,6 +549,43 @@ def test_precision_clamped():
     assert g.coordinates[0] == 13.404954
     assert g.coordinates[1] == 52.520008
 ```
+
+The layers are complementary, and each one is blind to something the next catches.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What each validation layer can actually check: Shape, Range, Topology" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>What each validation layer can actually check</title>
+  <desc>A comparison table. Pydantic model: Shape yes, Range yes, Topology no. no GEOS available column type: Shape yes, Range no, Topology no. type and SRID only CHECK ST_IsValid: Shape no, Range no, Topology yes. the topology backstop application review: Shape partly, Range partly, Topology partly. not a control No single layer covers all three columns, which is why the first three rows are all required rather than alternatives.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">What each validation layer can actually check</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Shape</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Range</text>
+  <text x="502" y="58" font-size="10" font-weight="700" fill="currentColor">Topology</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">Pydantic model</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">no GEOS available</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">column type</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="510" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">type and SRID only</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">CHECK ST_IsValid</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="510" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">the topology backstop</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">application review</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="510" y="184" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="568" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">not a control</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">No single layer covers all three columns, which is why the first three rows are all required rather than alternatives.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

@@ -74,6 +74,7 @@ Reach for this pattern once your image is heading to production or to any regist
 <svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-stage Docker build: a builder stage with compiler and dev headers produces a virtualenv, which is copied into a slim runtime stage that holds only runtime shared libraries" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;">
   <title>Multi-stage build: builder to slim runtime</title>
   <desc>The builder stage contains build-essential, libgdal-dev, libgeos-dev, and libproj-dev, and produces a virtualenv at /opt/venv holding shapely, pyproj, rasterio, and the GDAL bindings. Only /opt/venv is copied into the runtime stage, which starts from python:3.12-slim and installs only libgdal32, libgeos-c1v5, and libproj25. The compiler and dev headers are discarded.</desc>
+  <rect x="0" y="0" width="760" height="300" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- Builder stage -->
   <rect x="24" y="34" width="320" height="232" rx="12" fill="var(--surface, #f5f3ff)" stroke="var(--border, #c4b5fd)" stroke-width="1.5"/>
   <text x="184" y="24" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">STAGE 1 — builder</text>
@@ -197,6 +198,36 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ---
 
+A multi-stage build is really a decision about what to throw away, and the builder stage is designed to be discarded.
+
+<svg viewBox="0 0 720 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What each stage contributes: base then builder then runtime then final" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>What each stage contributes</title>
+  <desc>A left to right pipeline. Stage 1, base: python:3.12-slim shared by both stages. Stage 2, builder: gcc + headers + wheels discarded entirely. Stage 3, runtime: copy site-packages only no compiler present. Stage 4, final: non-root user, healthcheck 193 MB. The builder stage can be as heavy as it likes — nothing in it reaches the published image.</desc>
+  <rect x="0" y="0" width="720" height="210" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">What each stage contributes</text>
+  <rect x="18" y="52" width="154" height="86" rx="8" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
+  <text x="95" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">base</text>
+  <text x="95" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">python:3.12-slim</text>
+  <text x="95" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">shared by both stages</text>
+  <path d="M175 95 L189 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arwhateachst)"/>
+  <rect x="194" y="52" width="154" height="86" rx="8" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.5"/>
+  <text x="271" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">builder</text>
+  <text x="271" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">gcc + headers + wheels</text>
+  <text x="271" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">discarded entirely</text>
+  <path d="M351 95 L365 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arwhateachst)"/>
+  <rect x="370" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="447" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">runtime</text>
+  <text x="447" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">copy site-packages only</text>
+  <text x="447" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">no compiler present</text>
+  <path d="M527 95 L541 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arwhateachst)"/>
+  <rect x="546" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="623" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">final</text>
+  <text x="623" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">non-root user, healthcheck</text>
+  <text x="623" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">193 MB</text>
+  <text x="20" y="168" font-size="10.5" fill="var(--muted, #7c6fb0)">The builder stage can be as heavy as it likes — nothing in it reaches the published image.</text>
+  <defs><marker id="arwhateachst" markerWidth="8" markerHeight="8" refX="6.5" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker></defs>
+</svg>
+
 ## Key parameters & options
 
 | Parameter / flag | Purpose | Recommended value |
@@ -211,6 +242,28 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 | `COPY --chown=app:app` | Sets file ownership at copy time | Avoids a separate `chown` layer |
 
 ---
+
+Layer ordering decides whether a one-line change rebuilds in seconds or minutes.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rebuild time when one thing changes: a source file 9 s, a requirements pin 1 m 14 s, the base image digest 3 m 06 s, COPY . . placed too early 3 m 06 s — on every source edit" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Rebuild time when one thing changes</title>
+  <desc>A horizontal bar chart. a source file is 9 s. a requirements pin is 1 m 14 s. the base image digest is 3 m 06 s. COPY . . placed too early is 3 m 06 s — on every source edit. The last row is a layer-ordering mistake, not a build-speed problem: copying source before installing dependencies busts the cache every time.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Rebuild time when one thing changes</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">a source file</text>
+  <rect x="250" y="48" width="16" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="274" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">9 s</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">a requirements pin</text>
+  <rect x="250" y="82" width="135" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="393" y="95" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">1 m 14 s</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">the base image digest</text>
+  <rect x="250" y="116" width="340" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="598" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">3 m 06 s</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">COPY . . placed too early</text>
+  <rect x="250" y="150" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="163" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">3 m 06 s — on every</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">The last row is a layer-ordering mistake, not a build-speed problem: copying source before installing dependencies busts the cache every</text>
+</svg>
 
 ## Gotchas & failure modes
 

@@ -75,7 +75,7 @@ Reach for **Redis** when the same identical response is requested over and over 
 <svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Materialized view caches aggregated rows on disk queryable many ways; Redis caches a finished response in memory keyed one way" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;font-family:inherit;">
   <title>Materialized view vs Redis cache for spatial aggregations</title>
   <desc>Left: a materialized view stores aggregated rows on disk inside Postgres with GiST and UNIQUE indexes, queryable by bounding box, join, or sort — freshness bounded by a scheduled refresh. Right: a Redis cache stores one serialized response in memory under a single key, returned as-is, freshness bounded by a TTL. A shared expensive aggregation feeds both.</desc>
-  <rect x="0" y="0" width="760" height="300" rx="12" fill="none"/>
+  <rect x="0" y="0" width="760" height="300" rx="12" fill="var(--surface, #f5f3ff)"/>
   <!-- shared source -->
   <rect x="300" y="18" width="160" height="46" rx="8" fill="var(--surface, #f5f3ff)" stroke="var(--accent, #7c3aed)" stroke-width="2"/>
   <text x="380" y="40" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Expensive aggregate</text>
@@ -196,6 +196,43 @@ The tags-and-keys strategy for spatial Redis keys is covered in [configuring Red
 
 ---
 
+The two layers answer different shapes of question, and one row below belongs to neither.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Which layer suits which question: View, Redis" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Which layer suits which question</title>
+  <desc>A comparison table. aggregate over the whole table: View yes, Redis no. the view computes it once exact repeat of a bbox request: View no, Redis yes. key match, microseconds arbitrary user-drawn polygon: View no, Redis no. neither — this is a live query per-tenant filtered totals: View partly, Redis yes. view per tenant does not scale data that changes hourly: View yes, Redis partly. refresh beats invalidation The row that matters most is the third: some questions have no cacheable form, and pretending otherwise produces stale answers.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Which layer suits which question</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">View</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Redis</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">aggregate over the whole table</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">the view computes it once</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">exact repeat of a bbox request</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">key match, microseconds</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">arbitrary user-drawn polygon</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">neither — this is a live query</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">per-tenant filtered totals</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">view per tenant does not scale</text>
+  <line x1="20" y1="194" x2="700" y2="194" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="216" font-size="10.5" fill="currentColor">data that changes hourly</text>
+  <text x="294" y="216" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="216" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="460" y="216" font-size="9.5" fill="var(--muted, #7c6fb0)">refresh beats invalidation</text>
+  <text x="20" y="252" font-size="10.5" fill="var(--muted, #7c6fb0)">The row that matters most is the third: some questions have no cacheable form, and pretending otherwise produces stale answers.</text>
+</svg>
+
 ## Key parameters & options
 
 | Parameter / knob | Layer | Purpose |
@@ -208,6 +245,28 @@ The tags-and-keys strategy for spatial Redis keys is covered in [configuring Red
 | Cache key granularity | Redis | Per-tile keys hit more; per-arbitrary-bbox keys rarely hit |
 
 ---
+
+Freshness and fragility move together, and the fastest option is the one that fails most quietly.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Staleness window by strategy, hourly-changing data: materialised view, hourly refresh up to 60 min, materialised view, 5-min refresh up to 5 min, Redis, TTL 300 s up to 5 min, Redis, tag invalidation seconds — if no event is missed" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Staleness window by strategy, hourly-changing data</title>
+  <desc>A horizontal bar chart. materialised view, hourly refresh is up to 60 min. materialised view, 5-min refresh is up to 5 min. Redis, TTL 300 s is up to 5 min. Redis, tag invalidation is seconds — if no event is missed. Tag invalidation is the freshest and the most fragile: one missed event and the entry lives until its TTL.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Staleness window by strategy, hourly-changing data</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">materialised view, hourly refresh</text>
+  <rect x="250" y="48" width="340" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="598" y="61" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">up to 60 min</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">materialised view, 5-min refresh</text>
+  <rect x="250" y="82" width="28" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="286" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">up to 5 min</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">Redis, TTL 300 s</text>
+  <rect x="250" y="116" width="28" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="286" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">up to 5 min</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">Redis, tag invalidation</text>
+  <rect x="250" y="150" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="163" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">seconds — if no event is missed</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">Tag invalidation is the freshest and the most fragile: one missed event and the entry lives until its TTL.</text>
+</svg>
 
 ## Gotchas & failure modes
 
@@ -224,6 +283,10 @@ The tags-and-keys strategy for spatial Redis keys is covered in [configuring Red
 - **Materialized view can't do sub-second freshness.** If the aggregate must reflect writes within seconds, neither a periodic refresh nor a TTL fits well; route those reads to an on-the-fly query against the base tables and accept the cost.
 
 ---
+
+Where both layers are in use, keep their invalidation independent. A view refresh should not attempt to purge Redis, and a cache invalidation should not trigger a refresh — coupling them produces a system where one slow operation blocks the other at exactly the moment both are needed.
+
+Where both layers are in use, keep their invalidation independent. A view refresh should not attempt to purge Redis, and a cache invalidation should not trigger a refresh — coupling them produces a system where one slow operation blocks the other at exactly the moment both are needed.
 
 ## Verification
 

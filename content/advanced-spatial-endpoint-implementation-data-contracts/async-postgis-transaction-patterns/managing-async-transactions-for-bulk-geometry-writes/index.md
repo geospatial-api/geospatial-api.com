@@ -197,6 +197,37 @@ If the target table already exists and is indexed, the alternative is to `DROP I
 
 For datasets small enough that a single `INSERT ... VALUES` with `executemany` is simpler, `asyncpg`'s `executemany` still beats a Python loop — but it is bounded by the 65,535-parameter limit per statement (see the gotchas), so chunk it too.
 
+Splitting the cost by component shows why batching alone stops helping after the first order of magnitude.
+
+<svg viewBox="0 0 720 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where a 200 000-row bulk write spends its time: naive per-row INSERT 11 m 20 s, batched executemany 2 m 48 s, COPY + upsert + reindex 1 m 07 s" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Where a 200 000-row bulk write spends its time</title>
+  <desc>Stacked bars. naive per-row INSERT totals 11 m 20 s. batched executemany totals 2 m 48 s. COPY + upsert + reindex totals 1 m 07 s. Index maintenance is the component batching cannot fix — dropping and rebuilding the GiST index is what moves it.</desc>
+  <rect x="0" y="0" width="720" height="240" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Where a 200 000-row bulk write spends its time</text>
+  <rect x="430" y="16" width="11" height="11" rx="2" fill="var(--viz-bad, #a32b23)" opacity="0.7"/>
+  <text x="446" y="26" font-size="9.5" fill="currentColor">write</text>
+  <rect x="487" y="16" width="11" height="11" rx="2" fill="var(--viz-warn, #8a5000)" opacity="0.7"/>
+  <text x="503" y="26" font-size="9.5" fill="currentColor">index maintenance</text>
+  <rect x="628" y="16" width="11" height="11" rx="2" fill="var(--accent, #7c3aed)" opacity="0.7"/>
+  <text x="644" y="26" font-size="9.5" fill="currentColor">WAL flush</text>
+  <text x="20" y="66" font-size="10.5" fill="currentColor">naive per-row INSERT</text>
+  <rect x="210" y="52" width="334" height="20" rx="2" fill="var(--viz-bad, #a32b23)" opacity="0.7"/>
+  <rect x="544" y="52" width="71" height="20" rx="2" fill="var(--viz-warn, #8a5000)" opacity="0.7"/>
+  <rect x="615" y="52" width="23" height="20" rx="2" fill="var(--accent, #7c3aed)" opacity="0.7"/>
+  <text x="646" y="66" font-size="10" font-weight="700" fill="currentColor">11 m 20 s</text>
+  <text x="20" y="110" font-size="10.5" fill="currentColor">batched executemany</text>
+  <rect x="210" y="96" width="57" height="20" rx="2" fill="var(--viz-bad, #a32b23)" opacity="0.7"/>
+  <rect x="267" y="96" width="26" height="20" rx="2" fill="var(--viz-warn, #8a5000)" opacity="0.7"/>
+  <rect x="293" y="96" width="16" height="20" rx="2" fill="var(--accent, #7c3aed)" opacity="0.7"/>
+  <text x="317" y="110" font-size="10" font-weight="700" fill="currentColor">2 m 48 s</text>
+  <text x="20" y="154" font-size="10.5" fill="currentColor">COPY + upsert + reindex</text>
+  <rect x="210" y="140" width="10" height="20" rx="2" fill="var(--viz-bad, #a32b23)" opacity="0.7"/>
+  <rect x="220" y="140" width="13" height="20" rx="2" fill="var(--viz-warn, #8a5000)" opacity="0.7"/>
+  <rect x="233" y="140" width="16" height="20" rx="2" fill="var(--accent, #7c3aed)" opacity="0.7"/>
+  <text x="257" y="154" font-size="10" font-weight="700" fill="currentColor">1 m 07 s</text>
+  <text x="20" y="196" font-size="10.5" fill="var(--muted, #7c6fb0)">Index maintenance is the component batching cannot fix — dropping and rebuilding the GiST index is what moves it.</text>
+</svg>
+
 ## Key parameters & options
 
 | Parameter | What it controls | Recommended value |
@@ -208,6 +239,43 @@ For datasets small enough that a single `INSERT ... VALUES` with `executemany` i
 | Index timing | Build GiST after load vs maintain during insert | Defer to the end; `CREATE INDEX` (new table) or `CONCURRENTLY` (live table) |
 | `ANALYZE` | Refreshes planner statistics after the row count changes | Always, once, after the final insert — before opening reads |
 | `executemany` batch | Rows per multi-row `INSERT` when not using `COPY` | Keep `rows × columns < 65,535` parameters |
+
+Chunk size trades throughput against how much work a single failure destroys.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Choosing a chunk size for the commit loop: Throughput, Lock time, Retry cost" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Choosing a chunk size for the commit loop</title>
+  <desc>A comparison table. 100 rows: Throughput partly, Lock time yes, Retry cost yes. safe, slow 1 000 rows: Throughput yes, Lock time yes, Retry cost yes. the usual answer 10 000 rows: Throughput yes, Lock time partly, Retry cost partly. watch replication lag 100 000 rows: Throughput yes, Lock time no, Retry cost no. one failure loses minutes of work The right chunk is the largest one whose failure you are willing to redo.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Choosing a chunk size for the commit loop</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Throughput</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Lock time</text>
+  <text x="502" y="58" font-size="10" font-weight="700" fill="currentColor">Retry cost</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">100 rows</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">safe, slow</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">1 000 rows</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">the usual answer</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">10 000 rows</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="510" y="152" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="568" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">watch replication lag</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">100 000 rows</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="510" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">one failure loses minutes of work</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">The right chunk is the largest one whose failure you are willing to redo.</text>
+</svg>
 
 ## Gotchas & failure modes
 

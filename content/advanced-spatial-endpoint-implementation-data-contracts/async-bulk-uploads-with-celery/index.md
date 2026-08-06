@@ -120,11 +120,11 @@ Processing large spatial datasets synchronously blocks your request lifecycle an
 
 The diagram below shows how a raw client upload flows through FastAPI into Celery workers and finally into PostGIS.
 
-<svg viewBox="0 0 780 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Async geospatial upload pipeline: client uploads to FastAPI, which stages the file and dispatches a Celery task, which the worker processes and writes to PostGIS, while the client polls for status." style="width:100%;max-width:780px;font-family:inherit;">
+<svg viewBox="4 74 759 276" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Async geospatial upload pipeline: client uploads to FastAPI, which stages the file and dispatches a Celery task, which the worker processes and writes to PostGIS, while the client polls for status." style="width:100%;max-width:780px;font-family:inherit;">
   <title>Async Geospatial Upload Pipeline</title>
   <desc>Architecture diagram showing a client uploading a file to a FastAPI endpoint, which stages the file, returns a job_id, and enqueues a Celery task. The Celery worker extracts geometries, validates and transforms CRS, then batch-inserts into PostGIS. A separate status-polling path lets the client query job progress.</desc>
   <!-- Background -->
-  <rect width="780" height="340" rx="10" ry="10" fill="none" stroke="currentColor" stroke-opacity="0.08" stroke-width="1"/>
+  <rect y="74" x="4" width="759" height="276" rx="10" ry="10" fill="var(--surface, #f5f3ff)" stroke="currentColor" stroke-opacity="0.08" stroke-width="1"/>
   <!-- Client -->
   <rect x="20" y="130" width="110" height="80" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.5"/>
   <text x="75" y="165" text-anchor="middle" font-size="12" fill="currentColor" font-weight="600">Client</text>
@@ -421,6 +421,34 @@ A client polling every 2 seconds with exponential backoff can track progress wit
 
 ---
 
+The point of the asynchronous split is that only the first band happens inside the request.
+
+<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lifetime of one 900 MB upload job: accept then stage then parse then validate then upsert then index" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Lifetime of one 900 MB upload job</title>
+  <desc>A horizontal timeline. accept: 202 + job id. stage: write to spool. parse: ogr2ogr → staging table. validate: ST_MakeValid + SRID. upsert: chunked commits. index: GiST rebuild. The client is released at the first band; everything after it is worker time the request never waits on.</desc>
+  <rect x="0" y="0" width="720" height="220" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Lifetime of one 900 MB upload job</text>
+  <rect x="20" y="92" width="36" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.4"/>
+  <text x="38" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">accept</text>
+  <text x="38" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">202 + job id</text>
+  <rect x="60" y="92" width="76" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="98" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">stage</text>
+  <text x="98" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">write to spool</text>
+  <rect x="140" y="92" width="156" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="218" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">parse</text>
+  <text x="218" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">ogr2ogr → staging table</text>
+  <rect x="300" y="92" width="116" height="34" rx="5" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.4"/>
+  <text x="358" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">validate</text>
+  <text x="358" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">ST_MakeValid + SRID</text>
+  <rect x="420" y="92" width="196" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="518" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">upsert</text>
+  <text x="518" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">chunked commits</text>
+  <rect x="620" y="92" width="76" height="34" rx="5" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.4"/>
+  <text x="658" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">index</text>
+  <text x="658" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">GiST rebuild</text>
+  <text x="20" y="184" font-size="10.5" fill="var(--muted, #7c6fb0)">The client is released at the first band; everything after it is worker time the request never waits on.</text>
+</svg>
+
 ## Verification & Testing
 
 **1. Smoke test with curl:**
@@ -477,6 +505,49 @@ def test_duplicate_task_is_idempotent(db_conn, sample_shapefile):
 ```
 
 ---
+
+Not every failure in a bulk pipeline is equal — the ones worth engineering against are those a client cannot observe.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What each failure point costs, and who notices: Retryable, Visible, Data loss" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>What each failure point costs, and who notices</title>
+  <desc>A comparison table. broker unreachable at dispatch: Retryable yes, Visible yes, Data loss no. client gets 503, retries worker killed mid-parse: Retryable yes, Visible partly, Data loss no. staged file survives invalid geometry in the file: Retryable no, Visible yes, Data loss partly. row skipped, reported upsert conflict on natural key: Retryable yes, Visible yes, Data loss no. last write wins result backend expired: Retryable no, Visible no, Data loss no. job status simply unknowable Only the last row is genuinely bad: the work completed but nobody can prove it. Give results a longer TTL than the job.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">What each failure point costs, and who notices</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Retryable</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Visible</text>
+  <text x="502" y="58" font-size="10" font-weight="700" fill="currentColor">Data loss</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">broker unreachable at dispatch</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">client gets 503, retries</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">worker killed mid-parse</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="510" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">staged file survives</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">invalid geometry in the file</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="152" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="568" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">row skipped, reported</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">upsert conflict on natural key</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">last write wins</text>
+  <line x1="20" y1="194" x2="700" y2="194" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="216" font-size="10.5" fill="currentColor">result backend expired</text>
+  <text x="294" y="216" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="216" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="510" y="216" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="216" font-size="9.5" fill="var(--muted, #7c6fb0)">job status simply unknowable</text>
+  <text x="20" y="252" font-size="10.5" fill="var(--muted, #7c6fb0)">Only the last row is genuinely bad: the work completed but nobody can prove it. Give results a longer TTL than the job.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

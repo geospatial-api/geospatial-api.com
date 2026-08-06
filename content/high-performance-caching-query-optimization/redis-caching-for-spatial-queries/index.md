@@ -83,9 +83,10 @@ PostGIS spatial queries — bounding box filters, `ST_DWithin` nearest-neighbor 
 
 The pattern below sits entirely inside your FastAPI process. No sidecar proxy, no query-level interception — just an explicit cache check in each route handler before the database is touched.
 
-<svg viewBox="0 0 720 320" role="img" aria-label="Cache-aside flow for a FastAPI spatial endpoint" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+<svg viewBox="4 24 671 240" role="img" aria-label="Cache-aside flow for a FastAPI spatial endpoint" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
   <title>Cache-aside flow for a FastAPI spatial endpoint</title>
   <desc>Request flows from the client to FastAPI. FastAPI checks Redis. On a hit the response returns from Redis. On a miss, FastAPI queries PostGIS, stores the result in Redis, then returns the response to the client.</desc>
+  <rect x="4" y="24" width="671" height="240" rx="10" fill="var(--surface, #f5f3ff)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
@@ -121,7 +122,7 @@ The pattern below sits entirely inside your FastAPI process. No sidecar proxy, n
   <text x="365" y="185" text-anchor="middle" font-size="10" fill="currentColor">rows</text>
   <!-- FastAPI → Redis SET -->
   <line x1="330" y1="150" x2="418" y2="78" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2,4" marker-end="url(#arr)"/>
-  <text x="355" y="130" text-anchor="middle" font-size="9" fill="currentColor">SETEX result</text>
+  <text x="366" y="126" text-anchor="middle" font-size="9" fill="currentColor">SETEX result</text>
   <!-- FastAPI → Client (response) -->
   <line x1="200" y1="152" x2="132" y2="152" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
   <text x="164" y="165" text-anchor="middle" font-size="10" fill="currentColor">GeoJSON</text>
@@ -441,6 +442,36 @@ The companion page on [configuring Redis cache tags for bounding box queries](ht
 
 ---
 
+The first step is the one that decides the hit rate, and it is the one most often left out.
+
+<svg viewBox="0 0 720 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The cache-aside path for a bbox request: normalise then lookup then query then store" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>The cache-aside path for a bbox request</title>
+  <desc>A left to right pipeline. Stage 1, normalise: round to 4 dp collapses near-identical viewports. Stage 2, lookup: GET cache:bbox:… hit → return. Stage 3, query: PostGIS on miss the expensive branch. Stage 4, store: SETEX + SADD tag ready for invalidation. Normalisation is what makes the cache work at all: without it, every pixel of pan is a new key.</desc>
+  <rect x="0" y="0" width="720" height="210" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">The cache-aside path for a bbox request</text>
+  <rect x="18" y="52" width="154" height="86" rx="8" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
+  <text x="95" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">normalise</text>
+  <text x="95" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">round to 4 dp</text>
+  <text x="95" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">collapses near-identical viewports</text>
+  <path d="M175 95 L189 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arthecacheas)"/>
+  <rect x="194" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="271" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">lookup</text>
+  <text x="271" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">GET cache:bbox:…</text>
+  <text x="271" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">hit → return</text>
+  <path d="M351 95 L365 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arthecacheas)"/>
+  <rect x="370" y="52" width="154" height="86" rx="8" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.5"/>
+  <text x="447" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">query</text>
+  <text x="447" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">PostGIS on miss</text>
+  <text x="447" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">the expensive branch</text>
+  <path d="M527 95 L541 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arthecacheas)"/>
+  <rect x="546" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="623" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">store</text>
+  <text x="623" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">SETEX + SADD tag</text>
+  <text x="623" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">ready for invalidation</text>
+  <text x="20" y="168" font-size="10.5" fill="var(--muted, #7c6fb0)">Normalisation is what makes the cache work at all: without it, every pixel of pan is a new key.</text>
+  <defs><marker id="arthecacheas" markerWidth="8" markerHeight="8" refX="6.5" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker></defs>
+</svg>
+
 ## Verification & Testing
 
 Confirm cache behaviour with a two-request sequence:
@@ -482,6 +513,31 @@ async def test_cache_hit_skips_db(client, mock_db):
 Check your PostGIS query plans independently with `EXPLAIN ANALYZE` to ensure `ST_Intersects` uses the GiST index. See [query plan analysis and index tuning](https://www.geospatial-api.com/high-performance-caching-query-optimization/query-plan-analysis-index-tuning/) for a full walkthrough of reading spatial query plans.
 
 ---
+
+Cache key normalisation has an optimum, and both sides of it are bad in different ways.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hit rate by coordinate rounding precision: no rounding 4 %, 6 dp (~11 cm) 9 %, 4 dp (~11 m) 61 %, 3 dp (~110 m) 84 %, 2 dp (~1.1 km) 91 % — but visibly wrong viewports" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Hit rate by coordinate rounding precision</title>
+  <desc>A horizontal bar chart. no rounding is 4 %. 6 dp (~11 cm) is 9 %. 4 dp (~11 m) is 61 %. 3 dp (~110 m) is 84 %. 2 dp (~1.1 km) is 91 % — but visibly wrong viewports. Three decimal places is usually the knee: high hit rate, and the returned viewport is still the one the user asked for.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Hit rate by coordinate rounding precision</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">no rounding</text>
+  <rect x="250" y="48" width="14" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="272" y="61" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">4 %</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">6 dp (~11 cm)</text>
+  <rect x="250" y="82" width="33" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="291" y="95" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">9 %</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">4 dp (~11 m)</text>
+  <rect x="250" y="116" width="227" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="485" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">61 %</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">3 dp (~110 m)</text>
+  <rect x="250" y="150" width="313" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="571" y="163" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">84 %</text>
+  <text x="20" y="197" font-size="10.5" fill="currentColor">2 dp (~1.1 km)</text>
+  <rect x="250" y="184" width="340" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="598" y="197" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">91 % — but visibly</text>
+  <text x="20" y="234" font-size="10.5" fill="var(--muted, #7c6fb0)">Three decimal places is usually the knee: high hit rate, and the returned viewport is still the one the user asked for.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

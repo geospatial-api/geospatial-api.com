@@ -75,6 +75,7 @@ The one thing a service container will *not* do for you is create the PostGIS ex
 <svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="GitHub Actions job talking to a PostGIS service container over localhost" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;">
   <title>GitHub Actions job and PostGIS service container</title>
   <desc>A runner job runs steps in sequence: wait for the pg_isready health check to pass, create the PostGIS extension, seed geometries, then run pytest. All steps connect over localhost port 5432 to a PostGIS service container that the runner started and health-checks.</desc>
+  <rect x="0" y="0" width="760" height="300" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- runner job box -->
   <rect x="20" y="30" width="340" height="248" rx="10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 3" opacity="0.6"/>
   <text x="190" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="var(--muted, #7c6fb0)">GitHub Actions runner — job "test"</text>
@@ -236,6 +237,28 @@ This same bounding-box-and-predicate shape is the workload described in [impleme
 
 ---
 
+Image choice is the single biggest lever on how long a spatial CI job waits before it can start testing.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Job time by PostGIS image choice: postgis/postgis:16-3.4 18 s to healthy, postgis/postgis:16-3.4-alpine 12 s — smaller, no proj-data, postgres:16 + CREATE EXTENSION 41 s — installs at boot, custom image with fixtures baked 9 s" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Job time by PostGIS image choice</title>
+  <desc>A horizontal bar chart. postgis/postgis:16-3.4 is 18 s to healthy. postgis/postgis:16-3.4-alpine is 12 s — smaller, no proj-data. postgres:16 + CREATE EXTENSION is 41 s — installs at boot. custom image with fixtures baked is 9 s. The alpine variant is fastest to pull and the one most likely to be missing grid-shift files — verify before choosing it.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Job time by PostGIS image choice</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">postgis/postgis:16-3.4</text>
+  <rect x="250" y="48" width="149" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="407" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">18 s to healthy</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">postgis/postgis:16-3.4-alpine</text>
+  <rect x="250" y="82" width="99" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="357" y="95" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">12 s — smaller, no proj-data</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">postgres:16 + CREATE EXTENSION</text>
+  <rect x="250" y="116" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="129" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">41 s — installs at boot</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">custom image with fixtures baked</text>
+  <rect x="250" y="150" width="74" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="332" y="163" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">9 s</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">The alpine variant is fastest to pull and the one most likely to be missing grid-shift files — verify before choosing it.</text>
+</svg>
+
 ## Key parameters & options
 
 | Parameter | Where | Purpose |
@@ -251,6 +274,36 @@ This same bounding-box-and-predicate shape is the workload described in [impleme
 | `ON_ERROR_STOP=1` | psql flag | Fails the step loudly if the extension cannot be created |
 
 ---
+
+The gap between "postgres is up" and "PostGIS is usable" is where most CI flakiness lives.
+
+<svg viewBox="0 0 720 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Why the health check matters more than it looks: container starts then init scripts run then healthcheck passes then tests connect" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Why the health check matters more than it looks</title>
+  <desc>A left to right pipeline. Stage 1, container starts: postgres accepting but no extensions. Stage 2, init scripts run: CREATE EXTENSION several seconds. Stage 3, healthcheck passes: pg_isready + SELECT postgis_version() the real gate. Stage 4, tests connect: schema present deterministic. A health check that only runs pg_isready lets tests start before PostGIS exists — the classic flaky first job of the morning.</desc>
+  <rect x="0" y="0" width="720" height="210" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Why the health check matters more than it looks</text>
+  <rect x="18" y="52" width="154" height="86" rx="8" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.5"/>
+  <text x="95" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">container starts</text>
+  <text x="95" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">postgres accepting</text>
+  <text x="95" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">but no extensions</text>
+  <path d="M175 95 L189 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arwhytheheal)"/>
+  <rect x="194" y="52" width="154" height="86" rx="8" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.5"/>
+  <text x="271" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">init scripts run</text>
+  <text x="271" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">CREATE EXTENSION</text>
+  <text x="271" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">several seconds</text>
+  <path d="M351 95 L365 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arwhytheheal)"/>
+  <rect x="370" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="447" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">healthcheck passes</text>
+  <text x="447" y="98" text-anchor="middle" font-size="9" fill="currentColor">pg_isready + postgis_version()</text>
+  <text x="447" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">the real gate</text>
+  <path d="M527 95 L541 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arwhytheheal)"/>
+  <rect x="546" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="623" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">tests connect</text>
+  <text x="623" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">schema present</text>
+  <text x="623" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">deterministic</text>
+  <text x="20" y="168" font-size="10.5" fill="var(--muted, #7c6fb0)">A health check that only runs pg_isready lets tests start before PostGIS exists — the classic flaky first job of the morning.</text>
+  <defs><marker id="arwhytheheal" markerWidth="8" markerHeight="8" refX="6.5" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker></defs>
+</svg>
 
 ## Gotchas & failure modes
 

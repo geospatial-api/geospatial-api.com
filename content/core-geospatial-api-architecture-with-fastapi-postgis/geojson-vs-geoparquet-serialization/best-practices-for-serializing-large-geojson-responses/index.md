@@ -97,9 +97,10 @@ The approach works well when:
 
 Two preconditions must be in place before implementing the streaming pattern. First, PostGIS must be installed and the target table must have a geometry column indexed with `GIST`. Second, the FastAPI application must use an async database driver (`asyncpg` or `psycopg3`) — synchronous drivers block the event loop and negate the benefits of streaming.
 
-<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Data flow from PostGIS through FastAPI async generator to HTTP client with gzip compression" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+<svg viewBox="-6 39 732 165" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Data flow from PostGIS through FastAPI async generator to HTTP client with gzip compression" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
   <title>Large GeoJSON streaming pipeline</title>
   <desc>Diagram showing how a spatial SQL query flows from PostGIS through an asyncpg cursor into a FastAPI async generator, is compressed by GZipMiddleware, and delivered as chunked HTTP to the client.</desc>
+  <rect x="-6" y="39" width="732" height="165" rx="10" fill="var(--surface, #f5f3ff)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -239,6 +240,37 @@ For large result sets that need page-by-page traversal without `OFFSET` degradat
 
 For validating that incoming bounding-box or geometry parameters are well-formed before the query runs, the [strict Pydantic validation for geometry](https://www.geospatial-api.com/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/) cluster covers model-level coercion of WKT, WKB, and GeoJSON geometry inputs.
 
+Splitting the payload by what the bytes actually encode shows which lever is worth pulling first.
+
+<svg viewBox="0 0 720 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where the bytes go in a 40 MB GeoJSON response: as generated, 15 dp 96 MB, precision capped at 6 dp 41 MB, + properties trimmed 27 MB" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Where the bytes go in a 40 MB GeoJSON response</title>
+  <desc>Stacked bars. as generated, 15 dp totals 96 MB. precision capped at 6 dp totals 41 MB. + properties trimmed totals 27 MB. Structural overhead — braces, keys, commas — is the floor no tuning removes; it is also the argument for a binary format.</desc>
+  <rect x="0" y="0" width="720" height="240" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Where the bytes go in a 40 MB GeoJSON response</text>
+  <rect x="430" y="16" width="11" height="11" rx="2" fill="var(--viz-bad, #a32b23)" opacity="0.7"/>
+  <text x="446" y="26" font-size="9.5" fill="currentColor">coordinates</text>
+  <rect x="529" y="16" width="11" height="11" rx="2" fill="var(--viz-warn, #8a5000)" opacity="0.7"/>
+  <text x="545" y="26" font-size="9.5" fill="currentColor">properties</text>
+  <rect x="621" y="16" width="11" height="11" rx="2" fill="var(--accent, #7c3aed)" opacity="0.7"/>
+  <text x="637" y="26" font-size="9.5" fill="currentColor">structural JSON</text>
+  <text x="20" y="66" font-size="10.5" fill="currentColor">as generated, 15 dp</text>
+  <rect x="210" y="52" width="275" height="20" rx="2" fill="var(--viz-bad, #a32b23)" opacity="0.7"/>
+  <rect x="485" y="52" width="94" height="20" rx="2" fill="var(--viz-warn, #8a5000)" opacity="0.7"/>
+  <rect x="579" y="52" width="60" height="20" rx="2" fill="var(--accent, #7c3aed)" opacity="0.7"/>
+  <text x="647" y="66" font-size="10" font-weight="700" fill="currentColor">96 MB</text>
+  <text x="20" y="110" font-size="10.5" fill="currentColor">precision capped at 6 dp</text>
+  <rect x="210" y="96" width="103" height="20" rx="2" fill="var(--viz-bad, #a32b23)" opacity="0.7"/>
+  <rect x="313" y="96" width="94" height="20" rx="2" fill="var(--viz-warn, #8a5000)" opacity="0.7"/>
+  <rect x="407" y="96" width="60" height="20" rx="2" fill="var(--accent, #7c3aed)" opacity="0.7"/>
+  <text x="475" y="110" font-size="10" font-weight="700" fill="currentColor">41 MB</text>
+  <text x="20" y="154" font-size="10.5" fill="currentColor">+ properties trimmed</text>
+  <rect x="210" y="140" width="103" height="20" rx="2" fill="var(--viz-bad, #a32b23)" opacity="0.7"/>
+  <rect x="313" y="140" width="25" height="20" rx="2" fill="var(--viz-warn, #8a5000)" opacity="0.7"/>
+  <rect x="338" y="140" width="60" height="20" rx="2" fill="var(--accent, #7c3aed)" opacity="0.7"/>
+  <text x="406" y="154" font-size="10" font-weight="700" fill="currentColor">27 MB</text>
+  <text x="20" y="196" font-size="10.5" fill="var(--muted, #7c6fb0)">Structural overhead — braces, keys, commas — is the floor no tuning removes; it is also the argument for a binary format.</text>
+</svg>
+
 ## Key parameters and options
 
 | Parameter / setting | Default | Notes |
@@ -249,6 +281,36 @@ For validating that incoming bounding-box or geometry parameters are well-formed
 | `conn.cursor()` prefetch | 50 (asyncpg default) | Increase to 500–1000 for very large rows to reduce round trips |
 | `media_type` | `application/geo+json` | Required for proxies and browsers to handle the MIME type correctly |
 | `orjson.dumps` option | none needed | Handles `bytes`, `datetime`, and `UUID` natively; pass `orjson.OPT_NON_STR_KEYS` for integer-keyed dicts |
+
+A streamed collection is assembled in four steps, and the third is the only one that repeats.
+
+<svg viewBox="0 0 720 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Streaming a FeatureCollection without buffering it: open then iterate then yield then close" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Streaming a FeatureCollection without buffering it</title>
+  <desc>A left to right pipeline. Stage 1, open: write the envelope {"type":…,"features":[. Stage 2, iterate: server-side cursor N rows per fetch. Stage 3, yield: one chunk of features comma-separated. Stage 4, close: write the tail ]}. The response is valid JSON only once the tail is written — which is why an error after the first chunk can only truncate.</desc>
+  <rect x="0" y="0" width="720" height="210" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Streaming a FeatureCollection without buffering it</text>
+  <rect x="18" y="52" width="154" height="86" rx="8" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
+  <text x="95" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">open</text>
+  <text x="95" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">write the envelope</text>
+  <text x="95" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">{"type":…,"features":[</text>
+  <path d="M175 95 L189 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arstreaminga)"/>
+  <rect x="194" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="271" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">iterate</text>
+  <text x="271" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">server-side cursor</text>
+  <text x="271" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">N rows per fetch</text>
+  <path d="M351 95 L365 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arstreaminga)"/>
+  <rect x="370" y="52" width="154" height="86" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="447" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">yield</text>
+  <text x="447" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">one chunk of features</text>
+  <text x="447" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">comma-separated</text>
+  <path d="M527 95 L541 95" stroke="currentColor" stroke-width="1.4" marker-end="url(#arstreaminga)"/>
+  <rect x="546" y="52" width="154" height="86" rx="8" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="623" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">close</text>
+  <text x="623" y="98" text-anchor="middle" font-size="9.5" fill="currentColor">write the tail</text>
+  <text x="623" y="116" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">]}</text>
+  <text x="20" y="168" font-size="10.5" fill="var(--muted, #7c6fb0)">The response is valid JSON only once the tail is written — which is why an error after the first chunk can only truncate.</text>
+  <defs><marker id="arstreaminga" markerWidth="8" markerHeight="8" refX="6.5" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker></defs>
+</svg>
 
 ## Gotchas and failure modes
 

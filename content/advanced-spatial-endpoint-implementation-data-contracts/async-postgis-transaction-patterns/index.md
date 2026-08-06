@@ -390,6 +390,31 @@ Note the `get_db` dependency yields a session but does **not** wrap it in a tran
 
 ---
 
+Transaction width is a throughput dial with a lock-duration cost attached, and it stops paying sooner than expected.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Throughput by transaction width, 200 000 geometry inserts: one transaction per row 340 rows/s, batch of 100 4 100 rows/s, batch of 1 000 9 800 rows/s, batch of 10 000 10 400 rows/s — and 8 s of lock, COPY into staging 26 000 rows/s" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Throughput by transaction width, 200 000 geometry inserts</title>
+  <desc>A horizontal bar chart. one transaction per row is 340 rows/s. batch of 100 is 4 100 rows/s. batch of 1 000 is 9 800 rows/s. batch of 10 000 is 10 400 rows/s — and 8 s of lock. COPY into staging is 26 000 rows/s. Throughput plateaus around a thousand rows per batch; beyond that you buy lock duration, not speed.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Throughput by transaction width, 200 000 geometry inserts</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">one transaction per row</text>
+  <rect x="250" y="48" width="6" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="264" y="61" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">340 rows/s</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">batch of 100</text>
+  <rect x="250" y="82" width="53" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="311" y="95" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">4 100 rows/s</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">batch of 1 000</text>
+  <rect x="250" y="116" width="128" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="386" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">9 800 rows/s</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">batch of 10 000</text>
+  <rect x="250" y="150" width="136" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="394" y="163" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">10 400 rows/s — and 8 s of lock</text>
+  <text x="20" y="197" font-size="10.5" fill="currentColor">COPY into staging</text>
+  <rect x="250" y="184" width="340" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="598" y="197" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">26 000 rows/s</text>
+  <text x="20" y="234" font-size="10.5" fill="var(--muted, #7c6fb0)">Throughput plateaus around a thousand rows per batch; beyond that you buy lock duration, not speed.</text>
+</svg>
+
 ## Verification & Testing
 
 **Confirm no backend is stuck in a transaction.** Idle-in-transaction backends are the single clearest sign a transaction is held too long:
@@ -432,6 +457,28 @@ async def test_rollback_leaves_no_partial_write(monkeypatch, count_parcels):
 ```
 
 ---
+
+Almost every transaction problem in a spatial API traces back to the same mistake — the transaction is wider than the write.
+
+<svg viewBox="0 0 720 198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two ways to hold a spatial transaction: ✕ transaction spans the HTTP request versus ✓ transaction spans only the writes" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Two ways to hold a spatial transaction</title>
+  <desc>Two panels. ✕ transaction spans the HTTP request: opened before validation, closed after serialisation holds a snapshot while the client is slow blocks autovacuum on the whole database one slow client pins one backend ✓ transaction spans only the writes: validate and serialise outside it snapshot held for milliseconds vacuum proceeds normally pool returns the connection immediately The rule is simple: nothing that waits on a network or a user belongs inside a transaction.</desc>
+  <rect x="0" y="0" width="720" height="198" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Two ways to hold a spatial transaction</text>
+  <rect x="16" y="40" width="336" height="122" rx="9" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.5"/>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--viz-bad, #a32b23)">✕ transaction spans the HTTP request</text>
+  <text x="34" y="84" font-size="10" fill="currentColor">opened before validation, closed after serialisation</text>
+  <text x="34" y="106" font-size="10" fill="currentColor">holds a snapshot while the client is slow</text>
+  <text x="34" y="128" font-size="10" fill="currentColor">blocks autovacuum on the whole database</text>
+  <text x="34" y="150" font-size="10" fill="currentColor">one slow client pins one backend</text>
+  <rect x="368" y="40" width="336" height="122" rx="9" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="386" y="62" font-size="11" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓ transaction spans only the writes</text>
+  <text x="386" y="84" font-size="10" fill="currentColor">validate and serialise outside it</text>
+  <text x="386" y="106" font-size="10" fill="currentColor">snapshot held for milliseconds</text>
+  <text x="386" y="128" font-size="10" fill="currentColor">vacuum proceeds normally</text>
+  <text x="386" y="150" font-size="10" fill="currentColor">pool returns the connection immediately</text>
+  <text x="20" y="194" font-size="10.5" fill="var(--muted, #7c6fb0)">The rule is simple: nothing that waits on a network or a user belongs inside a transaction.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

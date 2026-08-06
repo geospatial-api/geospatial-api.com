@@ -100,7 +100,7 @@ The diagram below shows where a materialized view sits: an expensive aggregation
 <svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Materialized view precomputes a spatial aggregation once; FastAPI read routes scan the indexed view instead of re-aggregating the base tables per request" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;font-family:inherit;">
   <title>Spatial materialized view read path</title>
   <desc>Base tables (parcels, gps_pings) feed an expensive aggregation using ST_Union and grid binning. A scheduled refresh writes the result into a materialized view stored on disk with a GiST index and a UNIQUE index. FastAPI read routes scan the indexed view in milliseconds, bypassing the per-request aggregation. A refresh scheduler runs REFRESH MATERIALIZED VIEW CONCURRENTLY on an interval.</desc>
-  <rect x="0" y="0" width="760" height="340" rx="12" fill="none"/>
+  <rect x="0" y="0" width="760" height="340" rx="12" fill="var(--surface, #f5f3ff)"/>
   <!-- Base tables group -->
   <rect x="18" y="40" width="180" height="180" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 3" opacity="0.55"/>
   <text x="108" y="32" text-anchor="middle" font-size="11" fill="currentColor" opacity="0.7">Base tables</text>
@@ -191,6 +191,28 @@ Before writing a `CREATE MATERIALIZED VIEW`, decide it is actually the right lay
 The heuristic: **materialize when one expensive aggregation is reused by many query shapes**; **cache in Redis when the same exact response is requested repeatedly**; **query on the fly when data must be live and volume is low**. These are not mutually exclusive — a common production stack materializes a heatmap grid, then puts a short Redis TTL in front of the most popular bounding boxes. The head-to-head trade-offs are worked through in [PostGIS materialized views vs Redis query caching](https://www.geospatial-api.com/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/postgis-materialized-views-vs-redis-query-caching/).
 
 ---
+
+Aggregation is the one workload where pre-computation is not an optimisation but a prerequisite.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Choropleth over 40 million points, by strategy: live aggregate per request 4 200 ms, live + Redis cache, warm 3 ms — until invalidated, materialised view 11 ms, materialised view + Redis 2 ms" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Choropleth over 40 million points, by strategy</title>
+  <desc>A horizontal bar chart. live aggregate per request is 4 200 ms. live + Redis cache, warm is 3 ms — until invalidated. materialised view is 11 ms. materialised view + Redis is 2 ms. The view moves the cost from request time to refresh time; Redis then removes the remaining round trip.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Choropleth over 40 million points, by strategy</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">live aggregate per request</text>
+  <rect x="250" y="48" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="61" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">4 200 ms</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">live + Redis cache, warm</text>
+  <rect x="250" y="82" width="6" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="264" y="95" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">3 ms — until invalidated</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">materialised view</text>
+  <rect x="250" y="116" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">11 ms</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">materialised view + Redis</text>
+  <rect x="250" y="150" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="163" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">2 ms</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">The view moves the cost from request time to refresh time; Redis then removes the remaining round trip.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -426,6 +448,28 @@ async def test_heatmap_returns_feature_collection():
 ```
 
 ---
+
+The refresh mode is the whole operational story of a materialised view.
+
+<svg viewBox="0 0 720 198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two refresh strategies: REFRESH MATERIALIZED VIEW versus … CONCURRENTLY" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Two refresh strategies</title>
+  <desc>Two panels. REFRESH MATERIALIZED VIEW: takes ACCESS EXCLUSIVE readers block for the whole refresh 90 s on a large aggregate no unique index required … CONCURRENTLY: readers keep the old rows roughly twice as slow requires a UNIQUE index on the view cannot run inside a transaction block The unique index is the price of admission for concurrent refresh, and it is almost always worth paying.</desc>
+  <rect x="0" y="0" width="720" height="198" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Two refresh strategies</text>
+  <rect x="16" y="40" width="336" height="122" rx="9" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.5"/>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--viz-bad, #a32b23)">REFRESH MATERIALIZED VIEW</text>
+  <text x="34" y="84" font-size="10" fill="currentColor">takes ACCESS EXCLUSIVE</text>
+  <text x="34" y="106" font-size="10" fill="currentColor">readers block for the whole refresh</text>
+  <text x="34" y="128" font-size="10" fill="currentColor">90 s on a large aggregate</text>
+  <text x="34" y="150" font-size="10" fill="currentColor">no unique index required</text>
+  <rect x="368" y="40" width="336" height="122" rx="9" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="386" y="62" font-size="11" font-weight="700" fill="var(--viz-good, #1f6b3a)">… CONCURRENTLY</text>
+  <text x="386" y="84" font-size="10" fill="currentColor">readers keep the old rows</text>
+  <text x="386" y="106" font-size="10" fill="currentColor">roughly twice as slow</text>
+  <text x="386" y="128" font-size="10" fill="currentColor">requires a UNIQUE index on the view</text>
+  <text x="386" y="150" font-size="10" fill="currentColor">cannot run inside a transaction block</text>
+  <text x="20" y="194" font-size="10.5" fill="var(--muted, #7c6fb0)">The unique index is the price of admission for concurrent refresh, and it is almost always worth paying.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

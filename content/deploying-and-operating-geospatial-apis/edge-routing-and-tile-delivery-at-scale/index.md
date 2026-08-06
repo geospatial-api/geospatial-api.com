@@ -142,7 +142,7 @@ The map client never talks to PostGIS. It talks to the edge, which either answer
 <svg viewBox="0 0 780 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Edge tier routing vector tile requests: map client to edge cache to FastAPI origin to PostGIS, with a versioned cache key and version-bump invalidation" style="width:100%;max-width:780px;display:block;margin:1.5rem auto;font-family:inherit;">
   <title>Edge routing for vector tiles</title>
   <desc>A map client requests /tiles/v42/roads/10/512/340.mvt. The edge tier checks a cache keyed on version, layer, z, x and y. A hit returns bytes directly. A miss forwards to the FastAPI origin, which runs ST_AsMVT against PostGIS, returns the tile, and the edge stores it. A publish step bumps the version from v42 to v43, changing every key and forcing repopulation.</desc>
-  <rect x="0" y="0" width="780" height="340" rx="12" fill="none"/>
+  <rect x="0" y="0" width="780" height="340" rx="12" fill="var(--surface, #f5f3ff)"/>
   <!-- Client -->
   <rect x="24" y="120" width="120" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
   <text x="84" y="148" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Map Client</text>
@@ -206,6 +206,28 @@ Three architectures put a caching tier between the client and PostGIS. They diff
 Most production systems combine them: an origin-pull CDN for the broad request volume, a pre-rendered store for the low-zoom basemap tiles that everyone requests, and edge compute for authorization.
 
 ---
+
+Tile delivery is a caching problem first and a database problem a distant second.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where a tile request is answered from, by share of traffic: edge cache HIT 91 % · 12 ms, edge MISS, origin cache HIT 6 % · 38 ms, origin generates the tile 2 % · 210 ms, 204 empty tile 1 % · 9 ms" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Where a tile request is answered from, by share of traffic</title>
+  <desc>A horizontal bar chart. edge cache HIT is 91 % · 12 ms. edge MISS, origin cache HIT is 6 % · 38 ms. origin generates the tile is 2 % · 210 ms. 204 empty tile is 1 % · 9 ms. The 2 % that reaches PostGIS is what capacity planning is actually about — the other 98 % never touches the database.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Where a tile request is answered from, by share of traffic</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">edge cache HIT</text>
+  <rect x="250" y="48" width="340" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="598" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">91 % · 12 ms</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">edge MISS, origin cache HIT</text>
+  <rect x="250" y="82" width="22" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="280" y="95" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">6 % · 38 ms</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">origin generates the tile</text>
+  <rect x="250" y="116" width="7" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="265" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">2 % · 210 ms</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">204 empty tile</text>
+  <rect x="250" y="150" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="163" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">1 % · 9 ms</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">The 2 % that reaches PostGIS is what capacity planning is actually about — the other 98 % never touches the database.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -375,6 +397,28 @@ assert "roads" in decoded            # layer present in the tile
 ```
 
 ---
+
+Invalidating tiles is where edge delivery gets genuinely hard, and there are only two workable answers.
+
+<svg viewBox="0 0 720 198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two invalidation strategies for a tile set: purge by URL versus version the path" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Two invalidation strategies for a tile set</title>
+  <desc>Two panels. purge by URL: precise: only changed tiles go needs a list of affected z/x/y expensive at high tile counts races with in-flight requests version the path: /v43/tiles/… — old URLs simply age out no purge API call at all clients pick up the new path on reload costs one cache generation of storage Versioning trades storage for simplicity, and storage at the edge is cheap. Purging is for the rare targeted correction.</desc>
+  <rect x="0" y="0" width="720" height="198" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Two invalidation strategies for a tile set</text>
+  <rect x="16" y="40" width="336" height="122" rx="9" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.5"/>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--viz-warn, #8a5000)">purge by URL</text>
+  <text x="34" y="84" font-size="10" fill="currentColor">precise: only changed tiles go</text>
+  <text x="34" y="106" font-size="10" fill="currentColor">needs a list of affected z/x/y</text>
+  <text x="34" y="128" font-size="10" fill="currentColor">expensive at high tile counts</text>
+  <text x="34" y="150" font-size="10" fill="currentColor">races with in-flight requests</text>
+  <rect x="368" y="40" width="336" height="122" rx="9" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="386" y="62" font-size="11" font-weight="700" fill="var(--viz-good, #1f6b3a)">version the path</text>
+  <text x="386" y="84" font-size="10" fill="currentColor">/v43/tiles/… — old URLs simply age out</text>
+  <text x="386" y="106" font-size="10" fill="currentColor">no purge API call at all</text>
+  <text x="386" y="128" font-size="10" fill="currentColor">clients pick up the new path on reload</text>
+  <text x="386" y="150" font-size="10" fill="currentColor">costs one cache generation of storage</text>
+  <text x="20" y="194" font-size="10.5" fill="var(--muted, #7c6fb0)">Versioning trades storage for simplicity, and storage at the edge is cheap. Purging is for the rare targeted correction.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

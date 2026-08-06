@@ -74,6 +74,7 @@ Pin whenever an environment must be reproducible: production, staging, and CI al
 <svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A floating tag resolves to different image builds over time producing different ST_ output, while a pinned digest always resolves to the same build" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;">
   <title>Floating tag drift versus pinned digest stability</title>
   <desc>The floating tag postgis:16 resolves in January to a GEOS 3.11 build and in June to a GEOS 3.12 build, producing two different ST_SimplifyPreserveTopology outputs. The pinned digest sha256 always resolves to the same GEOS 3.12 build and the same output regardless of when it is pulled.</desc>
+  <rect x="0" y="0" width="760" height="250" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- Floating row -->
   <text x="20" y="46" font-size="11" font-weight="700" fill="currentColor">FLOATING · postgis:16</text>
   <rect x="200" y="24" width="150" height="48" rx="8" fill="var(--surface, #f5f3ff)" stroke="var(--border, #c4b5fd)" stroke-width="1.5"/>
@@ -175,6 +176,31 @@ SELECT PostGIS_Full_Version();
 
 ---
 
+A floating tag is a dependency that updates itself without appearing in any diff.
+
+<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What a floating tag actually gives you over six months: deploy then rebuild then rebuild then rebuild then incident" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>What a floating tag actually gives you over six months</title>
+  <desc>A horizontal timeline. deploy: PostGIS 3.4.0. rebuild: silently 3.4.1. rebuild: silently 3.4.2. rebuild: 3.5.0 — new GEOS. incident: a plan changed; nothing in the diff explains it. Nothing in the repository changed across these five points. That is precisely the problem a digest pin solves.</desc>
+  <rect x="0" y="0" width="720" height="220" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">What a floating tag actually gives you over six months</text>
+  <rect x="20" y="92" width="109" height="34" rx="5" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.4"/>
+  <text x="74" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">deploy</text>
+  <text x="74" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">PostGIS 3.4.0</text>
+  <rect x="133" y="92" width="109" height="34" rx="5" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.4"/>
+  <text x="187" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">rebuild</text>
+  <text x="187" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">silently 3.4.1</text>
+  <rect x="246" y="92" width="109" height="34" rx="5" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.4"/>
+  <text x="300" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">rebuild</text>
+  <text x="300" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">silently 3.4.2</text>
+  <rect x="359" y="92" width="166" height="34" rx="5" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.4"/>
+  <text x="442" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">rebuild</text>
+  <text x="442" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">3.5.0 — new GEOS</text>
+  <rect x="529" y="92" width="166" height="34" rx="5" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.4"/>
+  <text x="612" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">incident</text>
+  <text x="612" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">a plan changed; nothing in the diff explains it</text>
+  <text x="20" y="184" font-size="10.5" fill="var(--muted, #7c6fb0)">Nothing in the repository changed across these five points. That is precisely the problem a digest pin solves.</text>
+</svg>
+
 ## Key parameters & options
 
 | Element | Purpose | Recommended value |
@@ -189,6 +215,38 @@ SELECT PostGIS_Full_Version();
 
 ---
 
+Each step down this list trades reproducibility for automatic patches — and only the last row makes upgrades visible.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pinning strength, from weakest to strongest: Reproducible, Gets fixes" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Pinning strength, from weakest to strongest</title>
+  <desc>A comparison table. postgis/postgis:latest: Reproducible no, Gets fixes yes. never do this postgis/postgis:16: Reproducible no, Gets fixes yes. major only — still drifts postgis/postgis:16-3.4: Reproducible partly, Gets fixes yes. patch versions still move …@sha256:…: Reproducible yes, Gets fixes no. exact, and updates are a deliberate PR The digest is the only line that makes a rebuild byte-identical, and the only one where an upgrade is reviewable.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Pinning strength, from weakest to strongest</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Reproducible</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Gets fixes</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">postgis/postgis:latest</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">never do this</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">postgis/postgis:16</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">major only — still drifts</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">postgis/postgis:16-3.4</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">patch versions still move</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">…@sha256:…</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">exact, and updates are a deliberate PR</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">The digest is the only line that makes a rebuild byte-identical, and the only one where an upgrade is reviewable.</text>
+</svg>
+
 ## Gotchas & failure modes
 
 - **A minor bump silently changes `ST_` output.** Upgrading the pinned digest from a GEOS 3.11 build to a 3.12 build can shift `ST_SimplifyPreserveTopology`, `ST_Buffer`, and `ST_MakeValid` results by a vertex or a coordinate. A geometry-diff regression suite then reports mass "changes." This is expected, not a bug — treat every digest bump as a change that requires re-baselining golden geometry fixtures, and gate it behind the same review as a schema migration handled in CI.
@@ -202,6 +260,10 @@ SELECT PostGIS_Full_Version();
 - **The digest points at a multi-arch manifest list.** On Apple Silicon vs x86 CI, the same tag resolves to different per-architecture digests. Pin the *manifest list* digest (what `docker inspect` returns for the tag) so Docker selects the right arch, or pin per-arch digests explicitly in a build matrix — mismatches otherwise surface as `exec format error`.
 
 ---
+
+Pinning is only half the discipline; the other half is a scheduled review. A digest that is never updated becomes an image that never receives a security patch, which is a different kind of risk from the one pinning was adopted to solve. Put the upgrade on a calendar, treat it as an ordinary pull request with the version diff visible, and run the same startup assertions against the new image before it reaches production.
+
+Pinning is only half the discipline; the other half is a scheduled review. A digest that is never updated becomes an image that never receives a security patch, which is a different kind of risk from the one pinning was adopted to solve. Put the upgrade on a calendar, treat it as an ordinary pull request with the version diff visible, and run the same startup assertions against the new image before it reaches production.
 
 ## Verification
 

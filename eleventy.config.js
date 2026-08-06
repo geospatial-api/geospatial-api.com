@@ -62,6 +62,7 @@ module.exports = function (eleventyConfig) {
 
   // ── Exclude non-page markdown files from build ───────────────────────────
   eleventyConfig.ignores.add("AGENTS.md");
+  eleventyConfig.ignores.add("README.md");
   eleventyConfig.ignores.add("CLAUDE.md");
   eleventyConfig.ignores.add("SITE_BUILD_CHECKLIST.md");
   eleventyConfig.ignores.add("site_description_and_requirements.md");

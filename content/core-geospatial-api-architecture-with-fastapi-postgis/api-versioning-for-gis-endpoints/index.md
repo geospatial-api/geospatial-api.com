@@ -118,6 +118,7 @@ The diagram below maps the three mainstream versioning approaches against the co
 <svg viewBox="0 0 820 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Decision matrix comparing URL path versioning, header versioning, and query-parameter versioning for GIS endpoints" style="width:100%;max-width:820px;display:block;margin:1.5rem auto;">
   <title>Versioning Strategy Decision Matrix for GIS Endpoints</title>
   <desc>A table comparing three versioning strategies — URL path, header-based, and query parameter — across five criteria: CDN cacheability, OGC routing compatibility, debuggability, gateway routing simplicity, and recommended use case.</desc>
+  <rect x="0" y="0" width="820" height="320" rx="10" fill="var(--surface, #f5f3ff)"/>
   <defs>
     <style>
       .dm-header { font-family: inherit; font-size: 13px; font-weight: 600; fill: #fff; }
@@ -125,8 +126,8 @@ The diagram below maps the three mainstream versioning approaches against the co
       .dm-good   { fill: #22c55e; }
       .dm-warn   { fill: #f59e0b; }
       .dm-bad    { fill: #ef4444; }
-      .dm-row-a  { fill: #f5f3ff; }
-      .dm-row-b  { fill: #ede9fe; }
+      .dm-row-a  { fill: var(--surface, #f5f3ff); }
+      .dm-row-b  { fill: var(--surface2, #ede9fe); }
     </style>
   </defs>
   <!-- Header row -->
@@ -198,6 +199,28 @@ The diagram below maps the three mainstream versioning approaches against the co
 **URL path versioning** wins for GIS workloads. It aligns with CDN caching strategies, simplifies routing in API gateways, avoids ambiguity when debugging spatial query failures across mixed client fleets, and integrates cleanly with the [spatial resource modeling patterns](https://www.geospatial-api.com/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/) already established in the core architecture. Header-based versioning forces every cache layer to handle `Vary` headers, which destroys tile and feature cacheability. Query parameters conflict with OGC-compliant spatial filter parameters like `bbox` and `datetime`, which makes them error-prone and semantically confusing.
 
 ---
+
+Before choosing a versioning mechanism, classify the change — most changes need no version at all.
+
+<svg viewBox="0 0 720 198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two kinds of change, two mechanisms: additive — no version needed versus breaking — version or sunset" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Two kinds of change, two mechanisms</title>
+  <desc>Two panels. additive — no version needed: a new optional query parameter a new property on a feature a new output format behind Accept a wider allow-list of CRS codes breaking — version or sunset: removing or renaming a property changing the default projection changing a unit or an axis order tightening validation on existing input The test is whether an untouched client keeps working. If it does not, no amount of documentation makes the change additive.</desc>
+  <rect x="0" y="0" width="720" height="198" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Two kinds of change, two mechanisms</text>
+  <rect x="16" y="40" width="336" height="122" rx="9" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--viz-good, #1f6b3a)">additive — no version needed</text>
+  <text x="34" y="84" font-size="10" fill="currentColor">a new optional query parameter</text>
+  <text x="34" y="106" font-size="10" fill="currentColor">a new property on a feature</text>
+  <text x="34" y="128" font-size="10" fill="currentColor">a new output format behind Accept</text>
+  <text x="34" y="150" font-size="10" fill="currentColor">a wider allow-list of CRS codes</text>
+  <rect x="368" y="40" width="336" height="122" rx="9" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.5"/>
+  <text x="386" y="62" font-size="11" font-weight="700" fill="var(--viz-bad, #a32b23)">breaking — version or sunset</text>
+  <text x="386" y="84" font-size="10" fill="currentColor">removing or renaming a property</text>
+  <text x="386" y="106" font-size="10" fill="currentColor">changing the default projection</text>
+  <text x="386" y="128" font-size="10" fill="currentColor">changing a unit or an axis order</text>
+  <text x="386" y="150" font-size="10" fill="currentColor">tightening validation on existing input</text>
+  <text x="20" y="194" font-size="10.5" fill="var(--muted, #7c6fb0)">The test is whether an untouched client keeps working. If it does not, no amount of documentation makes the change additive.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -481,6 +504,28 @@ async def test_v2_returns_cursor():
 ```
 
 ---
+
+The cost of a version bump is not the release — it is the overlap that follows it.
+
+<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How long each version actually lives: v1 only then v1 + v2 overlap then v2 default then v2 only" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>How long each version actually lives</title>
+  <desc>A horizontal timeline. v1 only: launch. v1 + v2 overlap: both served. v2 default: v1 deprecated. v2 only: v1 sunset. The overlap is the expensive phase: two code paths, two test suites, two sets of behaviour to keep straight.</desc>
+  <rect x="0" y="0" width="720" height="220" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">How long each version actually lives</text>
+  <rect x="20" y="92" width="141" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="var(--accent, #7c3aed)" stroke-width="1.4"/>
+  <text x="90" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">v1 only</text>
+  <text x="90" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">launch</text>
+  <rect x="165" y="92" width="190" height="34" rx="5" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.4"/>
+  <text x="260" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">v1 + v2 overlap</text>
+  <text x="260" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">both served</text>
+  <rect x="359" y="92" width="141" height="34" rx="5" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.4"/>
+  <text x="429" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">v2 default</text>
+  <text x="429" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">v1 deprecated</text>
+  <rect x="504" y="92" width="190" height="34" rx="5" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.4"/>
+  <text x="599" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">v2 only</text>
+  <text x="599" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">v1 sunset</text>
+  <text x="20" y="184" font-size="10.5" fill="var(--muted, #7c6fb0)">The overlap is the expensive phase: two code paths, two test suites, two sets of behaviour to keep straight.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

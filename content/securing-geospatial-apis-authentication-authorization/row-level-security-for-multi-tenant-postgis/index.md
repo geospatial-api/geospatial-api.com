@@ -197,6 +197,38 @@ For a spatial SaaS with a large, dynamic tenant list, **RLS on a shared table is
 
 ---
 
+Isolation strength and operational cost usually move together — with one exception.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three ways to isolate tenants: Bypassable, Scales" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Three ways to isolate tenants</title>
+  <desc>A comparison table. WHERE tenant_id = … in the app: Bypassable yes, Scales yes. one forgotten clause leaks everything row-level security: Bypassable no, Scales yes. enforced below the application schema per tenant: Bypassable no, Scales no. migrations multiply by tenant count database per tenant: Bypassable no, Scales no. strongest, and operationally heavy RLS is the only row that is both unbypassable and indifferent to how many tenants exist.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Three ways to isolate tenants</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Bypassable</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Scales</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">WHERE tenant_id = … in the app</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">one forgotten clause leaks everything</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">row-level security</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">enforced below the application</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">schema per tenant</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">migrations multiply by tenant count</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">database per tenant</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">strongest, and operationally heavy</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">RLS is the only row that is both unbypassable and indifferent to how many tenants exist.</text>
+</svg>
+
 ## Step-by-Step Implementation
 
 ### Step 1: Model the table with a tenant key and spatial index
@@ -426,6 +458,31 @@ async def test_tenant_cannot_see_other_tenant_features():
 ```
 
 ---
+
+RLS is nearly free when the policy is a simple indexed comparison, and expensive the moment it is not.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Query cost with RLS enabled, by policy shape: no RLS baseline, policy on an indexed tenant_id +5 %, policy calling a stable function +18 %, policy with an ST_ predicate +160 %, policy calling a volatile function +840 % — per row" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Query cost with RLS enabled, by policy shape</title>
+  <desc>A horizontal bar chart. no RLS is baseline. policy on an indexed tenant_id is +5 %. policy calling a stable function is +18 %. policy with an ST_ predicate is +160 %. policy calling a volatile function is +840 % — per row. A policy is evaluated for every candidate row, so anything that cannot be an index condition is paid for many times over.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Query cost with RLS enabled, by policy shape</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">no RLS</text>
+  <rect x="250" y="48" width="36" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="294" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">baseline</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">policy on an indexed tenant_id</text>
+  <rect x="250" y="82" width="37" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="295" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">+5 %</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">policy calling a stable function</text>
+  <rect x="250" y="116" width="42" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="300" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">+18 %</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">policy with an ST_ predicate</text>
+  <rect x="250" y="150" width="94" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="352" y="163" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">+160 %</text>
+  <text x="20" y="197" font-size="10.5" fill="currentColor">policy calling a volatile function</text>
+  <rect x="250" y="184" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="197" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">+840 % — per row</text>
+  <text x="20" y="234" font-size="10.5" fill="var(--muted, #7c6fb0)">A policy is evaluated for every candidate row, so anything that cannot be an index condition is paid for many times over.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

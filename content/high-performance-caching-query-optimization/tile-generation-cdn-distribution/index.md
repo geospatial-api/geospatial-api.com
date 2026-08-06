@@ -124,7 +124,7 @@ The diagram below shows the full request path from map client through CDN, appli
   <title>Vector tile request pipeline</title>
   <desc>Shows how a map client request traverses CDN edge, FastAPI application, Redis tile cache, and PostGIS ST_AsMVT, with cache hits short-circuiting the chain at each layer.</desc>
   <!-- Background -->
-  <rect width="780" height="320" fill="none"/>
+  <rect y="0" x="0" width="780" height="320" fill="var(--surface, #f5f3ff)"/>
   <!-- Nodes -->
   <!-- Client -->
   <rect x="20" y="130" width="100" height="44" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/>
@@ -187,6 +187,38 @@ The diagram below shows the full request path from map client through CDN, appli
 </svg>
 
 ---
+
+Tile generation strategy is a trade between how fresh tiles must be and how many of them there are.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where a tile can be generated, and when each fits: Fresh data, Cheap at scale" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Where a tile can be generated, and when each fits</title>
+  <desc>A comparison table. on request from PostGIS: Fresh data yes, Cheap at scale no. simplest; needs a cache in front pre-rendered to object storage: Fresh data no, Cheap at scale yes. best for stable basemaps hybrid: recent live, old static: Fresh data yes, Cheap at scale yes. more moving parts client-side from GeoJSON: Fresh data yes, Cheap at scale no. only for tiny datasets The hybrid row is where most mature tile services end up, and it is worth arriving there deliberately rather than by accretion.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Where a tile can be generated, and when each fits</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Fresh data</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Cheap at scale</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">on request from PostGIS</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">simplest; needs a cache in front</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">pre-rendered to object storage</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">best for stable basemaps</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">hybrid: recent live, old static</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">more moving parts</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">client-side from GeoJSON</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">only for tiny datasets</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">The hybrid row is where most mature tile services end up, and it is worth arriving there deliberately rather than by accretion.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -498,6 +530,28 @@ async def test_tile_invalid_coordinates():
 ```
 
 ---
+
+The pyramid grows geometrically, and that single fact decides whether pre-rendering is viable at all.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tiles in the pyramid, by maximum zoom (one country): to z10 1 400 tiles, to z12 22 000, to z14 350 000, to z16 5 600 000" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Tiles in the pyramid, by maximum zoom (one country)</title>
+  <desc>A horizontal bar chart. to z10 is 1 400 tiles. to z12 is 22 000. to z14 is 350 000. to z16 is 5 600 000. Every extra zoom level multiplies the tile count by four, which is why pre-rendering has a natural ceiling and seeding by traffic does not.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Tiles in the pyramid, by maximum zoom (one country)</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">to z10</text>
+  <rect x="250" y="48" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">1 400 tiles</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">to z12</text>
+  <rect x="250" y="82" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">22 000</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">to z14</text>
+  <rect x="250" y="116" width="21" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="279" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">350 000</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">to z16</text>
+  <rect x="250" y="150" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="163" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">5 600 000</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">Every extra zoom level multiplies the tile count by four, which is why pre-rendering has a natural ceiling and seeding by traffic does not.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

@@ -102,9 +102,10 @@ The core problem is that a spatial query has two answers: the one your ORM emits
 - **The extension is not the database.** `postgis/postgis:16-3.4` ships the PostGIS binaries, but `CREATE EXTENSION postgis` still has to run against each database before `ST_` functions resolve. Forgetting this is the single most common CI failure, producing `function st_intersects(...) does not exist`.
 - **Migrations carry spatial baggage.** Running Alembic in CI with GeoAlchemy2 surfaces problems a plain schema never sees — spurious `DROP COLUMN geom`, and `CREATE INDEX CONCURRENTLY` that cannot run inside a migration's transaction. That whole class of problem has its own guide: [automating spatial database migrations in CI](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/automating-spatial-database-migrations-in-ci/).
 
-<svg viewBox="0 0 780 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CI/CD pipeline stages for a FastAPI and PostGIS service" style="width:100%;max-width:780px;display:block;margin:1.5rem auto;">
+<svg viewBox="0 33 740 207" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CI/CD pipeline stages for a FastAPI and PostGIS service" style="width:100%;max-width:780px;display:block;margin:1.5rem auto;">
   <title>Spatial API CI/CD pipeline stages</title>
   <desc>Six sequential stages left to right: lint and type-check, unit tests, spatial integration tests, build and push image, migrate database, and deploy. The spatial integration test stage connects down to a highlighted PostGIS service container that provides real ST_ functions, GiST indexes, SRID handling, and real geometries.</desc>
+  <rect x="0" y="33" width="740" height="207" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- stage boxes -->
   <rect x="16" y="80" width="108" height="64" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
   <text x="70" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="var(--muted, #7c6fb0)">1</text>
@@ -186,6 +187,43 @@ There are three defensible ways to get a real PostGIS into a CI job. They are no
 For the pipeline in this guide the integration job uses a **service container**: it is the least code, starts once, and maps cleanly onto GitHub Actions' health-check plumbing. The complete `test.yml` for that path — health check, extension creation, seeded geometries, and async pytest — is built end to end in [GitHub Actions integration tests with a PostGIS service container](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/github-actions-integration-tests-with-a-postgis-service-container/). Reach for Testcontainers when a single shared database is not enough — for example, tests that verify tenant isolation need a fresh database per case, and the same container config then runs unchanged on a developer laptop. Reach for docker-compose only when the thing under test is the system, not the query.
 
 ---
+
+The choice of how to run the database in CI decides which class of bug the pipeline can see at all.
+
+<svg viewBox="0 0 720 234" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Running PostGIS in CI — three options: Fast, Realistic, Cheap" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Running PostGIS in CI — three options</title>
+  <desc>A comparison table. service container: Fast yes, Realistic yes, Cheap yes. the default for GitHub Actions shared staging database: Fast partly, Realistic yes, Cheap no. flaky under parallel jobs SQLite + SpatiaLite: Fast yes, Realistic no, Cheap yes. different SQL, different bugs managed ephemeral branch: Fast yes, Realistic yes, Cheap partly. closest to production data SpatiaLite is the tempting one and the wrong one: the dialect differences hide exactly the bugs CI exists to catch.</desc>
+  <rect x="0" y="0" width="720" height="234" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Running PostGIS in CI — three options</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Fast</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Realistic</text>
+  <text x="502" y="58" font-size="10" font-weight="700" fill="currentColor">Cheap</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">service container</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">the default for GitHub Actions</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">shared staging database</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="568" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">flaky under parallel jobs</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">SQLite + SpatiaLite</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="510" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="568" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">different SQL, different bugs</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">managed ephemeral branch</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="510" y="184" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="568" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">closest to production data</text>
+  <text x="20" y="220" font-size="10.5" fill="var(--muted, #7c6fb0)">SpatiaLite is the tempting one and the wrong one: the dialect differences hide exactly the bugs CI exists to catch.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -430,6 +468,34 @@ docker run --rm -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgis/postgis:16-3.
 ```
 
 ---
+
+A healthy pipeline spends most of its wall clock on tests; the shape below is what to compare against.
+
+<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A spatial CI run, end to end: checkout then boot PostGIS then migrate then seed fixtures then tests then teardown" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>A spatial CI run, end to end</title>
+  <desc>A horizontal timeline. checkout: 4 s. boot PostGIS: 18 s until healthy. migrate: schema + extensions. seed fixtures: once per job. tests: the only part that should dominate. teardown: container discarded. If anything other than the test band dominates, the pipeline is measuring its own setup rather than the code.</desc>
+  <rect x="0" y="0" width="720" height="220" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">A spatial CI run, end to end</text>
+  <rect x="20" y="92" width="48" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="44" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">checkout</text>
+  <text x="44" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">4 s</text>
+  <rect x="72" y="92" width="100" height="34" rx="5" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.4"/>
+  <text x="122" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">boot PostGIS</text>
+  <text x="122" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">18 s until healthy</text>
+  <rect x="176" y="92" width="100" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="226" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">migrate</text>
+  <text x="226" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">schema + extensions</text>
+  <rect x="280" y="92" width="48" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="304" y="114" text-anchor="middle" font-size="9" font-weight="700" fill="currentColor">seed</text>
+  <text x="304" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">once per job</text>
+  <rect x="332" y="92" width="309" height="34" rx="5" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.4"/>
+  <text x="486" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">tests</text>
+  <text x="486" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">the only part that should dominate</text>
+  <rect x="645" y="92" width="48" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="669" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">teardown</text>
+  <text x="669" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">container discarded</text>
+  <text x="20" y="184" font-size="10.5" fill="var(--muted, #7c6fb0)">If anything other than the test band dominates, the pipeline is measuring its own setup rather than the code.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

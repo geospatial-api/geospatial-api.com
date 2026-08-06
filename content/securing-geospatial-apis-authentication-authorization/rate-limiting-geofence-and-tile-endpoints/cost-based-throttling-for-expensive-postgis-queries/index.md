@@ -76,7 +76,7 @@ The cost estimate must be cheap and derived from the request itself — the boun
 <svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cost-based token bucket: request cost estimated from bbox area and radius, deducted from a refilling Redis bucket" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;font-family:inherit;">
   <title>Cost-based token bucket for spatial requests</title>
   <desc>A request's bounding box and radius feed a cost estimator that outputs a token cost. A per-client bucket in Redis refills at a steady rate up to a capacity. The Lua script refills the bucket by elapsed time, then compares tokens to the request cost. If tokens cover the cost they are deducted and the request is admitted; otherwise it is rejected with 429 and a Retry-After equal to the time needed to refill the shortfall.</desc>
-  <rect x="0" y="0" width="760" height="320" rx="12" fill="none"/>
+  <rect x="0" y="0" width="760" height="320" rx="12" fill="var(--surface, #f5f3ff)"/>
   <!-- request inputs -->
   <rect x="30" y="40" width="160" height="90" rx="8" fill="var(--surface, #f5f3ff)" stroke="var(--border, #c4b5fd)" stroke-width="1.5"/>
   <text x="110" y="64" text-anchor="middle" font-size="12" fill="currentColor" font-weight="600">Request</text>
@@ -261,6 +261,31 @@ async def within(
 
 ---
 
+The price list is the policy — everything else in a cost-based limiter is bookkeeping.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tokens charged by request shape: tile at z14 1 token, bbox under 1 deg² 2, bbox 1–25 deg² 12, bbox over 25 deg² 60, export, unbounded 400 — a minute of budget" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Tokens charged by request shape</title>
+  <desc>A horizontal bar chart. tile at z14 is 1 token. bbox under 1 deg² is 2. bbox 1–25 deg² is 12. bbox over 25 deg² is 60. export, unbounded is 400 — a minute of budget. Prices should be derived from measured database time, then rounded generously; a wrong price is worse than a coarse one.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Tokens charged by request shape</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">tile at z14</text>
+  <rect x="250" y="48" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">1 token</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">bbox under 1 deg²</text>
+  <rect x="250" y="82" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">2</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">bbox 1–25 deg²</text>
+  <rect x="250" y="116" width="10" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="268" y="129" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">12</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">bbox over 25 deg²</text>
+  <rect x="250" y="150" width="51" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="309" y="163" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">60</text>
+  <text x="20" y="197" font-size="10.5" fill="currentColor">export, unbounded</text>
+  <rect x="250" y="184" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="197" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">400 — a minute of</text>
+  <text x="20" y="234" font-size="10.5" fill="var(--muted, #7c6fb0)">Prices should be derived from measured database time, then rounded generously; a wrong price is worse than a coarse one.</text>
+</svg>
+
 ## Key parameters & options
 
 | Parameter | Meaning | Typical value | Notes |
@@ -274,6 +299,31 @@ async def within(
 | `PEXPIRE` | Bucket TTL | `ceil(cap/rate)` s | Idle buckets evict; refill math reconstructs state on return |
 
 ---
+
+A bucket has two parameters and they do different jobs, which is where most misconfigurations come from.
+
+<svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A burst against a token bucket: idle then burst then throttled then refill then normal" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>A burst against a token bucket</title>
+  <desc>A horizontal timeline. idle: bucket full. burst: drains fast. throttled: 429 with Retry-After. refill: steady rate resumes. normal: headroom restored. The refill rate sets the sustained allowance and the bucket size sets the burst; tuning one without the other never behaves as intended.</desc>
+  <rect x="0" y="0" width="720" height="220" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">A burst against a token bucket</text>
+  <rect x="20" y="92" width="109" height="34" rx="5" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.4"/>
+  <text x="74" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">idle</text>
+  <text x="74" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">bucket full</text>
+  <rect x="133" y="92" width="109" height="34" rx="5" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.4"/>
+  <text x="187" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">burst</text>
+  <text x="187" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">drains fast</text>
+  <rect x="246" y="92" width="166" height="34" rx="5" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.4"/>
+  <text x="329" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">throttled</text>
+  <text x="329" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">429 with Retry-After</text>
+  <rect x="416" y="92" width="166" height="34" rx="5" fill="var(--surface-alt, #ede8f8)" stroke="currentColor" stroke-width="1.4"/>
+  <text x="499" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">refill</text>
+  <text x="499" y="150" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">steady rate resumes</text>
+  <rect x="586" y="92" width="109" height="34" rx="5" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.4"/>
+  <text x="640" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">normal</text>
+  <text x="640" y="74" text-anchor="middle" font-size="9.5" fill="var(--muted, #7c6fb0)">headroom restored</text>
+  <text x="20" y="184" font-size="10.5" fill="var(--muted, #7c6fb0)">The refill rate sets the sustained allowance and the bucket size sets the burst; tuning one without the other never behaves as intended.</text>
+</svg>
 
 ## Gotchas & failure modes
 

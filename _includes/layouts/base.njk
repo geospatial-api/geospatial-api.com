@@ -3,6 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Resolve the colour scheme before first paint: stored choice wins, else the OS preference -->
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('theme');
+        var dark = stored ? stored === 'dark'
+          : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    })();
+  </script>
   <title>{% if title %}{{ title }} | geospatial-api.com{% else %}Geospatial API — FastAPI &amp; PostGIS Guides{% endif %}</title>
   <meta name="description" content="{{ description or 'Design and build production-ready spatial REST/GraphQL APIs with FastAPI and PostGIS.' }}">
   {% if page.url %}<link rel="canonical" href="https://www.geospatial-api.com{{ page.url }}">{% endif %}
@@ -141,6 +155,7 @@
   {% include "partials/footer.njk" %}
 
   <!-- Scripts -->
+  <script src="/assets/js/theme.js?v={{ assets.v }}" defer></script>
   <script src="/assets/js/copy-code.js?v={{ assets.v }}" defer></script>
   <script src="/assets/js/checkbox.js?v={{ assets.v }}" defer></script>
   <script src="/assets/js/accordion.js?v={{ assets.v }}" defer></script>

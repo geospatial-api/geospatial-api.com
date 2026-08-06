@@ -101,6 +101,7 @@ The local and production stack is four services: a PostGIS database with a persi
 <svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Container topology for a spatial API: FastAPI app container talks to Redis and to PgBouncer, which fronts a PostGIS database container backed by a persistent volume" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;">
   <title>Containerized spatial API topology</title>
   <desc>The FastAPI application container (python:3.12-slim) connects to a Redis cache container and to a PgBouncer container on port 6432. PgBouncer forwards to the PostGIS container (postgis/postgis:16-3.4) on port 5432, which is backed by a named Docker volume holding the data directory and spatial_ref_sys table. Healthchecks run against each service.</desc>
+  <rect x="0" y="0" width="760" height="340" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- App container -->
   <rect x="30" y="130" width="170" height="80" rx="10" fill="var(--surface, #f5f3ff)" stroke="var(--accent, #7c3aed)" stroke-width="2"/>
   <text x="115" y="160" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">api</text>
@@ -186,6 +187,37 @@ The single most consequential choice is the app base image. This matrix is the a
 Alpine looks attractive because the empty image is ~50 MB, but the moment `pip install shapely` runs it must compile against musl. The manylinux wheels on PyPI target glibc, so pip discards them and builds from the sdist, which requires `gdal-dev`, `geos-dev`, `proj-dev`, and a full `build-base`. The result is slower to build, larger than expected, and prone to the runtime `ImportError` failures below. `python:3.12-slim` is the correct default; if you need a GDAL newer than Debian ships, base on `osgeo/gdal` instead. The size gap between `slim` and full is pure runtime dead weight, and a [multi-stage build](https://www.geospatial-api.com/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/multi-stage-docker-builds-for-postgis-fastapi/) closes it further by leaving the compiler toolchain out of the final image entirely.
 
 ---
+
+Splitting the image by what each layer contributes shows exactly what multi-stage buys.
+
+<svg viewBox="0 0 720 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Image size by build strategy: single stage, build tools kept 685 MB, multi-stage, slim runtime 223 MB, multi-stage + wheel cache 193 MB" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Image size by build strategy</title>
+  <desc>Stacked bars. single stage, build tools kept totals 685 MB. multi-stage, slim runtime totals 223 MB. multi-stage + wheel cache totals 193 MB. The toolchain is the whole prize: compilers and headers belong in the builder stage and nowhere near production.</desc>
+  <rect x="0" y="0" width="720" height="240" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Image size by build strategy</text>
+  <rect x="430" y="16" width="11" height="11" rx="2" fill="var(--viz-bad, #a32b23)" opacity="0.7"/>
+  <text x="446" y="26" font-size="9.5" fill="currentColor">build toolchain</text>
+  <rect x="557" y="16" width="11" height="11" rx="2" fill="var(--viz-warn, #8a5000)" opacity="0.7"/>
+  <text x="573" y="26" font-size="9.5" fill="currentColor">python deps</text>
+  <rect x="656" y="16" width="11" height="11" rx="2" fill="var(--accent, #7c3aed)" opacity="0.7"/>
+  <text x="672" y="26" font-size="9.5" fill="currentColor">base + lib</text>
+  <text x="20" y="66" font-size="10.5" fill="currentColor">single stage, build tools kept</text>
+  <rect x="210" y="52" width="257" height="20" rx="2" fill="var(--viz-bad, #a32b23)" opacity="0.7"/>
+  <rect x="467" y="52" width="112" height="20" rx="2" fill="var(--viz-warn, #8a5000)" opacity="0.7"/>
+  <rect x="579" y="52" width="59" height="20" rx="2" fill="var(--accent, #7c3aed)" opacity="0.7"/>
+  <text x="646" y="66" font-size="10" font-weight="700" fill="currentColor">685 MB</text>
+  <text x="20" y="110" font-size="10.5" fill="currentColor">multi-stage, slim runtime</text>
+  <rect x="210" y="96" width="3" height="20" rx="2" fill="var(--viz-bad, #a32b23)" opacity="0.7"/>
+  <rect x="213" y="96" width="80" height="20" rx="2" fill="var(--viz-warn, #8a5000)" opacity="0.7"/>
+  <rect x="293" y="96" width="59" height="20" rx="2" fill="var(--accent, #7c3aed)" opacity="0.7"/>
+  <text x="360" y="110" font-size="10" font-weight="700" fill="currentColor">223 MB</text>
+  <text x="20" y="154" font-size="10.5" fill="currentColor">multi-stage + wheel cache</text>
+  <rect x="210" y="140" width="3" height="20" rx="2" fill="var(--viz-bad, #a32b23)" opacity="0.7"/>
+  <rect x="213" y="140" width="61" height="20" rx="2" fill="var(--viz-warn, #8a5000)" opacity="0.7"/>
+  <rect x="274" y="140" width="59" height="20" rx="2" fill="var(--accent, #7c3aed)" opacity="0.7"/>
+  <text x="341" y="154" font-size="10" font-weight="700" fill="currentColor">193 MB</text>
+  <text x="20" y="196" font-size="10.5" fill="var(--muted, #7c6fb0)">The toolchain is the whole prize: compilers and headers belong in the builder stage and nowhere near production.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -421,6 +453,43 @@ print(gdal.__version__, shapely.geos_version_string, pyproj.proj_version_str)"
 If step 4 prints three version strings, the runtime libraries and the Python bindings agree. If it raises `ImportError`, the `runtime` stage is missing a `.so` — see the first failure mode.
 
 ---
+
+Reproducibility for a spatial image is mostly about the things that change without telling you.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What must be pinned, and what happens when it is not: Pin it, Silent drift" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>What must be pinned, and what happens when it is not</title>
+  <desc>A comparison table. PostGIS minor version: Pin it yes, Silent drift yes. plan changes between minors PROJ grid-shift data: Pin it yes, Silent drift yes. accuracy degrades quietly GEOS version: Pin it yes, Silent drift partly. validity semantics shift base image digest: Pin it yes, Silent drift yes. a rebuild is a different OS Python dependency set: Pin it yes, Silent drift no. fails loudly, at least Four of the five drift without any error — which is why a version assertion belongs in the startup check.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">What must be pinned, and what happens when it is not</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Pin it</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Silent drift</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">PostGIS minor version</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">plan changes between minors</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">PROJ grid-shift data</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">accuracy degrades quietly</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">GEOS version</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">validity semantics shift</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">base image digest</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">a rebuild is a different OS</text>
+  <line x1="20" y1="194" x2="700" y2="194" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="216" font-size="10.5" fill="currentColor">Python dependency set</text>
+  <text x="294" y="216" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="216" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="216" font-size="9.5" fill="var(--muted, #7c6fb0)">fails loudly, at least</text>
+  <text x="20" y="252" font-size="10.5" fill="var(--muted, #7c6fb0)">Four of the five drift without any error — which is why a version assertion belongs in the startup check.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

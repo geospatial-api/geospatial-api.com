@@ -11,14 +11,14 @@ permalink: /
   <div class="hero-inner">
     <div class="hero-badge">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-      FastAPI · PostGIS · Redis · Celery
+      FastAPI · PostGIS · Redis · Celery · Vector tiles
     </div>
     <h1>Build <span class="accent">Production-Grade</span> Geospatial APIs</h1>
     <p class="hero-desc">
       Design scalable spatial REST APIs, optimise PostGIS queries, implement intelligent caching layers, and deploy geospatial services that handle millions of concurrent requests with sub-50 ms response times.
     </p>
     <p class="hero-desc" style="margin-top:0">
-      Practical guides covering the complete stack — from coordinate validation and bounding-box indexing through to vector tile generation and CDN distribution — written for backend engineers, GIS platform architects, and SaaS founders.
+      Practical guides covering the complete stack — coordinate reference systems and SRID handling, bounding-box indexing, <code>ST_AsMVT</code> vector tile endpoints, table partitioning for billion-row geometry, location-data audit trails and production observability — written for backend engineers, GIS platform architects, and SaaS founders.
     </p>
     <div class="hero-actions">
       <a href="/core-geospatial-api-architecture-with-fastapi-postgis/" class="btn btn-purple">
@@ -57,7 +57,7 @@ permalink: /
         <svg viewBox="0 0 24 24" fill="none" stroke="#4b3a7c" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
       </div>
       <h2>Core Geospatial API Architecture</h2>
-      <p>Layered spatial design, PostGIS as a computational engine, async FastAPI patterns, OGC-compliant serialisation, cursor-based pagination, and API versioning for GIS endpoints.</p>
+      <p>Layered spatial design, coordinate reference systems and SRID handling, async FastAPI patterns, OGC-compliant serialisation, keyset pagination that survives moving data, and API versioning with Sunset headers.</p>
       <span class="card-cta">Explore architecture →</span>
     </a>
 
@@ -66,7 +66,7 @@ permalink: /
         <svg viewBox="0 0 24 24" fill="none" stroke="#1565c0" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
       </div>
       <h2>Advanced Spatial Endpoints &amp; Data Contracts</h2>
-      <p>Strict Pydantic v2 geometry validation, GiST index-aware query patterns, KNN routing, async bulk ingestion with Celery, and idempotent spatial writes at scale.</p>
+      <p>Strict Pydantic v2 geometry validation, GiST index-aware query patterns, KNN routing with attribute filters, <code>ST_AsMVT</code> vector tile endpoints, and resumable bulk ingestion with Celery.</p>
       <span class="card-cta">Explore endpoints →</span>
     </a>
 
@@ -75,7 +75,7 @@ permalink: /
         <svg viewBox="0 0 24 24" fill="none" stroke="#0e7c72" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
       </div>
       <h2>High-Performance Caching &amp; Query Optimization</h2>
-      <p>Redis spatial cache key normalisation, EXPLAIN ANALYZE for PostGIS, PgBouncer transaction pooling, vector tile generation with ST_AsMVT, and CDN edge distribution strategies.</p>
+      <p>Redis spatial cache key normalisation, EXPLAIN ANALYZE for PostGIS, PgBouncer transaction pooling, table partitioning for billion-row geometry, and traffic-derived tile cache seeding.</p>
       <span class="card-cta">Explore caching →</span>
     </a>
 
@@ -84,7 +84,7 @@ permalink: /
         <svg viewBox="0 0 24 24" fill="none" stroke="#b0286a" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       </div>
       <h2>Securing Geospatial APIs</h2>
-      <p>JWT authentication with spatial scope claims, PostGIS row-level security for multi-tenant geometry isolation, and rate limiting for expensive geofence and vector-tile endpoints.</p>
+      <p>JWT authentication with spatial scope claims and key rotation, PostGIS row-level security for multi-tenant isolation, cost-based rate limiting, and audit trails for location-data access.</p>
       <span class="card-cta">Explore security →</span>
     </a>
 
@@ -93,7 +93,7 @@ permalink: /
         <svg viewBox="0 0 24 24" fill="none" stroke="#b5730f" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
       </div>
       <h2>Deploying &amp; Operating Geospatial APIs</h2>
-      <p>Containerizing PostGIS and FastAPI, CI/CD pipelines with real spatial integration tests, and edge routing for vector-tile delivery at scale with Cloudflare Workers.</p>
+      <p>Containerizing PostGIS and FastAPI, CI/CD with real spatial integration tests and deterministic fixtures, OpenTelemetry and Prometheus instrumentation, and edge routing for tiles at scale.</p>
       <span class="card-cta">Explore deployment →</span>
     </a>
 
@@ -147,6 +147,34 @@ permalink: /
             <a href="/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/versioning-geospatial-apis-without-breaking-clients/">Versioning APIs Without Breaking Clients</a>
             <span>Pydantic v2 adapters, CRS URN changes, axis-order shifts</span>
           </li>
+                  <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/coordinate-reference-systems-and-srid-handling/">Coordinate Reference Systems &amp; SRID Handling</a>
+            <span>Storage SRID choice, transform placement, and why degrees are not metres</span>
+          </li>
+          <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/coordinate-reference-systems-and-srid-handling/transforming-srids-in-api-responses-with-st-transform/">Transforming SRIDs in API Responses</a>
+            <span>Project on output, filter on storage, and keep the GiST index</span>
+          </li>
+          <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/coordinate-reference-systems-and-srid-handling/measuring-distance-and-area-in-metres-with-geography/">Measuring Distance and Area in Metres</a>
+            <span>Cast to geography, index the cast, and stop returning degrees</span>
+          </li>
+          <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/coordinate-reference-systems-and-srid-handling/handling-mixed-srid-inputs-from-legacy-clients/">Handling Mixed SRID Inputs</a>
+            <span>Eastings, reversed axis order, and unlabelled coordinates at the door</span>
+          </li>
+          <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/geojson-vs-geoparquet-serialization/streaming-flatgeobuf-responses-from-fastapi/">Streaming FlatGeobuf Responses</a>
+            <span>Constant-memory exports over a server-side cursor</span>
+          </li>
+          <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/spatial-pagination-cursor-strategies/handling-cursor-drift-when-geometry-changes/">Handling Cursor Drift</a>
+            <span>Stable ordering and honest drift reporting on moving data</span>
+          </li>
+          <li>
+            <a href="/core-geospatial-api-architecture-with-fastapi-postgis/api-versioning-for-gis-endpoints/deprecating-spatial-fields-with-sunset-headers/">Deprecating Spatial Fields with Sunset Headers</a>
+            <span>RFC 8594 announcements, usage tracking, and rehearsed brownouts</span>
+          </li>
         </ul>
       </div>
 
@@ -189,6 +217,38 @@ permalink: /
             <a href="/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/handling-async-file-uploads-for-shapefile-processing/">Async Shapefile Upload Processing</a>
             <span>Stream .zip archives to disk; delegate GDAL parsing to workers</span>
           </li>
+                  <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/vector-tile-endpoints-with-st-asmvt/">Vector Tile Endpoints with ST_AsMVT</a>
+            <span>Tile envelopes, clipping, attribute budgets and protobuf responses</span>
+          </li>
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/vector-tile-endpoints-with-st-asmvt/simplifying-geometry-per-zoom-level-for-vector-tiles/">Simplifying Geometry Per Zoom Level</a>
+            <span>Zoom-derived tolerance that shrinks tiles without visible change</span>
+          </li>
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/vector-tile-endpoints-with-st-asmvt/serving-multi-layer-vector-tiles-in-one-query/">Multi-Layer Vector Tiles in One Query</a>
+            <span>Concatenated ST_AsMVT layers, one round trip, one cache key</span>
+          </li>
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/vector-tile-endpoints-with-st-asmvt/debugging-empty-vector-tiles/">Debugging Empty Vector Tiles</a>
+            <span>Five silent causes, checked in the order that costs least</span>
+          </li>
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/avoiding-full-scans-with-st-dwithin-and-geography/">Avoiding Full Scans with ST_DWithin</a>
+            <span>The rewrite that turns a 2-second scan into a 9 ms index scan</span>
+          </li>
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/k-nearest-neighbor-routing-algorithms/combining-knn-ordering-with-attribute-filters/">Combining KNN Ordering with Filters</a>
+            <span>Partial indexes, bounded search and LATERAL per-group nearest</span>
+          </li>
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/strict-pydantic-validation-for-geometry/rejecting-invalid-polygons-with-st-isvalid/">Rejecting Invalid Polygons with ST_IsValid</a>
+            <span>Report the reason and the coordinate; repair only in bulk paths</span>
+          </li>
+          <li>
+            <a href="/advanced-spatial-endpoint-implementation-data-contracts/async-bulk-uploads-with-celery/resumable-chunked-uploads-for-large-geopackages/">Resumable Chunked Uploads</a>
+            <span>Checksummed chunks so a dropped link costs one chunk, not 4 GB</span>
+          </li>
         </ul>
       </div>
 
@@ -226,6 +286,30 @@ permalink: /
           <li>
             <a href="/high-performance-caching-query-optimization/materialized-views-for-spatial-aggregations/">Materialized Views for Spatial Aggregations</a>
             <span>Precompute ST_Union rollups and heatmap grids; concurrent refresh</span>
+          </li>
+                  <li>
+            <a href="/high-performance-caching-query-optimization/table-partitioning-for-large-spatial-datasets/">Table Partitioning for Large Spatial Datasets</a>
+            <span>Declarative range partitioning, pruning, and cheap retention</span>
+          </li>
+          <li>
+            <a href="/high-performance-caching-query-optimization/table-partitioning-for-large-spatial-datasets/migrating-a-live-spatial-table-to-partitions/">Migrating a Live Spatial Table</a>
+            <span>Shadow parent, dual-write, and a 40 ms rename cutover</span>
+          </li>
+          <li>
+            <a href="/high-performance-caching-query-optimization/table-partitioning-for-large-spatial-datasets/brin-versus-gist-indexes-on-partitioned-geometry/">BRIN vs GiST on Partitioned Geometry</a>
+            <span>When correlation makes a 400× smaller index the right one</span>
+          </li>
+          <li>
+            <a href="/high-performance-caching-query-optimization/table-partitioning-for-large-spatial-datasets/automating-partition-rollover-and-retention/">Automating Partition Rollover</a>
+            <span>Create ahead, detach concurrently, and alert on the runway</span>
+          </li>
+          <li>
+            <a href="/high-performance-caching-query-optimization/connection-pooling-pgbouncer-setup/transaction-pooling-and-prepared-statements-in-asyncpg/">Transaction Pooling &amp; Prepared Statements</a>
+            <span>The intermittent asyncpg error that only appears under load</span>
+          </li>
+          <li>
+            <a href="/high-performance-caching-query-optimization/tile-generation-cdn-distribution/pre-seeding-tile-caches-for-hot-viewports/">Pre-Seeding Tile Caches</a>
+            <span>Warm the 4 000 tiles that matter, not the 2.4 million that do not</span>
           </li>
         </ul>
       </div>
@@ -273,6 +357,26 @@ permalink: /
             <a href="/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/">Cost-Based Throttling for PostGIS Queries</a>
             <span>Weight requests by bbox area against a token budget</span>
           </li>
+                  <li>
+            <a href="/securing-geospatial-apis-authentication-authorization/audit-logging-for-location-data-access/">Audit Logging for Location Data Access</a>
+            <span>Record the envelope, not the rows; append-only and partitioned</span>
+          </li>
+          <li>
+            <a href="/securing-geospatial-apis-authentication-authorization/audit-logging-for-location-data-access/detecting-geofence-enumeration-in-the-audit-trail/">Detecting Geofence Enumeration</a>
+            <span>Coverage novelty separates a scraper from a busy dispatcher</span>
+          </li>
+          <li>
+            <a href="/securing-geospatial-apis-authentication-authorization/audit-logging-for-location-data-access/redacting-coordinate-precision-in-application-logs/">Redacting Coordinate Precision in Logs</a>
+            <span>Truncate at the formatter; keep the request id as the bridge</span>
+          </li>
+          <li>
+            <a href="/securing-geospatial-apis-authentication-authorization/audit-logging-for-location-data-access/retention-and-legal-hold-for-location-audit-data/">Retention and Legal Hold</a>
+            <span>Expire on schedule, suspend for investigations, prove both</span>
+          </li>
+          <li>
+            <a href="/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/rotating-jwt-signing-keys-without-dropping-sessions/">Rotating JWT Signing Keys</a>
+            <span>Publish, wait, switch, wait, retire — and the emergency variant</span>
+          </li>
         </ul>
       </div>
 
@@ -319,6 +423,30 @@ permalink: /
             <a href="/deploying-and-operating-geospatial-apis/edge-routing-and-tile-delivery-at-scale/caching-vector-tiles-at-the-edge-with-cache-control/">Caching Vector Tiles with Cache-Control</a>
             <span>Immutable versioned tiles, s-maxage, stale-while-revalidate</span>
           </li>
+                  <li>
+            <a href="/deploying-and-operating-geospatial-apis/observability-for-spatial-endpoints/">Observability for Spatial Endpoints</a>
+            <span>Metrics by operation and magnitude; the signals that move first</span>
+          </li>
+          <li>
+            <a href="/deploying-and-operating-geospatial-apis/observability-for-spatial-endpoints/instrumenting-asyncpg-queries-with-opentelemetry/">Instrumenting asyncpg with OpenTelemetry</a>
+            <span>Spans carrying envelope area, row count and pool wait</span>
+          </li>
+          <li>
+            <a href="/deploying-and-operating-geospatial-apis/observability-for-spatial-endpoints/prometheus-histograms-for-spatial-endpoint-latency/">Prometheus Histograms for Spatial Latency</a>
+            <span>Buckets from the real distribution; labels that stay bounded</span>
+          </li>
+          <li>
+            <a href="/deploying-and-operating-geospatial-apis/observability-for-spatial-endpoints/alerting-on-gist-index-bloat-and-autovacuum-lag/">Alerting on GiST Index Bloat</a>
+            <span>Why catalogue bloat estimates lie about spatial indexes</span>
+          </li>
+          <li>
+            <a href="/deploying-and-operating-geospatial-apis/containerizing-postgis-and-fastapi/health-checks-and-readiness-probes-for-postgis-apis/">Health Checks &amp; Readiness Probes</a>
+            <span>Keep liveness local so a database blip is not a restart storm</span>
+          </li>
+          <li>
+            <a href="/deploying-and-operating-geospatial-apis/ci-cd-pipelines-for-spatial-apis/seeding-deterministic-spatial-fixtures-for-tests/">Deterministic Spatial Fixtures</a>
+            <span>Fixed coordinates with known relationships, not random points</span>
+          </li>
         </ul>
       </div>
 
@@ -331,6 +459,42 @@ permalink: /
   <div class="featured-links-inner">
     <h2 id="featured-heading">Popular guides</h2>
     <div class="links-grid">
+
+      <a href="/core-geospatial-api-architecture-with-fastapi-postgis/coordinate-reference-systems-and-srid-handling/" class="link-card">
+        <span class="link-card-label">Core Architecture</span>
+        <h3>Coordinate Reference Systems &amp; SRID Handling</h3>
+        <p>The one schema decision that is hard to reverse — and the transform rules that follow from it.</p>
+      </a>
+
+      <a href="/advanced-spatial-endpoint-implementation-data-contracts/vector-tile-endpoints-with-st-asmvt/" class="link-card">
+        <span class="link-card-label">Advanced Endpoints</span>
+        <h3>Vector Tile Endpoints with ST_AsMVT</h3>
+        <p>A complete tile service in one SQL query and one FastAPI route.</p>
+      </a>
+
+      <a href="/high-performance-caching-query-optimization/table-partitioning-for-large-spatial-datasets/" class="link-card">
+        <span class="link-card-label">Caching &amp; Optimization</span>
+        <h3>Table Partitioning for Large Spatial Datasets</h3>
+        <p>Bounded maintenance, cheap retention, and what pruning does and does not do.</p>
+      </a>
+
+      <a href="/securing-geospatial-apis-authentication-authorization/audit-logging-for-location-data-access/" class="link-card">
+        <span class="link-card-label">Security &amp; Auth</span>
+        <h3>Audit Logging for Location Data Access</h3>
+        <p>A trail that answers an investigation while holding less than the data it protects.</p>
+      </a>
+
+      <a href="/deploying-and-operating-geospatial-apis/observability-for-spatial-endpoints/" class="link-card">
+        <span class="link-card-label">Deployment &amp; Operations</span>
+        <h3>Observability for Spatial Endpoints</h3>
+        <p>Why average latency is useless here, and which four signals move before an incident.</p>
+      </a>
+
+      <a href="/advanced-spatial-endpoint-implementation-data-contracts/bounding-box-spatial-index-queries/avoiding-full-scans-with-st-dwithin-and-geography/" class="link-card">
+        <span class="link-card-label">Advanced Endpoints</span>
+        <h3>Avoiding Full Scans with ST_DWithin</h3>
+        <p>The highest-value one-line rewrite in a spatial API.</p>
+      </a>
 
       <a href="/core-geospatial-api-architecture-with-fastapi-postgis/spatial-resource-modeling-patterns/" class="link-card">
         <span class="link-card-label">Core Architecture</span>

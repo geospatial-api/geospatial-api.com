@@ -92,9 +92,10 @@ When PostGIS's `<->` distance operator appears in an `ORDER BY … LIMIT` clause
 
 ---
 
-<svg viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="KNN query execution flow from FastAPI to PostGIS GiST index and back" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+<svg viewBox="-6 71 722 205" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="KNN query execution flow from FastAPI to PostGIS GiST index and back" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
   <title>KNN Query Execution Flow</title>
   <desc>Diagram showing a POST /knn/search request flowing through Pydantic validation, asyncpg connection pool, PostGIS GiST index traversal, distance calculation, and GeoJSON FeatureCollection response.</desc>
+  <rect x="-6" y="71" width="722" height="205" rx="10" fill="var(--surface, #f5f3ff)"/>
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="currentColor" opacity="0.6"/>
@@ -175,6 +176,28 @@ The right approach depends on dataset size, geometry type, and acceptable latenc
 The `<->` + `LIMIT` combination is the canonical production pattern. Use `ST_DWithin` only when a known radius bound is small enough to produce a tight candidate set before sorting.
 
 ---
+
+The KNN operator is not a faster sort — it is a different algorithm that stops early.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ten nearest of 2 million points, by approach: sort all by ST_Distance 2 400 ms, ST_DWithin 5 km then sort 31 ms, &lt;-&gt; operator with LIMIT 3 ms, &lt;-&gt; on geography with LIMIT 4 ms — and metres" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Ten nearest of 2 million points, by approach</title>
+  <desc>A horizontal bar chart. sort all by ST_Distance is 2 400 ms. ST_DWithin 5 km then sort is 31 ms. &lt;-&gt; operator with LIMIT is 3 ms. &lt;-&gt; on geography with LIMIT is 4 ms — and metres. The operator terminates as soon as the limit is met; every other approach computes distances it then discards.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Ten nearest of 2 million points, by approach</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">sort all by ST_Distance</text>
+  <rect x="250" y="48" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="61" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">2 400 ms</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">ST_DWithin 5 km then sort</text>
+  <rect x="250" y="82" width="6" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="264" y="95" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">31 ms</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">&lt;-&gt; operator with LIMIT</text>
+  <rect x="250" y="116" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">3 ms</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">&lt;-&gt; on geography with LIMIT</text>
+  <rect x="250" y="150" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="163" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">4 ms — and metres</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">The operator terminates as soon as the limit is met; every other approach computes distances it then discards.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -522,6 +545,37 @@ async def test_knn_returns_feature_collection():
 ```
 
 ---
+
+The operator is easy to disable by accident, and the SQL still reads perfectly well when you do.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What breaks index-assisted KNN: Still indexed" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>What breaks index-assisted KNN</title>
+  <desc>A comparison table. ORDER BY geom &lt;-&gt; $point LIMIT 10: Still indexed yes. the intended shape no LIMIT: Still indexed no. nothing to terminate on ORDER BY ST_Distance(...): Still indexed no. a function, not the operator a selective WHERE clause: Still indexed partly. walks past non-matches ordering by two columns: Still indexed no. the operator must be first Four of these five look correct in review; only the plan shows which one lost its index.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">What breaks index-assisted KNN</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Still indexed</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">ORDER BY geom &lt;-&gt; $point LIMIT 10</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="352" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">the intended shape</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">no LIMIT</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="352" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">nothing to terminate on</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">ORDER BY ST_Distance(...)</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="352" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">a function, not the operator</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">a selective WHERE clause</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-warn, #8a5000)">~</text>
+  <text x="352" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">walks past non-matches</text>
+  <line x1="20" y1="194" x2="700" y2="194" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="216" font-size="10.5" fill="currentColor">ordering by two columns</text>
+  <text x="294" y="216" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="352" y="216" font-size="9.5" fill="var(--muted, #7c6fb0)">the operator must be first</text>
+  <text x="20" y="252" font-size="10.5" fill="var(--muted, #7c6fb0)">Four of these five look correct in review; only the plan shows which one lost its index.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

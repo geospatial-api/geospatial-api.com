@@ -75,6 +75,7 @@ The four practical encodings occupy different points on a size-versus-precision 
 <svg viewBox="0 0 720 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Comparison of JWT geofence encodings by token size and boundary precision" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
   <title>Geofence encoding size vs precision</title>
   <desc>A chart plotting four JWT scope encodings. The horizontal axis is token bytes, low on the left to high on the right. The vertical axis is boundary precision, coarse at the bottom to exact at the top. Bbox array sits low-left as small and coarse. Geohash prefix list sits low-left, small and coarse. H3 cell set sits centre, medium size and medium-to-high precision. Inline WKT polygon sits top-right, large and exact. Server-side reference sits far left near the top, tiny and exact via lookup.</desc>
+  <rect x="0" y="0" width="720" height="360" rx="10" fill="var(--surface, #f5f3ff)"/>
   <!-- axes -->
   <line x1="70" y1="300" x2="680" y2="300" stroke="var(--muted, #7c6fb0)" stroke-width="1.5"/>
   <line x1="70" y1="300" x2="70" y2="40" stroke="var(--muted, #7c6fb0)" stroke-width="1.5"/>
@@ -196,6 +197,28 @@ if __name__ == "__main__":
 
 ---
 
+Geohash length is the dial between how tightly the fence is described and how many cells it takes to describe it.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Geohash precision versus cell size: 4 chars ±20 km, 5 chars ±2.4 km, 6 chars ±610 m, 7 chars ±76 m — many cells per fence" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Geohash precision versus cell size</title>
+  <desc>A horizontal bar chart. 4 chars is ±20 km. 5 chars is ±2.4 km. 6 chars is ±610 m. 7 chars is ±76 m — many cells per fence. Each extra character multiplies the cell count needed to cover a fence by about 32, so precision is bought in token bytes.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Geohash precision versus cell size</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">4 chars</text>
+  <rect x="250" y="48" width="340" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="598" y="61" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">±20 km</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">5 chars</text>
+  <rect x="250" y="82" width="85" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="343" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">±2.4 km</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">6 chars</text>
+  <rect x="250" y="116" width="17" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="275" y="129" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">±610 m</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">7 chars</text>
+  <rect x="250" y="150" width="17" height="18" rx="3" fill="var(--viz-warn, #8a5000)" opacity="0.75"/>
+  <text x="275" y="163" font-size="10" font-weight="700" fill="var(--viz-warn, #8a5000)">±76 m — many cells per fence</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">Each extra character multiplies the cell count needed to cover a fence by about 32, so precision is bought in token bytes.</text>
+</svg>
+
 ## Key parameters & options
 
 | Parameter / knob | Controls | Guidance |
@@ -211,6 +234,28 @@ if __name__ == "__main__":
 Choosing among these is a size-versus-precision decision; the [parent decision matrix](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/jwt-authentication-for-spatial-scopes/) tabulates the same encodings against query mapping and use case. The encoded region describes *permission*, not feature data, so keep it minimal — it is an access-control artefact, not a payload.
 
 ---
+
+Approximating a fence with cells always errs in one direction, and one direction is much worse than the other.
+
+<svg viewBox="0 0 720 198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two failure directions for an encoded fence: over-granting versus under-granting" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Two failure directions for an encoded fence</title>
+  <desc>Two panels. over-granting: cell grid extends past the real fence access to areas never intended silent — nothing errors the dangerous direction under-granting: cells do not quite cover the fence legitimate requests get 403 loud — a support ticket within hours annoying, not dangerous Because the two are not symmetrical, round the covering cells inward and accept the occasional false refusal.</desc>
+  <rect x="0" y="0" width="720" height="198" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Two failure directions for an encoded fence</text>
+  <rect x="16" y="40" width="336" height="122" rx="9" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.5"/>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--viz-bad, #a32b23)">over-granting</text>
+  <text x="34" y="84" font-size="10" fill="currentColor">cell grid extends past the real fence</text>
+  <text x="34" y="106" font-size="10" fill="currentColor">access to areas never intended</text>
+  <text x="34" y="128" font-size="10" fill="currentColor">silent — nothing errors</text>
+  <text x="34" y="150" font-size="10" fill="currentColor">the dangerous direction</text>
+  <rect x="368" y="40" width="336" height="122" rx="9" fill="var(--viz-warn-soft, #fbeed6)" stroke="var(--viz-warn, #8a5000)" stroke-width="1.5"/>
+  <text x="386" y="62" font-size="11" font-weight="700" fill="var(--viz-warn, #8a5000)">under-granting</text>
+  <text x="386" y="84" font-size="10" fill="currentColor">cells do not quite cover the fence</text>
+  <text x="386" y="106" font-size="10" fill="currentColor">legitimate requests get 403</text>
+  <text x="386" y="128" font-size="10" fill="currentColor">loud — a support ticket within hours</text>
+  <text x="386" y="150" font-size="10" fill="currentColor">annoying, not dangerous</text>
+  <text x="20" y="194" font-size="10.5" fill="var(--muted, #7c6fb0)">Because the two are not symmetrical, round the covering cells inward and accept the occasional false refusal.</text>
+</svg>
 
 ## Gotchas & failure modes
 

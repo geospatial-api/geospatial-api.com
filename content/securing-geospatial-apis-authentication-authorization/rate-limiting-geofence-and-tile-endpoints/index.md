@@ -94,7 +94,7 @@ Rate limiting a spatial API is defence in depth, not a single check. Each layer 
 <svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three enforcement layers for spatial rate limiting: edge CDN, FastAPI middleware, and PostgreSQL statement timeout" style="width:100%;max-width:760px;display:block;margin:1.5rem auto;font-family:inherit;">
   <title>Three enforcement layers for spatial rate limiting</title>
   <desc>A request flows top to bottom through three defensive layers. The edge or CDN sheds volumetric floods with coarse per-IP tile limits. FastAPI middleware backed by Redis enforces per-API-key and cost-weighted business limits and returns 429 with Retry-After. PostgreSQL statement_timeout kills any runaway spatial query that slipped through. Only surviving requests reach PostGIS.</desc>
-  <rect x="0" y="0" width="760" height="360" rx="12" fill="none"/>
+  <rect x="0" y="0" width="760" height="360" rx="12" fill="var(--surface, #f5f3ff)"/>
   <!-- incoming request -->
   <rect x="300" y="16" width="160" height="34" rx="6" fill="var(--surface, #f5f3ff)" stroke="var(--accent, #7c3aed)" stroke-width="1.5"/>
   <text x="380" y="38" text-anchor="middle" font-size="12" fill="currentColor" font-weight="600">Incoming request</text>
@@ -180,6 +180,43 @@ For a straightforward per-API-key ceiling on tile and geofence routes, the **sli
 When requests are wildly unequal in cost — a 10 m radius versus a 300 km radius on the same route — a flat request count is the wrong unit. A **token bucket** whose withdrawal is proportional to the estimated query cost prices each request fairly; a large-radius `ST_DWithin` withdraws many tokens and drains the budget quickly, while cheap point lookups barely move it. That approach is developed in full in [cost-based throttling for expensive PostGIS queries](https://www.geospatial-api.com/securing-geospatial-apis-authentication-authorization/rate-limiting-geofence-and-tile-endpoints/cost-based-throttling-for-expensive-postgis-queries/).
 
 ---
+
+Standard algorithms count requests; a spatial API cares much more about what each request costs.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rate-limiting algorithms for spatial traffic: Smooth, Memory" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Rate-limiting algorithms for spatial traffic</title>
+  <desc>A comparison table. fixed window: Smooth no, Memory yes. boundary bursts of 2× the limit sliding window log: Smooth yes, Memory no. one entry per request sliding window counter: Smooth yes, Memory yes. the usual compromise token bucket: Smooth yes, Memory yes. allows a controlled burst cost-based bucket: Smooth yes, Memory yes. charges by envelope area Only the last row prices a request by how much work it asks for, which is what a spatial API actually needs.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Rate-limiting algorithms for spatial traffic</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Smooth</text>
+  <text x="394" y="58" font-size="10" font-weight="700" fill="currentColor">Memory</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">fixed window</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="402" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">boundary bursts of 2× the limit</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">sliding window log</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="120" font-size="11.5" font-weight="700" fill="var(--viz-bad, #a32b23)">✕</text>
+  <text x="460" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">one entry per request</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">sliding window counter</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">the usual compromise</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">token bucket</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">allows a controlled burst</text>
+  <line x1="20" y1="194" x2="700" y2="194" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="216" font-size="10.5" fill="currentColor">cost-based bucket</text>
+  <text x="294" y="216" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="402" y="216" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="460" y="216" font-size="9.5" fill="var(--muted, #7c6fb0)">charges by envelope area</text>
+  <text x="20" y="252" font-size="10.5" fill="var(--muted, #7c6fb0)">Only the last row prices a request by how much work it asks for, which is what a spatial API actually needs.</text>
+</svg>
 
 ## Step-by-Step Implementation
 
@@ -411,6 +448,28 @@ async def test_geofence_route_rejects_after_limit():
 ```
 
 ---
+
+A per-minute request limit says nothing about the load those requests create.
+
+<svg viewBox="0 0 720 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Database time consumed per minute at the same request rate: 60 tile requests, z14 1.4 s, 60 bbox requests, small 1.1 s, 60 bbox requests, continental 42 s, 60 export requests 180 s — three machines’ worth" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Database time consumed per minute at the same request rate</title>
+  <desc>A horizontal bar chart. 60 tile requests, z14 is 1.4 s. 60 bbox requests, small is 1.1 s. 60 bbox requests, continental is 42 s. 60 export requests is 180 s — three machines’ worth. The same limit permits wildly different loads, which is the entire argument for charging by cost rather than by count.</desc>
+  <rect x="0" y="0" width="720" height="232" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Database time consumed per minute at the same request rate</text>
+  <text x="20" y="61" font-size="10.5" fill="currentColor">60 tile requests, z14</text>
+  <rect x="250" y="48" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="61" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">1.4 s</text>
+  <text x="20" y="95" font-size="10.5" fill="currentColor">60 bbox requests, small</text>
+  <rect x="250" y="82" width="6" height="18" rx="3" fill="var(--viz-good, #1f6b3a)" opacity="0.75"/>
+  <text x="264" y="95" font-size="10" font-weight="700" fill="var(--viz-good, #1f6b3a)">1.1 s</text>
+  <text x="20" y="129" font-size="10.5" fill="currentColor">60 bbox requests, continental</text>
+  <rect x="250" y="116" width="79" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="337" y="129" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">42 s</text>
+  <text x="20" y="163" font-size="10.5" fill="currentColor">60 export requests</text>
+  <rect x="250" y="150" width="340" height="18" rx="3" fill="var(--viz-bad, #a32b23)" opacity="0.75"/>
+  <text x="598" y="163" font-size="10" font-weight="700" fill="var(--viz-bad, #a32b23)">180 s — three</text>
+  <text x="20" y="200" font-size="10.5" fill="var(--muted, #7c6fb0)">The same limit permits wildly different loads, which is the entire argument for charging by cost rather than by count.</text>
+</svg>
 
 ## Failure Modes & Edge Cases
 

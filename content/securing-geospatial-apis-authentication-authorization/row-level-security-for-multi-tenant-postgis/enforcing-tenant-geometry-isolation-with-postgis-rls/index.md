@@ -189,6 +189,37 @@ Because the same policy guards both sides, even a self-join for neighbour cluste
 
 ---
 
+Five clauses have to be present for a policy to be both effective and affordable.
+
+<svg viewBox="0 0 720 266" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Getting the policy definition right: Required" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Getting the policy definition right</title>
+  <desc>A comparison table. ENABLE ROW LEVEL SECURITY: Required yes. without it the policy is inert FORCE ROW LEVEL SECURITY: Required yes. applies to the table owner too a policy for each command: Required yes. SELECT does not imply INSERT WITH CHECK on writes: Required yes. stops writing into another tenant an index on the policy column: Required yes. or every query pays per row The second row is the one most often missed: without FORCE, the owner role — frequently the migration role — sees everything.</desc>
+  <rect x="0" y="0" width="720" height="266" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Getting the policy definition right</text>
+  <rect x="20" y="40" width="680" height="26" rx="4" fill="var(--surface-alt, #ede8f8)"/>
+  <text x="286" y="58" font-size="10" font-weight="700" fill="currentColor">Required</text>
+  <text x="34" y="88" font-size="10.5" fill="currentColor">ENABLE ROW LEVEL SECURITY</text>
+  <text x="294" y="88" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="352" y="88" font-size="9.5" fill="var(--muted, #7c6fb0)">without it the policy is inert</text>
+  <line x1="20" y1="98" x2="700" y2="98" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="120" font-size="10.5" fill="currentColor">FORCE ROW LEVEL SECURITY</text>
+  <text x="294" y="120" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="352" y="120" font-size="9.5" fill="var(--muted, #7c6fb0)">applies to the table owner too</text>
+  <line x1="20" y1="130" x2="700" y2="130" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="152" font-size="10.5" fill="currentColor">a policy for each command</text>
+  <text x="294" y="152" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="352" y="152" font-size="9.5" fill="var(--muted, #7c6fb0)">SELECT does not imply INSERT</text>
+  <line x1="20" y1="162" x2="700" y2="162" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="184" font-size="10.5" fill="currentColor">WITH CHECK on writes</text>
+  <text x="294" y="184" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="352" y="184" font-size="9.5" fill="var(--muted, #7c6fb0)">stops writing into another tenant</text>
+  <line x1="20" y1="194" x2="700" y2="194" stroke="var(--viz-grid, #d8cff0)" stroke-width="1"/>
+  <text x="34" y="216" font-size="10.5" fill="currentColor">an index on the policy column</text>
+  <text x="294" y="216" font-size="11.5" font-weight="700" fill="var(--viz-good, #1f6b3a)">✓</text>
+  <text x="352" y="216" font-size="9.5" fill="var(--muted, #7c6fb0)">or every query pays per row</text>
+  <text x="20" y="252" font-size="10.5" fill="var(--muted, #7c6fb0)">The second row is the one most often missed: without FORCE, the owner role — frequently the migration role — sees everything.</text>
+</svg>
+
 ## Key parameters & options
 
 | Element | Role | Notes |
@@ -203,6 +234,28 @@ Because the same policy guards both sides, even a self-join for neighbour cluste
 | Per-command policies | SELECT/INSERT/UPDATE/DELETE split | More precise than a single `FOR ALL` |
 
 ---
+
+Both of these look like configuration details and only one of them is survivable.
+
+<svg viewBox="0 0 720 198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two ways the isolation quietly disappears: the setting is missing versus the role bypasses RLS" style="width:100%;max-width:720px;display:block;margin:1.5rem auto;">
+  <title>Two ways the isolation quietly disappears</title>
+  <desc>Two panels. the setting is missing: current_setting returns NULL policy compares against NULL every comparison is unknown result: zero rows — loud and safe the role bypasses RLS: superuser or table owner FORCE not enabled policy is simply not applied result: every tenant — silent One failure mode returns nothing and the other returns everything. Test for the second explicitly, with the role the application actually uses.</desc>
+  <rect x="0" y="0" width="720" height="198" rx="10" fill="var(--surface, #f5f3ff)"/>
+  <text x="20" y="28" font-size="12.5" font-weight="700" fill="currentColor">Two ways the isolation quietly disappears</text>
+  <rect x="16" y="40" width="336" height="122" rx="9" fill="var(--viz-good-soft, #dff2e4)" stroke="var(--viz-good, #1f6b3a)" stroke-width="1.5"/>
+  <text x="34" y="62" font-size="11" font-weight="700" fill="var(--viz-good, #1f6b3a)">the setting is missing</text>
+  <text x="34" y="84" font-size="10" fill="currentColor">current_setting returns NULL</text>
+  <text x="34" y="106" font-size="10" fill="currentColor">policy compares against NULL</text>
+  <text x="34" y="128" font-size="10" fill="currentColor">every comparison is unknown</text>
+  <text x="34" y="150" font-size="10" fill="currentColor">result: zero rows — loud and safe</text>
+  <rect x="368" y="40" width="336" height="122" rx="9" fill="var(--viz-bad-soft, #fbe4e1)" stroke="var(--viz-bad, #a32b23)" stroke-width="1.5"/>
+  <text x="386" y="62" font-size="11" font-weight="700" fill="var(--viz-bad, #a32b23)">the role bypasses RLS</text>
+  <text x="386" y="84" font-size="10" fill="currentColor">superuser or table owner</text>
+  <text x="386" y="106" font-size="10" fill="currentColor">FORCE not enabled</text>
+  <text x="386" y="128" font-size="10" fill="currentColor">policy is simply not applied</text>
+  <text x="386" y="150" font-size="10" fill="currentColor">result: every tenant — silent</text>
+  <text x="20" y="194" font-size="10.5" fill="var(--muted, #7c6fb0)">One failure mode returns nothing and the other returns everything. Test for the second explicitly, with the role the application actually uses.</text>
+</svg>
 
 ## Gotchas & failure modes
 
